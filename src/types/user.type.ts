@@ -1,0 +1,80 @@
+export interface CurrentUserApiResponse {
+  id: string;
+  userName: string;
+  email: string;
+  roleName: string[];
+}
+
+/** Auth/GetAllUsers sətri */
+export interface UserListItemApi {
+  id: string;
+  userName: string;
+  email: string;
+  roleName: string[];
+}
+
+export interface GetAllUsersApiResponse {
+  items: UserListItemApi[];
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export type GetAllUsersParams = {
+  pageNumber: number;
+  pageSize: number;
+  /** Auth/GetAllUsers — backend axtarış query paramı (ad/e-poçt) */
+  search?: string;
+};
+
+export type AssignRolePayload = {
+  userId: string;
+  roleName: string;
+};
+
+export type RegisterUserPayload = {
+  email: string;
+  password: string;
+  phone: string;
+  firstName: string;
+  lastName: string;
+  departmentId: string;
+  positionId: string;
+};
+
+/** Cədvəl üçün sadələşdirilmiş sətir */
+export interface UserListRow {
+  id: string;
+  userName: string;
+  email: string;
+  /** Trim edilmiş, boş olmayan rol adları (sıra API-dakı kimi) */
+  roleNames: string[];
+}
+
+export interface GetAllUsersResult {
+  rows: UserListRow[];
+  totalCount: number;
+  pageNumber: number;
+  pageSize: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export interface User {
+  id: string | number;
+  username: string;
+  name: string;
+  surname: string;
+  email: string;
+  contactNumber: string;
+  role: {
+    id: number;
+    name: string;
+    key: string;
+  };
+  image: string;
+}

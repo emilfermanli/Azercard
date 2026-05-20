@@ -7,8 +7,16 @@ function autoImportComponents() {
     apply: 'serve',
     enforce: 'pre',
     configureServer(server) {
-      const listener = (file = '') =>
-        file.includes(path.normalize('/src/components/')) ? generate() : null;
+      const componentsDir = path.resolve(__dirname, '../components');
+      const indexFilePath = path.resolve(componentsDir, 'index.tsx');
+      const listener = (file = '') => {
+        const changedFile = path.resolve(file);
+        if (!changedFile.startsWith(componentsDir) || changedFile === indexFilePath) {
+          return;
+        }
+
+        generate();
+      };
       server.watcher.on('add', listener);
       server.watcher.on('change', listener);
       server.watcher.on('unlink', listener);
@@ -33,6 +41,10 @@ function generate() {
       .filter((file) => file.endsWith('.tsx') && file !== 'index.tsx')
       .map((file) => `export * from './${path.basename(file)}';`)
       .join('\n');
+
+    if (fs.existsSync(indexFilePath) && fs.readFileSync(indexFilePath, 'utf8') === imports) {
+      return;
+    }
 
     fs.writeFile(indexFilePath, imports, (err) => {
       if (err) {

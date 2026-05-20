@@ -1,17 +1,35 @@
 import type { ResponseType } from '@/types/common.type';
-import type { Auth, AuthLoginPayload } from '@/types/auth.type';
+import type { Auth, AuthLoginApiResponse, AuthLoginPayload } from '@/types/auth.type';
 import type { CreateRolePayload, RoleRow } from '@/types/role.type';
-import type { User } from '@/types/user.type';
+import type {
+  AssignRolePayload,
+  RefreshTokenPayload,
+  ResetPasswordPayload,
+  SendResetOtpPayload,
+  User,
+  UserListRow,
+} from '@/types/user.type';
 import { createApi } from '@reduxjs/toolkit/query/react';
 import { baseQuery } from '@/utils/fetchBaseQuery';
-import { isAuthLoginApiResponse, mapAuthLoginApiResponseToAuth } from '@/utils/map-auth-login-response';
-import { isCurrentUserApiResponse, mapCurrentUserApiToUser } from '@/utils/map-current-user-api';
+import {
+  isAuthLoginApiResponse,
+  mapAuthLoginApiResponseToAuth,
+} from '@/utils/map-auth-login-response';
+import {
+  isCurrentUserApiResponse,
+  mapCurrentUserApiToUser,
+} from '@/utils/map-current-user-api';
 
 function asRoleArray(raw: unknown): RoleRow[] {
   if (Array.isArray(raw)) {
     return raw as RoleRow[];
   }
-  if (raw && typeof raw === 'object' && 'data' in raw && Array.isArray((raw as { data: unknown }).data)) {
+  if (
+    raw &&
+    typeof raw === 'object' &&
+    'data' in raw &&
+    Array.isArray((raw as { data: unknown }).data)
+  ) {
     return (raw as { data: RoleRow[] }).data;
   }
   return [];
@@ -44,16 +62,25 @@ export const authApi = createApi({
       },
     }),
 
-    signOut: builder.mutation<ResponseType<null>, void>({
-      query: () => ({
+    signOut: builder.mutation<ResponseType<null>, RefreshTokenPayload | void>({
+      query: (body) => ({
         method: 'POST',
-        url: 'auth/logout',
+        url: 'Auth/logout',
+        body,
+      }),
+    }),
+
+    refreshToken: builder.mutation<AuthLoginApiResponse, RefreshTokenPayload>({
+      query: (body) => ({
+        method: 'POST',
+        url: 'Auth/refresh',
+        body,
       }),
     }),
 
     getCurrentUserData: builder.query<User, void>({
       query: () => ({
-        url: 'auth/getcurrentuserdata',
+        url: 'Auth/GetCurrentUserData',
         method: 'GET',
       }),
       transformResponse: (raw: unknown): User => {
@@ -67,7 +94,7 @@ export const authApi = createApi({
 
     getAllRoles: builder.query<RoleRow[], void>({
       query: () => ({
-        url: 'auth/getAllRoles',
+        url: 'Auth/GetAllRoles',
         method: 'GET',
       }),
       transformResponse: (raw: unknown) => asRoleArray(raw),
@@ -76,11 +103,43 @@ export const authApi = createApi({
 
     createRole: builder.mutation<unknown, CreateRolePayload>({
       query: (body) => ({
-        url: 'auth/create-role',
+        url: 'Auth/create-role',
         method: 'POST',
         body,
       }),
       invalidatesTags: [{ type: 'Role', id: 'LIST' }],
+    }),
+
+    removeRole: builder.mutation<unknown, AssignRolePayload>({
+      query: (body) => ({
+        url: 'Auth/remove-role',
+        method: 'DELETE',
+        body,
+      }),
+      invalidatesTags: [{ type: 'Role', id: 'LIST' }],
+    }),
+
+    getUsersByRole: builder.query<UserListRow[], string>({
+      query: (roleId) => ({
+        url: `Auth/users/${roleId}`,
+        method: 'GET',
+      }),
+    }),
+
+    resetPassword: builder.mutation<unknown, ResetPasswordPayload>({
+      query: (body) => ({
+        url: 'Auth/ResetPassword',
+        method: 'POST',
+        body,
+      }),
+    }),
+
+    sendResetOtp: builder.mutation<unknown, SendResetOtpPayload>({
+      query: (body) => ({
+        url: 'Auth/SendResetOtp',
+        method: 'POST',
+        body,
+      }),
     }),
   }),
 });
@@ -89,8 +148,13 @@ export const authApi = createApi({
 // auto-generated based on the defined endpoints
 export const {
   useSignOutMutation,
+  useRefreshTokenMutation,
   useLoginMutation,
   useGetCurrentUserDataQuery,
   useGetAllRolesQuery,
   useCreateRoleMutation,
+  useRemoveRoleMutation,
+  useGetUsersByRoleQuery,
+  useResetPasswordMutation,
+  useSendResetOtpMutation,
 } = authApi;

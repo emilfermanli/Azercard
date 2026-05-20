@@ -6,11 +6,16 @@ import { components, hooks, utils } from '@generouted/react-router/client';
 export type Path =
   | `///`
   | `/403`
+  | `/azmap`
   | `/departamentler`
+  | `/forecasting`
   | `/istifadeciler`
   | `/login`
+  | `/marketbenchmark`
   | `/pozisiyalar`
-  | `/rollar`;
+  | `/rollar`
+  | `/sectorspend`
+  | `/worldmap`;
 
 export type Params = {};
 

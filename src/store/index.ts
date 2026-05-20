@@ -14,6 +14,11 @@ import authSlice from '@/store/features/auth.slice';
 import { userApi } from '@/services/user.service';
 import { authApi } from '@/services/auth.service';
 import { organizationApi } from '@/services/organization.service';
+import { azmapApi } from '@/services/azmap.service';
+import { forecastingApi } from '@/services/forecasting.service';
+import { marketbenchmarkApi } from '@/services/marketbenchmark.service';
+import { sectorspendApi } from '@/services/sectorspend.service';
+import { worldmapApi } from '@/services/worldmap.service';
 
 const encryptor = encryptTransform({
   secretKey: import.meta.env.VITE_PERSIST_KEY,
@@ -33,6 +38,11 @@ const rootReducer = combineReducers({
   [userApi.reducerPath]: userApi.reducer,
   [authApi.reducerPath]: authApi.reducer,
   [organizationApi.reducerPath]: organizationApi.reducer,
+  [azmapApi.reducerPath]: azmapApi.reducer,
+  [forecastingApi.reducerPath]: forecastingApi.reducer,
+  [marketbenchmarkApi.reducerPath]: marketbenchmarkApi.reducer,
+  [sectorspendApi.reducerPath]: sectorspendApi.reducer,
+  [worldmapApi.reducerPath]: worldmapApi.reducer,
 });
 
 const reducer = persistReducer(persistConfig, rootReducer);
@@ -43,7 +53,16 @@ const store = configureStore({
     getDefaultMiddleware({
       serializableCheck: false,
     })
-      .concat(authApi.middleware, userApi.middleware, organizationApi.middleware)
+      .concat(
+        authApi.middleware,
+        userApi.middleware,
+        organizationApi.middleware,
+        azmapApi.middleware,
+        forecastingApi.middleware,
+        marketbenchmarkApi.middleware,
+        sectorspendApi.middleware,
+        worldmapApi.middleware
+      )
       .prepend(ErrorMiddleware),
 });
 

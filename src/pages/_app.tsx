@@ -1,6 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import { Redirects } from './__redirects';
-import { Toaster } from '@/components';
+import { Toaster } from '@/components/toaster';
 
 const App: React.FC = () => {
   return (

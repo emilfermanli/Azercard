@@ -1,5 +1,15 @@
 import type { LucideIcon } from 'lucide-react';
-import { Briefcase, Building2, Shield, Users } from 'lucide-react';
+import {
+  BarChart3,
+  Briefcase,
+  Building2,
+  Globe2,
+  MapPinned,
+  Shield,
+  TrendingUp,
+  Users,
+  WalletCards,
+} from 'lucide-react';
 
 export type NavLinkItem = {
   path: string;
@@ -27,5 +37,30 @@ export const navLinks: NavLinkItem[] = [
     path: '/rollar',
     label: 'Rollar',
     icon: Shield,
+  },
+  {
+    path: '/azmap',
+    label: 'AzMap',
+    icon: MapPinned,
+  },
+  {
+    path: '/worldmap',
+    label: 'WorldMap',
+    icon: Globe2,
+  },
+  {
+    path: '/marketbenchmark',
+    label: 'Market Benchmark',
+    icon: BarChart3,
+  },
+  {
+    path: '/sectorspend',
+    label: 'Sector Spend',
+    icon: WalletCards,
+  },
+  {
+    path: '/forecasting',
+    label: 'Forecasting',
+    icon: TrendingUp,
   },
 ];

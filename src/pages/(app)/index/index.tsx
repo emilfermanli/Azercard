@@ -129,9 +129,8 @@ const IndexPage: React.FC = () => {
             {recent.map((row) => (
               <li
                 key={row.id}
-                className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm ${
-                  isDark ? 'border-slate-700/50 bg-slate-950/40' : 'border-slate-100 bg-slate-50/80'
-                }`}
+                className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 text-sm ${isDark ? 'border-slate-700/50 bg-slate-950/40' : 'border-slate-100 bg-slate-50/80'
+                  }`}
               >
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600/90 text-xs font-bold text-white">
                   TX

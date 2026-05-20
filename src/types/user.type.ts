@@ -26,6 +26,9 @@ export interface GetAllUsersApiResponse {
 export type GetAllUsersParams = {
   pageNumber: number;
   pageSize: number;
+  role?: string;
+  departmentId?: string;
+  positionId?: string;
   /** Auth/GetAllUsers — backend axtarış query paramı (ad/e-poçt) */
   search?: string;
 };
@@ -33,6 +36,20 @@ export type GetAllUsersParams = {
 export type AssignRolePayload = {
   userId: string;
   roleName: string;
+};
+
+export type RefreshTokenPayload = {
+  refreshToken: string;
+};
+
+export type ResetPasswordPayload = {
+  email: string;
+  token: string;
+  newPassword: string;
+};
+
+export type SendResetOtpPayload = {
+  email: string;
 };
 
 export type RegisterUserPayload = {

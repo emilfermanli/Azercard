@@ -3,7 +3,15 @@ import type { AppDispatch } from '@/store/index';
 import { useForm } from 'react-hook-form';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { Check } from 'lucide-react';
+import {
+  ArrowRight,
+  BadgeCheck,
+  BarChart3,
+  LockKeyhole,
+  Mail,
+  ShieldCheck,
+  UsersRound,
+} from 'lucide-react';
 
 import { Button, Input, LoadingSpinner } from '@/components';
 import { useToast } from '@/hooks/useToast';
@@ -18,9 +26,21 @@ type LoginForm = {
 };
 
 const featureItems = [
-  'Təhlükəsiz giriş',
-  'Maliyyə hesabat alətləri',
-  'İnventar idarəetmə sistemi',
+  {
+    icon: ShieldCheck,
+    title: 'Təhlükəsiz giriş',
+    description: 'Sessiyalar və istifadəçi rolları qorunan mühitdə idarə olunur.',
+  },
+  {
+    icon: BarChart3,
+    title: 'Analitika paneli',
+    description: 'Hesabat, xəritə və bazar göstəricilərinə bir mərkəzdən keçid.',
+  },
+  {
+    icon: UsersRound,
+    title: 'Komanda idarəetməsi',
+    description: 'Departament, rol və istifadəçi əməliyyatları üçün vahid iş axını.',
+  },
 ];
 
 const LoginPage: React.FC = () => {
@@ -48,53 +68,80 @@ const LoginPage: React.FC = () => {
   });
 
   return (
-    <div className="relative min-h-dvh w-full overflow-x-hidden bg-gradient-to-br from-slate-950 via-indigo-950 to-violet-950 px-4 py-10 sm:px-6 sm:py-12">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(99,102,241,0.25),_transparent_55%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_rgba(139,92,246,0.2),_transparent_50%)]" />
+    <div className="relative min-h-dvh w-full overflow-x-hidden bg-[#f4f7fb] px-4 py-6 text-slate-950 sm:px-6 lg:px-8">
+      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(15,23,42,0.055)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.055)_1px,transparent_1px)] bg-[size:36px_36px]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-white to-transparent" />
 
-      <button
-        type="button"
-        className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/5 text-lg text-white shadow-lg backdrop-blur-md transition hover:bg-white/10 sm:right-6 sm:top-6"
-        aria-label="Dil: Azərbaycan"
-      >
-        🇦🇿
-      </button>
+      <main className="relative z-10 mx-auto grid min-h-[calc(100dvh-3rem)] w-full max-w-6xl items-center gap-8 py-10 lg:grid-cols-[1.08fr_0.92fr] lg:py-12">
+        <section className="hidden lg:block">
+          <div className="max-w-xl">
+            <div className="inline-flex items-center gap-2 rounded-md border border-blue-100 bg-white px-3 py-2 text-sm font-semibold text-blue-700 shadow-sm">
+              <BadgeCheck className="h-4 w-4" />
+              Korporativ idarəetmə mühiti
+            </div>
 
-      <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-5rem)] max-w-5xl items-center justify-center sm:min-h-[calc(100dvh-6rem)]">
-        <div className="grid w-full max-w-[960px] overflow-hidden rounded-2xl border border-white/10 bg-white shadow-2xl shadow-black/40 lg:grid-cols-2">
-          <aside className="relative hidden overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 px-10 py-12 text-white lg:flex lg:flex-col lg:justify-center">
-            <div className="pointer-events-none absolute -left-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
-            <div className="pointer-events-none absolute -bottom-20 -right-10 h-64 w-64 rounded-full bg-indigo-400/20 blur-3xl" />
-
-            <div className="relative flex flex-col items-center text-center">
-              <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-full border border-white/25 bg-white/15 text-2xl font-bold tracking-tight shadow-inner backdrop-blur-sm">
-                PM
+            <div className="mt-8">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-md bg-slate-950 text-lg font-bold tracking-tight text-white shadow-lg shadow-slate-950/15">
+                  PM
+                </div>
+                <div>
+                  <h1 className="text-4xl font-semibold tracking-tight text-slate-950">
+                    İdarəetmə Paneli
+                  </h1>
+                  <p className="mt-1 text-sm font-medium text-slate-500">İdarəetmə Sistemi</p>
+                </div>
               </div>
-              <h1 className="text-3xl font-bold leading-tight">İdarəetmə Paneli</h1>
-              <p className="mt-2 text-sm text-white/85">İdarəetmə Sistemi</p>
 
-              <div className="mt-10 w-full max-w-sm rounded-xl border border-white/15 bg-black/15 p-5 text-left shadow-lg backdrop-blur-md">
-                <ul className="flex flex-col gap-3 text-sm text-white/95">
-                  {featureItems.map((text) => (
-                    <li key={text} className="flex items-start gap-3">
-                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-400/25 text-emerald-200">
-                        <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                      </span>
-                      <span>{text}</span>
-                    </li>
-                  ))}
-                </ul>
+              <p className="mt-6 max-w-lg text-base leading-7 text-slate-600">
+                Daxili əməliyyatlar, istifadəçi rolları və analitika modulları üçün sürətli,
+                fokuslanmış və təhlükəsiz giriş nöqtəsi.
+              </p>
+            </div>
+
+            <div className="mt-10 grid gap-3">
+              {featureItems.map(({ icon: Icon, title, description }) => (
+                <div
+                  key={title}
+                  className="grid grid-cols-[2.75rem_1fr] gap-3 rounded-lg border border-slate-200 bg-white/80 p-4 shadow-sm backdrop-blur"
+                >
+                  <span className="flex h-11 w-11 items-center justify-center rounded-md bg-blue-50 text-blue-700">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-semibold text-slate-900">{title}</span>
+                    <span className="mt-1 block text-sm leading-5 text-slate-500">
+                      {description}
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+
+          </div>
+        </section>
+
+        <section className="flex items-center justify-center">
+          <div className="w-full max-w-[456px] rounded-lg border border-slate-200 bg-white px-5 py-6 shadow-2xl shadow-slate-200/80 sm:px-8 sm:py-8">
+            <div className="mb-8 lg:hidden">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-md bg-slate-950 text-base font-bold tracking-tight text-white">
+                  PM
+                </div>
+                <div>
+                  <p className="text-lg font-semibold text-slate-950">İdarəetmə Paneli</p>
+                  <p className="text-sm text-slate-500">İdarəetmə Sistemi</p>
+                </div>
               </div>
             </div>
-          </aside>
 
-          <div className="flex flex-col justify-center bg-slate-50 px-6 py-10 sm:px-10 sm:py-12">
-            <div className="mx-auto w-full max-w-md">
-              <h2 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-[1.65rem]">
+            <div>
+              <p className="text-sm font-semibold text-blue-700">Xoş gəlmisiniz</p>
+              <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
                 Hesabınıza daxil olun
               </h2>
-              <p className="mt-2 text-sm text-slate-500">
-                Davam etmək üçün məlumatlarınızı daxil edin.
+              <p className="mt-2 text-sm leading-6 text-slate-500">
+                Panelə keçmək üçün korporativ giriş məlumatlarınızı yazın.
               </p>
 
               <form onSubmit={onSubmit} className="mt-8 flex flex-col gap-5">
@@ -102,42 +149,48 @@ const LoginPage: React.FC = () => {
                   <label htmlFor="login-email" className="text-sm font-medium text-slate-700">
                     E-poçt
                   </label>
-                  <Input
-                    id="login-email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder="email@nümunə.az"
-                    className="h-11 border-slate-200 bg-white"
-                    {...register('email', { required: true })}
-                  />
+                  <div className="relative">
+                    <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      id="login-email"
+                      type="email"
+                      autoComplete="email"
+                      placeholder="email@numune.az"
+                      className="h-12 border-slate-200 bg-slate-50 pl-10 text-slate-950 shadow-none focus-visible:bg-white focus-visible:ring-blue-600"
+                      {...register('email', { required: true })}
+                    />
+                  </div>
                 </div>
 
                 <div className="flex flex-col gap-2">
                   <label htmlFor="login-password" className="text-sm font-medium text-slate-700">
                     Şifrə
                   </label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    autoComplete="current-password"
-                    placeholder="Şifrə"
-                    className="h-11 border-slate-200 bg-white"
-                    {...register('password', { required: true })}
-                  />
+                  <div className="relative">
+                    <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      id="login-password"
+                      type="password"
+                      autoComplete="current-password"
+                      placeholder="Şifrənizi daxil edin"
+                      className="h-12 border-slate-200 bg-slate-50 pl-10 text-slate-950 shadow-none focus-visible:bg-white focus-visible:ring-blue-600"
+                      {...register('password', { required: true })}
+                    />
+                  </div>
                 </div>
 
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
                     <input
                       type="checkbox"
-                      className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600"
                       {...register('rememberMe')}
                     />
                     Məni xatırla
                   </label>
                   <button
                     type="button"
-                    className="text-left text-sm font-medium text-indigo-600 underline-offset-2 hover:text-indigo-500 hover:underline sm:text-right"
+                    className="text-left text-sm font-semibold text-blue-700 underline-offset-4 hover:text-blue-600 hover:underline sm:text-right"
                     onClick={() =>
                       toast({
                         title: 'Şifrə bərpası',
@@ -153,37 +206,27 @@ const LoginPage: React.FC = () => {
                   type="submit"
                   size="lg"
                   disabled={isLoading}
-                  className="h-11 w-full border-0 bg-gradient-to-r from-blue-600 to-indigo-600 text-base font-semibold text-white shadow-md shadow-indigo-900/25 hover:from-blue-500 hover:to-indigo-500"
+                  className="h-12 w-full gap-2 border-0 bg-slate-950 text-base font-semibold text-white shadow-lg shadow-slate-950/20 hover:bg-slate-800"
                 >
-                  {isLoading ? <LoadingSpinner size="sm" className="text-white" /> : 'Daxil ol'}
+                  {isLoading ? (
+                    <LoadingSpinner size="sm" className="text-white" />
+                  ) : (
+                    <>
+                      Daxil ol
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
                 </Button>
               </form>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="mt-8 px-2 lg:hidden">
-        <div className="mx-auto max-w-[960px] overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-md">
-          <div className="flex items-center gap-3 text-white">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/10 text-sm font-bold">
-              PM
-            </div>
-            <div>
-              <p className="text-sm font-semibold">İdarəetmə Paneli</p>
-              <p className="text-xs text-white/75">İdarəetmə Sistemi</p>
+              <div className="mt-7 flex items-center gap-3 border-t border-slate-100 pt-5 text-xs leading-5 text-slate-500">
+                <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
+                Giriş məlumatlarınız şifrələnmiş kanal üzərindən yoxlanılır.
+              </div>
             </div>
           </div>
-          <ul className="mt-4 flex flex-col gap-2.5 text-sm text-white/90">
-            {featureItems.map((text) => (
-              <li key={text} className="flex items-center gap-2">
-                <Check className="h-4 w-4 shrink-0 text-emerald-300" strokeWidth={3} />
-                {text}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
+        </section>
+      </main>
     </div>
   );
 };

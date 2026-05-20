@@ -29,6 +29,7 @@
 		"@tanstack/react-table": "^8.21.3",
 		"class-variance-authority": "^0.7.0",
 		"clsx": "^2.1.1",
+		"deck.gl": "^9.3.2",
 		"lucide-react": "^0.408.0",
 		"react": "^18.2.0",
 		"react-dom": "^18.2.0",

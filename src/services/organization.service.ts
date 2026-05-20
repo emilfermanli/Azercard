@@ -19,25 +19,25 @@ export const organizationApi = createApi({
   tagTypes: ['Department', 'Position'],
   endpoints: (builder) => ({
     getDepartments: builder.query<Department[], void>({
-      query: () => ({ url: 'department', method: 'GET' }),
+      query: () => ({ url: 'Department', method: 'GET' }),
       transformResponse: (raw: unknown) => asArray<Department>(raw),
       providesTags: [{ type: 'Department', id: 'LIST' }],
     }),
     createDepartment: builder.mutation<Department, CreateDepartmentPayload>({
       query: (body) => ({
-        url: 'department',
+        url: 'Department',
         method: 'POST',
         body,
       }),
       invalidatesTags: [{ type: 'Department', id: 'LIST' }],
     }),
     getDepartmentById: builder.query<Department, string>({
-      query: (id) => ({ url: `department/${id}`, method: 'GET' }),
+      query: (id) => ({ url: `Department/${id}`, method: 'GET' }),
       providesTags: (_result, _error, id) => [{ type: 'Department', id }],
     }),
     updateDepartment: builder.mutation<Department, UpdateDepartmentPayload>({
       query: (body) => ({
-        url: 'department/update',
+        url: 'Department/Update',
         method: 'PUT',
         body,
       }),
@@ -47,32 +47,32 @@ export const organizationApi = createApi({
       ],
     }),
     deleteDepartment: builder.mutation<void, string>({
-      query: (id) => ({ url: `department/${id}`, method: 'DELETE' }),
+      query: (id) => ({ url: `Department/${id}`, method: 'DELETE' }),
       invalidatesTags: (_result, _error, id) => [
         { type: 'Department', id: 'LIST' },
         { type: 'Department', id },
       ],
     }),
     getPositions: builder.query<Position[], void>({
-      query: () => ({ url: 'position', method: 'GET' }),
+      query: () => ({ url: 'Position', method: 'GET' }),
       transformResponse: (raw: unknown) => asArray<Position>(raw),
       providesTags: [{ type: 'Position', id: 'LIST' }],
     }),
     createPosition: builder.mutation<Position, CreatePositionPayload>({
       query: (body) => ({
-        url: 'position',
+        url: 'Position',
         method: 'POST',
         body,
       }),
       invalidatesTags: [{ type: 'Position', id: 'LIST' }],
     }),
     getPositionById: builder.query<Position, string>({
-      query: (id) => ({ url: `position/${id}`, method: 'GET' }),
+      query: (id) => ({ url: `Position/${id}`, method: 'GET' }),
       providesTags: (_result, _error, id) => [{ type: 'Position', id }],
     }),
     updatePosition: builder.mutation<Position, UpdatePositionPayload>({
       query: (body) => ({
-        url: 'position/update',
+        url: 'Position/Update',
         method: 'PUT',
         body,
       }),
@@ -82,7 +82,7 @@ export const organizationApi = createApi({
       ],
     }),
     deletePosition: builder.mutation<void, string>({
-      query: (id) => ({ url: `position/${id}`, method: 'DELETE' }),
+      query: (id) => ({ url: `Position/${id}`, method: 'DELETE' }),
       invalidatesTags: (_result, _error, id) => [
         { type: 'Position', id: 'LIST' },
         { type: 'Position', id },

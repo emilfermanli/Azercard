@@ -14,13 +14,18 @@ export const userApi = createApi({
   tagTypes: ['User'],
   endpoints: (builder) => ({
     getAllUsers: builder.query<GetAllUsersResult, GetAllUsersParams>({
-      query: ({ pageNumber, pageSize, search }) => ({
+      query: ({ pageNumber, pageSize, search, role, departmentId, positionId }) => ({
         url: 'Auth/GetAllUsers',
         method: 'GET',
         params: {
-          pageNumber,
-          pageSize,
-          ...(search != null && search !== '' ? { search } : {}),
+          PageNumber: pageNumber,
+          PageSize: pageSize,
+          ...(role != null && role !== '' ? { Role: role } : {}),
+          ...(departmentId != null && departmentId !== ''
+            ? { DepartmentId: departmentId }
+            : {}),
+          ...(positionId != null && positionId !== '' ? { PositionId: positionId } : {}),
+          ...(search != null && search !== '' ? { Search: search } : {}),
         },
       }),
       transformResponse: (raw: unknown) => mapGetAllUsersResponse(raw),
@@ -28,7 +33,7 @@ export const userApi = createApi({
     }),
     assignRole: builder.mutation<unknown, AssignRolePayload>({
       query: (body) => ({
-        url: 'auth/assign-role',
+        url: 'Auth/assign-role',
         method: 'POST',
         body,
       }),
@@ -36,7 +41,7 @@ export const userApi = createApi({
     }),
     registerUser: builder.mutation<unknown, RegisterUserPayload>({
       query: (body) => ({
-        url: 'auth/register',
+        url: 'Auth/register',
         method: 'POST',
         body,
       }),
@@ -45,4 +50,5 @@ export const userApi = createApi({
   }),
 });
 
-export const { useGetAllUsersQuery, useAssignRoleMutation, useRegisterUserMutation } = userApi;
+export const { useGetAllUsersQuery, useAssignRoleMutation, useRegisterUserMutation } =
+  userApi;

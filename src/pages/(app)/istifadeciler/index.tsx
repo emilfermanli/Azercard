@@ -129,47 +129,89 @@ const IstifadecilerPage: React.FC = () => {
   const hasNext = data?.hasNextPage ?? false;
   const hasPrev = data?.hasPreviousPage ?? false;
 
-  const paginationStrong = isDark ? 'font-medium text-white' : 'font-medium text-slate-900';
+  const paginationStrong = isDark
+    ? 'font-medium text-white'
+    : 'font-medium text-slate-900';
   const paginationOutlineBtn = isDark
     ? 'border-slate-500 bg-slate-800/90 text-slate-100 hover:bg-slate-700 hover:text-white'
     : '';
   const summaryCard = isDark
-    ? 'border-slate-700/60 bg-slate-900/50 text-slate-100'
+    ? 'border-slate-800 bg-slate-900/60 text-slate-100'
     : 'border-slate-200 bg-white text-slate-900 shadow-sm';
+  const headerPanel = isDark
+    ? 'border-slate-800 bg-slate-900/70 shadow-black/20'
+    : 'border-slate-200 bg-white shadow-slate-200/70';
+  const iconPanel = isDark ? 'bg-blue-500/15 text-blue-300' : 'bg-blue-50 text-blue-700';
+  const primaryButton = isDark
+    ? 'h-10 shrink-0 gap-2 border-0 bg-blue-600 px-4 text-white shadow-lg shadow-blue-950/20 hover:bg-blue-500 sm:self-start'
+    : 'h-10 shrink-0 gap-2 border-0 bg-slate-950 px-4 text-white shadow-lg shadow-slate-950/15 hover:bg-slate-800 sm:self-start';
+  const tableClass = isDark
+    ? 'border-slate-800 bg-slate-900/70'
+    : 'border-slate-200 bg-white';
 
   return (
-    <div className="space-y-4">
-      <AssignRoleModal open={assignUser !== null} user={assignUser} onClose={() => setAssignUser(null)} />
+    <div className="space-y-5">
+      <AssignRoleModal
+        open={assignUser !== null}
+        user={assignUser}
+        onClose={() => setAssignUser(null)}
+      />
       <UserCreateModal open={createOpen} onClose={() => setCreateOpen(false)} />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1
-            className={[
-              'text-2xl font-bold tracking-tight',
-              isDark ? 'text-white' : 'text-slate-900',
-            ].join(' ')}
+      <div className={['rounded-xl border p-4 shadow-lg sm:p-5', headerPanel].join(' ')}>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-4">
+            <span
+              className={[
+                'flex h-12 w-12 shrink-0 items-center justify-center rounded-lg',
+                iconPanel,
+              ].join(' ')}
+            >
+              <Users className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="text-xs font-semibold uppercase text-blue-500">Komanda</p>
+              <h1
+                className={[
+                  'mt-1 text-2xl font-semibold tracking-tight',
+                  isDark ? 'text-white' : 'text-slate-950',
+                ].join(' ')}
+              >
+                İstifadəçilər
+              </h1>
+              <p className={['mt-2 max-w-2xl text-sm leading-6', muted].join(' ')}>
+                Sistem istifadəçilərinə baxın, yeni hesab yaradın və rolları sürətli
+                şəkildə təyin edin.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            className={primaryButton}
+            onClick={() => setCreateOpen(true)}
           >
-            İstifadəçilər
-          </h1>
+            <Plus className="h-4 w-4" />
+            Yeni istifadəçi
+          </Button>
         </div>
-        <Button
-          type="button"
-          className="h-10 shrink-0 gap-2 border-0 bg-gradient-to-r from-blue-600 to-indigo-600 px-4 text-white shadow-md hover:from-blue-500 hover:to-indigo-500 sm:self-start"
-          onClick={() => setCreateOpen(true)}
-        >
-          <Plus className="h-4 w-4" />
-          Yeni istifadəçi
-        </Button>
       </div>
 
       {(isLoading || isFetching) && !data && (
-        <div className="flex justify-center py-12">
-          <LoadingSpinner size="lg" className={isDark ? 'text-slate-400' : 'text-slate-500'} />
+        <div
+          className={['flex justify-center rounded-xl border py-12', summaryCard].join(
+            ' '
+          )}
+        >
+          <LoadingSpinner
+            size="lg"
+            className={isDark ? 'text-slate-400' : 'text-slate-500'}
+          />
         </div>
       )}
       {isError && (
-        <p className="text-sm text-red-400">Məlumat yüklənərkən xəta baş verdi.</p>
+        <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+          Məlumat yüklənərkən xəta baş verdi.
+        </p>
       )}
 
       {data && (
@@ -184,7 +226,9 @@ const IstifadecilerPage: React.FC = () => {
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className={`text-xs font-medium sm:text-sm ${muted}`}>Ümumi istifadəçi sayı</p>
+                  <p className={`text-xs font-medium sm:text-sm ${muted}`}>
+                    Ümumi istifadəçi sayı
+                  </p>
                   <p
                     className={[
                       'mt-1.5 truncate text-xl font-semibold tabular-nums tracking-tight sm:text-2xl',
@@ -201,7 +245,10 @@ const IstifadecilerPage: React.FC = () => {
                   ].join(' ')}
                 >
                   <Users
-                    className={['h-4 w-4 sm:h-5 sm:w-5', isDark ? 'text-blue-400' : 'text-blue-600'].join(' ')}
+                    className={[
+                      'h-4 w-4 sm:h-5 sm:w-5',
+                      isDark ? 'text-blue-400' : 'text-blue-600',
+                    ].join(' ')}
                   />
                 </span>
               </div>
@@ -219,7 +266,7 @@ const IstifadecilerPage: React.FC = () => {
                 <LoadingSpinner size="md" className={muted} />
               </div>
             )}
-            <DataTable columns={columns} data={rows} />
+            <DataTable columns={columns} data={rows} className={tableClass} />
           </div>
 
           <div

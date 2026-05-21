@@ -10,6 +10,7 @@ import {
   BadgeDollarSign,
   Globe2,
   Landmark,
+  Layers,
   Maximize2,
   Minimize2,
   ZoomIn,
@@ -66,6 +67,7 @@ type PaymentSummary = {
 };
 
 type MapMode = 'flow' | 'heatmap';
+type BaseMapStyle = 'dark' | 'light' | 'voyager' | 'minimal';
 
 type HeatmapPoint = {
   id: string;
@@ -87,12 +89,54 @@ const MAP_MIN_ZOOM = 0.8;
 const MAP_MAX_ZOOM = 6;
 const PAGE_SIZE = 10;
 
-const BASE_MAP_TILE_URL = {
-  dark: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-  light: 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+const BASE_MAP_TILE_URL: Record<BaseMapStyle, string> = {
+  dark: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+  light: 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
+  voyager: 'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+  minimal: 'https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}@2x.png',
 };
+const BASE_MAP_OPTIONS: { label: string; value: BaseMapStyle }[] = [
+  { label: 'Qara', value: 'dark' },
+  { label: 'Açıq', value: 'light' },
+  { label: 'Voyager', value: 'voyager' },
+  { label: 'Minimal', value: 'minimal' },
+];
+const WORLD_TILE_LONGITUDE_OFFSETS = [-720, -360, 0, 360, 720];
 
 type WorldMapViewState = MapViewState;
+
+type TileIndex = {
+  x: number;
+  y: number;
+  z: number;
+};
+
+function wrapTileX(x: number, z: number) {
+  const tileCount = 2 ** z;
+  return ((x % tileCount) + tileCount) % tileCount;
+}
+
+async function loadWrappedMapTile({
+  index,
+  signal,
+  urlTemplate,
+}: {
+  index: TileIndex;
+  signal?: AbortSignal;
+  urlTemplate: string;
+}) {
+  const url = urlTemplate
+    .replace('{z}', String(index.z))
+    .replace('{x}', String(wrapTileX(index.x, index.z)))
+    .replace('{y}', String(index.y));
+  const response = await fetch(url, { signal });
+
+  if (!response.ok) {
+    throw new Error(`Map tile request failed: ${response.status}`);
+  }
+
+  return createImageBitmap(await response.blob());
+}
 
 function toBool(value: boolean | number) {
   return value === true || value === 1;
@@ -181,6 +225,9 @@ const WorldmapPage: React.FC = () => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mapMode, setMapMode] = useState<MapMode>('flow');
+  const [baseMapStyle, setBaseMapStyle] = useState<BaseMapStyle>(
+    isDark ? 'dark' : 'light'
+  );
   const [page, setPage] = useState(1);
   const [viewState, setViewState] = useState<WorldMapViewState>(INITIAL_VIEW_STATE);
   const { data, isLoading, isError, isFetching } = useGetWorldmapFilterQuery({
@@ -411,9 +458,15 @@ const WorldmapPage: React.FC = () => {
     const baseLayers = [
       new TileLayer<ImageBitmap | HTMLImageElement>({
         id: 'worldmap-base-tiles',
-        data: isDark ? BASE_MAP_TILE_URL.dark : BASE_MAP_TILE_URL.light,
+        data: BASE_MAP_TILE_URL[baseMapStyle],
+        getTileData: ({ index, signal }) =>
+          loadWrappedMapTile({
+            index: index as TileIndex,
+            signal,
+            urlTemplate: BASE_MAP_TILE_URL[baseMapStyle],
+          }),
         maxRequests: 20,
-        maxZoom: 8,
+        maxZoom: 12,
         minZoom: 0,
         renderSubLayers: (props) => {
           const { west, south, east, north } = props.tile.bbox as {
@@ -423,11 +476,13 @@ const WorldmapPage: React.FC = () => {
             west: number;
           };
 
-          return new BitmapLayer({
-            bounds: [west, south, east, north],
-            id: `${props.id}-bitmap`,
-            image: props.data,
-          });
+          return WORLD_TILE_LONGITUDE_OFFSETS.map((offset) => (
+            new BitmapLayer({
+              bounds: [west + offset, south, east + offset, north],
+              id: `${props.id}-bitmap-${offset}`,
+              image: props.data,
+            })
+          ));
         },
         tileSize: 256,
       }),
@@ -529,7 +584,7 @@ const WorldmapPage: React.FC = () => {
         backgroundPadding: [6, 3],
       }),
     ];
-  }, [heatmapPoints, isDark, mapData, mapMode, maxHeatmapWeight]);
+  }, [baseMapStyle, heatmapPoints, isDark, mapData, mapMode, maxHeatmapWeight]);
 
   const panelClass = isDark
     ? 'border-slate-800 bg-slate-900/70 text-slate-100 shadow-black/20'
@@ -571,7 +626,7 @@ const WorldmapPage: React.FC = () => {
                   : 'border-slate-200 bg-slate-50',
               ].join(' ')}
             >
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+              <div className="space-y-3 border-b border-white/10 px-4 py-3">
                 <div>
                   <h2
                     className={[
@@ -617,31 +672,6 @@ const WorldmapPage: React.FC = () => {
                       </button>
                     ))}
                   </div>
-                  {mapMode === 'flow' ? (
-                    <div className="flex flex-wrap gap-2 text-xs font-medium">
-                      <span className="rounded-full bg-cyan-500/15 px-3 py-1 text-cyan-500">
-                        Xarici
-                      </span>
-                      <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-emerald-500">
-                        Domestic
-                      </span>
-                      <span className="rounded-full bg-amber-500/15 px-3 py-1 text-amber-500">
-                        Ölkədaxili
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap gap-2 text-xs font-medium">
-                      <span className="rounded-full bg-cyan-500/15 px-3 py-1 text-cyan-500">
-                        Aşağı
-                      </span>
-                      <span className="rounded-full bg-amber-500/15 px-3 py-1 text-amber-500">
-                        Orta
-                      </span>
-                      <span className="rounded-full bg-red-500/15 px-3 py-1 text-red-500">
-                        Yüksək
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -690,10 +720,46 @@ const WorldmapPage: React.FC = () => {
                     )}
                   </button>
                 </div>
+                <div
+                  className={[
+                    'group absolute left-4 top-4 z-10 flex h-10 max-w-[calc(100%-5.5rem)] items-center overflow-hidden rounded-lg border text-xs font-semibold shadow-lg backdrop-blur transition-all duration-200 hover:w-[315px] focus-within:w-[315px] sm:w-10',
+                    isDark
+                      ? 'border-slate-700 bg-slate-950/90'
+                      : 'border-slate-200 bg-white/95',
+                  ].join(' ')}
+                >
+                  <span
+                    className={[
+                      'flex h-10 w-10 shrink-0 items-center justify-center rounded-md',
+                      isDark ? 'text-slate-300' : 'text-slate-500',
+                    ].join(' ')}
+                  >
+                    <Layers className="h-4 w-4" />
+                  </span>
+                  <div className="flex w-[270px] shrink-0 items-center gap-1 pr-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
+                    {BASE_MAP_OPTIONS.map((item) => (
+                      <button
+                        key={item.value}
+                        className={[
+                          'rounded-md px-2.5 py-1.5 transition',
+                          baseMapStyle === item.value
+                            ? 'bg-cyan-500 text-white shadow-sm'
+                            : isDark
+                              ? 'text-slate-300 hover:text-white'
+                              : 'text-slate-600 hover:text-slate-950',
+                        ].join(' ')}
+                        onClick={() => setBaseMapStyle(item.value)}
+                        type="button"
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 {mapMode === 'heatmap' && (isHeatmapFetching || isHeatmapError) && (
                   <div
                     className={[
-                      'absolute left-4 top-4 z-10 rounded-lg border px-3 py-2 text-xs font-semibold shadow-lg',
+                      'absolute left-4 top-16 z-10 rounded-lg border px-3 py-2 text-xs font-semibold shadow-lg',
                       isHeatmapError
                         ? 'border-red-500/30 bg-red-500/15 text-red-300'
                         : isDark
@@ -704,6 +770,40 @@ const WorldmapPage: React.FC = () => {
                     {isHeatmapError ? 'Heatmap API yüklənmədi' : 'Heatmap yüklənir...'}
                   </div>
                 )}
+                <div
+                  className={[
+                    'absolute bottom-4 right-4 z-10 flex max-w-[calc(100%-2rem)] flex-wrap justify-end gap-2 rounded-lg border px-3 py-2 text-xs font-medium shadow-lg backdrop-blur',
+                    isDark
+                      ? 'border-slate-700 bg-slate-950/90'
+                      : 'border-slate-200 bg-white/95',
+                  ].join(' ')}
+                >
+                  {mapMode === 'flow' ? (
+                    <>
+                      <span className="rounded-full bg-cyan-500/15 px-3 py-1 text-cyan-500">
+                        Xarici
+                      </span>
+                      <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-emerald-500">
+                        Domestic
+                      </span>
+                      <span className="rounded-full bg-amber-500/15 px-3 py-1 text-amber-500">
+                        Ölkədaxili
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="rounded-full bg-cyan-500/15 px-3 py-1 text-cyan-500">
+                        Aşağı
+                      </span>
+                      <span className="rounded-full bg-amber-500/15 px-3 py-1 text-amber-500">
+                        Orta
+                      </span>
+                      <span className="rounded-full bg-red-500/15 px-3 py-1 text-red-500">
+                        Yüksək
+                      </span>
+                    </>
+                  )}
+                </div>
                 <div
                   className={[
                     'absolute inset-0',

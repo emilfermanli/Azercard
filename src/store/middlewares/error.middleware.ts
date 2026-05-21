@@ -11,12 +11,15 @@ type RejectedPayload = {
   data?: unknown;
 };
 
+const locallyHandledErrorEndpoints = new Set(['createRole', 'registerUser']);
+
 export const ErrorMiddleware: Middleware =
   (api: MiddlewareAPI) => (next) => (action: any) => {
     if (isRejectedWithValue(action)) {
       const payload = action.payload as RejectedPayload;
       const data = payload?.data;
       const errorMsg = action.error?.message as string | undefined;
+      const endpointName = action.meta?.arg?.endpointName as string | undefined;
 
       const apiMessage = parseApiErrorMessage(data);
       const description =
@@ -29,10 +32,11 @@ export const ErrorMiddleware: Middleware =
                 : ''
             }`);
 
-      toast({ description });
+      if (!endpointName || !locallyHandledErrorEndpoints.has(endpointName)) {
+        toast({ description });
+      }
 
       const status = parseApiErrorStatusCode(data, payload?.status);
-      const endpointName = action.meta?.arg?.endpointName as string | undefined;
       const isLoginMutation = endpointName === 'login';
 
       if (status === 401 && !isLoginMutation) {

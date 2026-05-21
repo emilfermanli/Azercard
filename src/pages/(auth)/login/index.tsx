@@ -7,6 +7,8 @@ import {
   ArrowRight,
   BadgeCheck,
   BarChart3,
+  Eye,
+  EyeOff,
   LockKeyhole,
   Mail,
   ShieldCheck,
@@ -14,10 +16,11 @@ import {
 } from 'lucide-react';
 
 import { Button, Input, LoadingSpinner } from '@/components';
-import { useToast } from '@/hooks/useToast';
+
 
 import { login } from '@/store/features/auth.slice';
 import { useLoginMutation } from '@/services/auth.service';
+import { useState } from 'react';
 
 type LoginForm = {
   email: string;
@@ -44,10 +47,11 @@ const featureItems = [
 ];
 
 const LoginPage: React.FC = () => {
-  const { toast } = useToast();
+
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const [loginRequest, { isLoading }] = useLoginMutation();
+  const [showPassword, setShowPassword] = useState<boolean>(false);
 
   const { register, handleSubmit } = useForm<LoginForm>({
     defaultValues: { email: '', password: '', rememberMe: false },
@@ -170,36 +174,25 @@ const LoginPage: React.FC = () => {
                     <LockKeyhole className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                     <Input
                       id="login-password"
-                      type="password"
+                      type={showPassword ? 'text' : 'password'}
                       autoComplete="current-password"
                       placeholder="Şifrənizi daxil edin"
-                      className="h-12 border-slate-200 bg-slate-50 pl-10 text-slate-950 shadow-none focus-visible:bg-white focus-visible:ring-blue-600"
+                      className="h-12 border-slate-200 bg-slate-50 pl-10 pr-12 text-slate-950 shadow-none focus-visible:bg-white focus-visible:ring-blue-600"
                       {...register('password', { required: true })}
                     />
+                    <button
+                      aria-label={showPassword ? 'Şifrəni gizlət' : 'Şifrəni göstər'}
+                      className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600"
+                      onClick={() => setShowPassword((value: boolean) => !value)}
+                      type="button"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
                   </div>
-                </div>
-
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-600"
-                      {...register('rememberMe')}
-                    />
-                    Məni xatırla
-                  </label>
-                  <button
-                    type="button"
-                    className="text-left text-sm font-semibold text-blue-700 underline-offset-4 hover:text-blue-600 hover:underline sm:text-right"
-                    onClick={() =>
-                      toast({
-                        title: 'Şifrə bərpası',
-                        description: 'Bu funksiya tezliklə əlçatan olacaq.',
-                      })
-                    }
-                  >
-                    Şifrəni unutmusunuz?
-                  </button>
                 </div>
 
                 <Button

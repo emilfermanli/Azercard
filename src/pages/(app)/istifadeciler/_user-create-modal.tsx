@@ -1,16 +1,18 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { X } from 'lucide-react';
+import { Eye, EyeOff, X } from 'lucide-react';
 
 import { Button, Input, LoadingSpinner } from '@/components';
 import { useGetDepartmentsQuery, useGetPositionsQuery } from '@/services/organization.service';
 import { useRegisterUserMutation } from '@/services/user.service';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import { cn } from '@/utils';
+import { parseRejectedApiErrorMessages } from '@/utils/api-error';
 
 type FormValues = {
   email: string;
   password: string;
+  confirmPassword: string;
   phone: string;
   firstName: string;
   lastName: string;
@@ -25,6 +27,9 @@ type Props = {
 
 export function UserCreateModal({ open, onClose }: Props) {
   const isDark = useShellTheme();
+  const [backendErrors, setBackendErrors] = useState<string[]>([]);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [registerUser, { isLoading }] = useRegisterUserMutation();
   const { data: departments = [], isLoading: deptLoading } = useGetDepartmentsQuery(undefined, {
     skip: !open,
@@ -37,6 +42,7 @@ export function UserCreateModal({ open, onClose }: Props) {
     defaultValues: {
       email: '',
       password: '',
+      confirmPassword: '',
       phone: '',
       firstName: '',
       lastName: '',
@@ -47,9 +53,13 @@ export function UserCreateModal({ open, onClose }: Props) {
 
   useEffect(() => {
     if (open) {
+      setBackendErrors([]);
+      setShowPassword(false);
+      setShowConfirmPassword(false);
       reset({
         email: '',
         password: '',
+        confirmPassword: '',
         phone: '',
         firstName: '',
         lastName: '',
@@ -84,6 +94,13 @@ export function UserCreateModal({ open, onClose }: Props) {
     : 'border-slate-200 bg-white text-slate-900 shadow-xl';
 
   const inputClass = isDark ? 'border-slate-600 bg-slate-950/50 text-slate-100' : '';
+  const passwordInputClass = cn(inputClass, 'pr-10');
+  const passwordToggleClass = cn(
+    'absolute right-1 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+    isDark
+      ? 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
+      : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
+  );
 
   const selectClass = cn(
     'h-9 w-full rounded-md border px-3 text-sm outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-blue-500',
@@ -94,6 +111,13 @@ export function UserCreateModal({ open, onClose }: Props) {
   const canPickOrg = !listsLoading && departments.length > 0 && positions.length > 0;
 
   const onSubmit = handleSubmit(async (values) => {
+    setBackendErrors([]);
+
+    if (values.password !== values.confirmPassword) {
+      setBackendErrors(['Şifrə və şifrə təkrarı eyni olmalıdır.']);
+      return;
+    }
+
     try {
       await registerUser({
         email: values.email.trim(),
@@ -105,8 +129,9 @@ export function UserCreateModal({ open, onClose }: Props) {
         positionId: values.positionId,
       }).unwrap();
       onClose();
-    } catch {
-      return;
+    } catch (error) {
+      const messages = parseRejectedApiErrorMessages(error);
+      setBackendErrors(messages.length > 0 ? messages : ['İstifadəçi yaratmaq mümkün olmadı.']);
     }
   });
 
@@ -147,6 +172,24 @@ export function UserCreateModal({ open, onClose }: Props) {
         </div>
 
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
+          {backendErrors.length > 0 && (
+            <div
+              className={cn(
+                'rounded-lg border px-3 py-2 text-sm',
+                isDark
+                  ? 'border-red-500/30 bg-red-500/10 text-red-200'
+                  : 'border-red-200 bg-red-50 text-red-700'
+              )}
+            >
+              <p className="font-semibold">Xəta baş verdi</p>
+              <ul className="mt-1 list-disc space-y-1 pl-5">
+                {backendErrors.map((message) => (
+                  <li key={message}>{message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
               <label htmlFor="user-create-first" className="text-sm font-medium">
@@ -156,7 +199,7 @@ export function UserCreateModal({ open, onClose }: Props) {
                 id="user-create-first"
                 autoComplete="given-name"
                 className={inputClass}
-                {...register('firstName', { required: true })}
+                {...register('firstName')}
               />
             </div>
             <div className="flex flex-col gap-2">
@@ -167,7 +210,7 @@ export function UserCreateModal({ open, onClose }: Props) {
                 id="user-create-last"
                 autoComplete="family-name"
                 className={inputClass}
-                {...register('lastName', { required: true })}
+                {...register('lastName')}
               />
             </div>
           </div>
@@ -181,7 +224,7 @@ export function UserCreateModal({ open, onClose }: Props) {
               type="email"
               autoComplete="email"
               className={inputClass}
-              {...register('email', { required: true })}
+              {...register('email')}
             />
           </div>
 
@@ -189,13 +232,56 @@ export function UserCreateModal({ open, onClose }: Props) {
             <label htmlFor="user-create-password" className="text-sm font-medium">
               Şifrə
             </label>
-            <Input
-              id="user-create-password"
-              type="password"
-              autoComplete="new-password"
-              className={inputClass}
-              {...register('password', { required: true, minLength: 1 })}
-            />
+            <div className="relative">
+              <Input
+                id="user-create-password"
+                type={showPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                className={passwordInputClass}
+                {...register('password')}
+              />
+              <button
+                aria-label={showPassword ? 'Şifrəni gizlət' : 'Şifrəni göstər'}
+                className={passwordToggleClass}
+                onClick={() => setShowPassword((value) => !value)}
+                type="button"
+              >
+                {showPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="user-create-confirm-password" className="text-sm font-medium">
+              Şifrə təkrarı
+            </label>
+            <div className="relative">
+              <Input
+                id="user-create-confirm-password"
+                type={showConfirmPassword ? 'text' : 'password'}
+                autoComplete="new-password"
+                className={passwordInputClass}
+                {...register('confirmPassword')}
+              />
+              <button
+                aria-label={
+                  showConfirmPassword ? 'Şifrə təkrarını gizlət' : 'Şifrə təkrarını göstər'
+                }
+                className={passwordToggleClass}
+                onClick={() => setShowConfirmPassword((value) => !value)}
+                type="button"
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
           </div>
 
           <div className="flex flex-col gap-2">
@@ -207,7 +293,7 @@ export function UserCreateModal({ open, onClose }: Props) {
               type="tel"
               autoComplete="tel"
               className={inputClass}
-              {...register('phone', { required: true })}
+              {...register('phone')}
             />
           </div>
 
@@ -230,9 +316,8 @@ export function UserCreateModal({ open, onClose }: Props) {
                 </label>
                 <select
                   id="user-create-dept"
-                  required
                   className={selectClass}
-                  {...register('departmentId', { required: true })}
+                  {...register('departmentId')}
                 >
                   <option value="">Seçin</option>
                   {departments.map((d) => (
@@ -248,9 +333,8 @@ export function UserCreateModal({ open, onClose }: Props) {
                 </label>
                 <select
                   id="user-create-pos"
-                  required
                   className={selectClass}
-                  {...register('positionId', { required: true })}
+                  {...register('positionId')}
                 >
                   <option value="">Seçin</option>
                   {positions.map((p) => (

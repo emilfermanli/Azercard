@@ -1,10 +1,8 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-nocheck
-
 import { useDispatch, useSelector } from 'react-redux';
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { encryptTransform } from 'redux-persist-transform-encrypt';
 import { persistStore, persistReducer } from 'redux-persist';
+import type { PersistConfig } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 
 import { ErrorMiddleware } from '@/store/middlewares/error.middleware';
@@ -25,14 +23,6 @@ const encryptor = encryptTransform({
   secretKey: import.meta.env.VITE_PERSIST_KEY,
 });
 
-const persistConfig = {
-  key: 'ea',
-  storage,
-  transforms: [encryptor],
-  whitelist: ['auth'],
-  // blacklist: [""],
-};
-
 const rootReducer = combineReducers({
   app: appSlice,
   auth: authSlice,
@@ -47,7 +37,17 @@ const rootReducer = combineReducers({
   [worldmapApi.reducerPath]: worldmapApi.reducer,
 });
 
-const reducer = persistReducer(persistConfig, rootReducer);
+type RootReducerState = ReturnType<typeof rootReducer>;
+
+const persistConfig: PersistConfig<RootReducerState> = {
+  key: 'ea',
+  storage,
+  transforms: [encryptor],
+  whitelist: ['auth'],
+  // blacklist: [""],
+};
+
+const reducer = persistReducer<RootReducerState>(persistConfig, rootReducer);
 
 const store = configureStore({
   reducer,

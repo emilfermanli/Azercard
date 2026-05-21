@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Filter, Plus, RotateCcw, ShieldPlus, Users } from 'lucide-react';
+import { Eye, Filter, Plus, RotateCcw, ShieldPlus, Users } from 'lucide-react';
 
 import { Button, DataPagination, DataTable, LoadingSpinner } from '@/components';
 import type { UserListRow } from '@/types/user.type';
@@ -10,32 +10,42 @@ import {
   useGetDepartmentsQuery,
   useGetPositionsQuery,
 } from '@/services/organization.service';
+import { useDebouncedValue } from '@/hooks';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import { cn } from '@/utils';
 import { dataTableActionButtonClass } from '@/utils/data-table-action-button';
 
 import { AssignRoleModal } from './_assign-role-modal';
 import { UserCreateModal } from './_user-create-modal';
+import { UserViewModal } from './_user-view-modal';
 
 const PAGE_SIZE = 10;
 
 const IstifadecilerPage: React.FC = () => {
   const isDark = useShellTheme();
-  const [pageNumber, setPageNumber] = useState(1);
+  const [queryPageNumber, setQueryPageNumber] = useState(1);
+  const [querySearch, setQuerySearch] = useState('');
   const [search, setSearch] = useState('');
   const [role, setRole] = useState('');
   const [departmentId, setDepartmentId] = useState('');
   const [positionId, setPositionId] = useState('');
+  const [viewUser, setViewUser] = useState<UserListRow | null>(null);
   const [assignUser, setAssignUser] = useState<UserListRow | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const debouncedSearch = useDebouncedValue(search.trim(), 450);
   const { data: roles = [] } = useGetAllRolesQuery();
   const { data: departments = [] } = useGetDepartmentsQuery();
   const { data: positions = [] } = useGetPositionsQuery();
 
+  useEffect(() => {
+    setQuerySearch(debouncedSearch);
+    setQueryPageNumber(1);
+  }, [debouncedSearch]);
+
   const { data, isLoading, isError, isFetching } = useGetAllUsersQuery({
-    pageNumber,
+    pageNumber: queryPageNumber,
     pageSize: PAGE_SIZE,
-    search: search.trim(),
+    search: querySearch,
     role,
     departmentId,
     positionId,
@@ -50,7 +60,7 @@ const IstifadecilerPage: React.FC = () => {
         header: 'Sıra',
         cell: ({ row }) => (
           <span className="tabular-nums">
-            {(pageNumber - 1) * PAGE_SIZE + row.index + 1}
+            {(queryPageNumber - 1) * PAGE_SIZE + row.index + 1}
           </span>
         ),
       },
@@ -121,7 +131,17 @@ const IstifadecilerPage: React.FC = () => {
         id: 'actions',
         header: () => <span className="block text-right">Əməliyyatlar</span>,
         cell: ({ row }) => (
-          <div className="flex justify-end">
+          <div className="flex items-center justify-end gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={cn('h-9 w-9', dataTableActionButtonClass(isDark, 'view'))}
+              aria-label="Baxış"
+              onClick={() => setViewUser(row.original)}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
             <Button
               type="button"
               variant="ghost"
@@ -136,7 +156,7 @@ const IstifadecilerPage: React.FC = () => {
         ),
       },
     ],
-    [pageNumber, isDark, muted]
+    [queryPageNumber, isDark, muted]
   );
 
   const rows = data?.rows ?? [];
@@ -175,10 +195,11 @@ const IstifadecilerPage: React.FC = () => {
 
   const resetFilters = () => {
     setSearch('');
+    setQuerySearch('');
     setRole('');
     setDepartmentId('');
     setPositionId('');
-    setPageNumber(1);
+    setQueryPageNumber(1);
   };
 
   return (
@@ -189,6 +210,11 @@ const IstifadecilerPage: React.FC = () => {
         onClose={() => setAssignUser(null)}
       />
       <UserCreateModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <UserViewModal
+        open={viewUser !== null}
+        user={viewUser}
+        onClose={() => setViewUser(null)}
+      />
 
       <div className={['rounded-xl border p-4 shadow-lg sm:p-5', headerPanel].join(' ')}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -283,7 +309,6 @@ const IstifadecilerPage: React.FC = () => {
                   value={search}
                   onChange={(event) => {
                     setSearch(event.target.value);
-                    setPageNumber(1);
                   }}
                 />
               </label>
@@ -295,7 +320,7 @@ const IstifadecilerPage: React.FC = () => {
                   value={role}
                   onChange={(event) => {
                     setRole(event.target.value);
-                    setPageNumber(1);
+                    setQueryPageNumber(1);
                   }}
                 >
                   <option value="">Bütün rollar</option>
@@ -314,7 +339,7 @@ const IstifadecilerPage: React.FC = () => {
                   value={departmentId}
                   onChange={(event) => {
                     setDepartmentId(event.target.value);
-                    setPageNumber(1);
+                    setQueryPageNumber(1);
                   }}
                 >
                   <option value="">Bütün departamentlər</option>
@@ -333,7 +358,7 @@ const IstifadecilerPage: React.FC = () => {
                   value={positionId}
                   onChange={(event) => {
                     setPositionId(event.target.value);
-                    setPageNumber(1);
+                    setQueryPageNumber(1);
                   }}
                 >
                   <option value="">Bütün pozisiyalar</option>
@@ -404,8 +429,8 @@ const IstifadecilerPage: React.FC = () => {
             hasNext={hasNext}
             hasPrev={hasPrev}
             isFetching={isFetching}
-            onPageChange={setPageNumber}
-            page={data.pageNumber ?? pageNumber}
+            onPageChange={setQueryPageNumber}
+            page={data.pageNumber ?? queryPageNumber}
             pageSize={PAGE_SIZE}
             totalCount={totalCount}
             totalPages={totalPages}

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { X } from 'lucide-react';
 
@@ -6,6 +6,7 @@ import { Button, Input, LoadingSpinner } from '@/components';
 import { useCreateRoleMutation } from '@/services/auth.service';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import { cn } from '@/utils';
+import { parseRejectedApiErrorMessages } from '@/utils/api-error';
 
 type FormValues = {
   name: string;
@@ -19,6 +20,7 @@ type Props = {
 
 export function RoleCreateModal({ open, onClose }: Props) {
   const isDark = useShellTheme();
+  const [backendErrors, setBackendErrors] = useState<string[]>([]);
   const [createRole, { isLoading }] = useCreateRoleMutation();
   const { register, handleSubmit, reset } = useForm<FormValues>({
     defaultValues: {
@@ -29,6 +31,7 @@ export function RoleCreateModal({ open, onClose }: Props) {
 
   useEffect(() => {
     if (open) {
+      setBackendErrors([]);
       reset({ name: '', description: '' });
     }
   }, [open, reset]);
@@ -58,14 +61,17 @@ export function RoleCreateModal({ open, onClose }: Props) {
     : 'border-slate-200 bg-white text-slate-900 shadow-xl';
 
   const onSubmit = handleSubmit(async (values) => {
+    setBackendErrors([]);
+
     try {
       await createRole({
         name: values.name.trim(),
         description: values.description.trim(),
       }).unwrap();
       onClose();
-    } catch {
-      return;
+    } catch (error) {
+      const messages = parseRejectedApiErrorMessages(error);
+      setBackendErrors(messages.length > 0 ? messages : ['Rol yaratmaq mümkün olmadı.']);
     }
   });
 
@@ -106,6 +112,23 @@ export function RoleCreateModal({ open, onClose }: Props) {
         </div>
 
         <form onSubmit={onSubmit} className="flex flex-col gap-4">
+          {backendErrors.length > 0 && (
+            <div
+              className={cn(
+                'rounded-lg border px-3 py-2 text-sm',
+                isDark
+                  ? 'border-red-500/30 bg-red-500/10 text-red-200'
+                  : 'border-red-200 bg-red-50 text-red-700'
+              )}
+            >
+              <ul className="list-disc space-y-1 pl-5">
+                {backendErrors.map((message) => (
+                  <li key={message}>{message}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="flex flex-col gap-2">
             <label htmlFor="role-create-name" className="text-sm font-medium">
               Rol adı

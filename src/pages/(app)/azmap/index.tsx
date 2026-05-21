@@ -7,6 +7,7 @@ import type { MapViewState, ViewStateChangeParameters } from '@deck.gl/core';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
   BarChart3,
+  Layers,
   Maximize2,
   Minimize2,
   MapPinned,
@@ -34,6 +35,7 @@ import {
 } from '../_data-page-ui';
 
 type MapMode = 'points' | 'heatmap';
+type BaseMapStyle = 'dark' | 'light' | 'voyager' | 'minimal';
 
 type CityPoint = {
   id: string;
@@ -57,10 +59,18 @@ const MAP_MIN_ZOOM = 5;
 const MAP_MAX_ZOOM = 10;
 const PAGE_SIZE = 10;
 
-const BASE_MAP_TILE_URL = {
-  dark: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
-  light: 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+const BASE_MAP_TILE_URL: Record<BaseMapStyle, string> = {
+  dark: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+  light: 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
+  voyager: 'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
+  minimal: 'https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}@2x.png',
 };
+const BASE_MAP_OPTIONS: { label: string; value: BaseMapStyle }[] = [
+  { label: 'Qara', value: 'dark' },
+  { label: 'Açıq', value: 'light' },
+  { label: 'Voyager', value: 'voyager' },
+  { label: 'Minimal', value: 'minimal' },
+];
 
 function hasCoordinates(item: AzmapItem) {
   return item.latitude != null && item.longitude != null;
@@ -124,6 +134,9 @@ const AzmapPage: React.FC = () => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mapMode, setMapMode] = useState<MapMode>('points');
+  const [baseMapStyle, setBaseMapStyle] = useState<BaseMapStyle>(
+    isDark ? 'dark' : 'light'
+  );
   const [page, setPage] = useState(1);
   const [viewState, setViewState] = useState<MapViewState>(INITIAL_VIEW_STATE);
   const { data, isLoading, isError, isFetching } = useGetAzmapFilterQuery({
@@ -232,9 +245,9 @@ const AzmapPage: React.FC = () => {
     const baseLayers = [
       new TileLayer<ImageBitmap | HTMLImageElement>({
         id: 'azmap-base-tiles',
-        data: isDark ? BASE_MAP_TILE_URL.dark : BASE_MAP_TILE_URL.light,
+        data: BASE_MAP_TILE_URL[baseMapStyle],
         maxRequests: 20,
-        maxZoom: 12,
+        maxZoom: 14,
         minZoom: 0,
         renderSubLayers: (props) => {
           const { west, south, east, north } = props.tile.bbox as {
@@ -316,7 +329,15 @@ const AzmapPage: React.FC = () => {
         backgroundPadding: [6, 3],
       }),
     ];
-  }, [cityPoints, heatmapPoints, isDark, mapMode, maxAmount, maxHeatmapAmount]);
+  }, [
+    baseMapStyle,
+    cityPoints,
+    heatmapPoints,
+    isDark,
+    mapMode,
+    maxAmount,
+    maxHeatmapAmount,
+  ]);
 
   const panelClass = isDark
     ? 'border-slate-800 bg-slate-900/70 text-slate-100 shadow-black/20'
@@ -404,28 +425,6 @@ const AzmapPage: React.FC = () => {
                       </button>
                     ))}
                   </div>
-                  {mapMode === 'points' ? (
-                    <div className="flex flex-wrap gap-2 text-xs font-medium">
-                      <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-emerald-500">
-                        Region
-                      </span>
-                      <span className="rounded-full bg-cyan-500/15 px-3 py-1 text-cyan-500">
-                        Şəhər
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="flex flex-wrap gap-2 text-xs font-medium">
-                      <span className="rounded-full bg-cyan-500/15 px-3 py-1 text-cyan-500">
-                        Aşağı
-                      </span>
-                      <span className="rounded-full bg-amber-500/15 px-3 py-1 text-amber-500">
-                        Orta
-                      </span>
-                      <span className="rounded-full bg-red-500/15 px-3 py-1 text-red-500">
-                        Yüksək
-                      </span>
-                    </div>
-                  )}
                 </div>
               </div>
 
@@ -474,10 +473,46 @@ const AzmapPage: React.FC = () => {
                     )}
                   </button>
                 </div>
+                <div
+                  className={[
+                    'group absolute left-4 top-4 z-10 flex h-10 max-w-[calc(100%-5.5rem)] items-center overflow-hidden rounded-lg border text-xs font-semibold shadow-lg backdrop-blur transition-all duration-200 hover:w-[315px] focus-within:w-[315px] sm:w-10',
+                    isDark
+                      ? 'border-slate-700 bg-slate-950/90'
+                      : 'border-slate-200 bg-white/95',
+                  ].join(' ')}
+                >
+                  <span
+                    className={[
+                      'flex h-10 w-10 shrink-0 items-center justify-center rounded-md',
+                      isDark ? 'text-slate-300' : 'text-slate-500',
+                    ].join(' ')}
+                  >
+                    <Layers className="h-4 w-4" />
+                  </span>
+                  <div className="flex w-[270px] shrink-0 items-center gap-1 pr-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-within:opacity-100">
+                    {BASE_MAP_OPTIONS.map((item) => (
+                      <button
+                        key={item.value}
+                        className={[
+                          'rounded-md px-2.5 py-1.5 transition',
+                          baseMapStyle === item.value
+                            ? 'bg-emerald-500 text-white shadow-sm'
+                            : isDark
+                              ? 'text-slate-300 hover:text-white'
+                              : 'text-slate-600 hover:text-slate-950',
+                        ].join(' ')}
+                        onClick={() => setBaseMapStyle(item.value)}
+                        type="button"
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 {mapMode === 'heatmap' && (isHeatmapFetching || isHeatmapError) && (
                   <div
                     className={[
-                      'absolute left-4 top-4 z-10 rounded-lg border px-3 py-2 text-xs font-semibold shadow-lg',
+                      'absolute left-4 top-16 z-10 rounded-lg border px-3 py-2 text-xs font-semibold shadow-lg',
                       isHeatmapError
                         ? 'border-red-500/30 bg-red-500/15 text-red-300'
                         : isDark
@@ -488,6 +523,37 @@ const AzmapPage: React.FC = () => {
                     {isHeatmapError ? 'Heatmap API yüklənmədi' : 'Heatmap yüklənir...'}
                   </div>
                 )}
+                <div
+                  className={[
+                    'absolute bottom-4 right-4 z-10 flex max-w-[calc(100%-2rem)] flex-wrap justify-end gap-2 rounded-lg border px-3 py-2 text-xs font-medium shadow-lg backdrop-blur',
+                    isDark
+                      ? 'border-slate-700 bg-slate-950/90'
+                      : 'border-slate-200 bg-white/95',
+                  ].join(' ')}
+                >
+                  {mapMode === 'points' ? (
+                    <>
+                      <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-emerald-500">
+                        Region
+                      </span>
+                      <span className="rounded-full bg-cyan-500/15 px-3 py-1 text-cyan-500">
+                        Şəhər
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="rounded-full bg-cyan-500/15 px-3 py-1 text-cyan-500">
+                        Aşağı
+                      </span>
+                      <span className="rounded-full bg-amber-500/15 px-3 py-1 text-amber-500">
+                        Orta
+                      </span>
+                      <span className="rounded-full bg-red-500/15 px-3 py-1 text-red-500">
+                        Yüksək
+                      </span>
+                    </>
+                  )}
+                </div>
                 <DeckGL
                   controller
                   getTooltip={({ object }) => {

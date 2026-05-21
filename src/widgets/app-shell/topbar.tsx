@@ -2,7 +2,7 @@ import type { AppDispatch, RootState } from '@/store/index';
 
 import { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Bell, ChevronDown, LogOut, Moon, Search, Sun } from 'lucide-react';
+import { ChevronDown, LogOut, Moon, Sun } from 'lucide-react';
 
 import { authApi } from '@/services/auth.service';
 import { logout } from '@/store/features/auth.slice';
@@ -56,26 +56,6 @@ export function Topbar({ isDark, onToggleTheme }: Props) {
           : 'border-slate-200 bg-white/90 text-slate-900 backdrop-blur-md',
       ].join(' ')}
     >
-      <div className="relative min-w-0 flex-1 max-w-2xl">
-        <Search
-          className={[
-            'pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2',
-            isDark ? 'text-slate-500' : 'text-slate-400',
-          ].join(' ')}
-          aria-hidden
-        />
-        <input
-          type="search"
-          placeholder="Axtar..."
-          className={[
-            'h-10 w-full rounded-lg border py-2 pl-10 pr-3 text-sm outline-none ring-blue-500/40 transition focus:ring-2',
-            isDark
-              ? 'border-slate-700 bg-slate-950/80 text-slate-100 placeholder:text-slate-500'
-              : 'border-slate-200 bg-slate-50 text-slate-900 placeholder:text-slate-400',
-          ].join(' ')}
-        />
-      </div>
-
       <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
         <button
           type="button"
@@ -89,25 +69,6 @@ export function Topbar({ isDark, onToggleTheme }: Props) {
           aria-label={isDark ? 'İşıqlı mövzu' : 'Qaranlıq mövzu'}
         >
           {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-        </button>
-
-        <button
-          type="button"
-          className={[
-            'relative flex h-10 w-10 items-center justify-center rounded-lg border transition',
-            isDark
-              ? 'border-slate-700 bg-slate-800/60 text-slate-200 hover:bg-slate-800'
-              : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
-          ].join(' ')}
-          aria-label="Bildirişlər"
-        >
-          <Bell className="h-4 w-4" />
-          <span
-            className={[
-              'absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 ring-2',
-              isDark ? 'ring-slate-900' : 'ring-white',
-            ].join(' ')}
-          />
         </button>
 
         <div className="relative" ref={menuRef}>

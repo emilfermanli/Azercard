@@ -1,4 +1,5 @@
 export * from './button.tsx';
+export * from './data-pagination.tsx';
 export * from './data-table.tsx';
 export * from './input.tsx';
 export * from './loading.tsx';

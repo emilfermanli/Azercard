@@ -1,5 +1,4 @@
 import type {
-  ForecastAllParams,
   ForecastParams,
   ForecastResult,
   ForecastTrainParams,
@@ -14,13 +13,6 @@ export const forecastingApi = createApi({
     getForecast: builder.query<ForecastResult, ForecastParams | void>({
       query: (params) => ({
         url: 'Forecasting',
-        method: 'GET',
-        params: params || undefined,
-      }),
-    }),
-    getAllForecasts: builder.query<ForecastResult[], ForecastAllParams | void>({
-      query: (params) => ({
-        url: 'Forecasting/all',
         method: 'GET',
         params: params || undefined,
       }),
@@ -49,7 +41,6 @@ export const forecastingApi = createApi({
 
 export const {
   useGetForecastQuery,
-  useGetAllForecastsQuery,
   useTrainGlobalForecastingMutation,
   useTrainAllForecastingMutation,
   useTrainForecastingMutation,

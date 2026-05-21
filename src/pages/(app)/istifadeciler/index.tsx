@@ -1,10 +1,15 @@
 import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Plus, ShieldPlus, Users } from 'lucide-react';
+import { Filter, Plus, RotateCcw, ShieldPlus, Users } from 'lucide-react';
 
-import { Button, DataTable, LoadingSpinner } from '@/components';
+import { Button, DataPagination, DataTable, LoadingSpinner } from '@/components';
 import type { UserListRow } from '@/types/user.type';
 import { useGetAllUsersQuery } from '@/services/user.service';
+import { useGetAllRolesQuery } from '@/services/auth.service';
+import {
+  useGetDepartmentsQuery,
+  useGetPositionsQuery,
+} from '@/services/organization.service';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import { cn } from '@/utils';
 import { dataTableActionButtonClass } from '@/utils/data-table-action-button';
@@ -17,12 +22,23 @@ const PAGE_SIZE = 10;
 const IstifadecilerPage: React.FC = () => {
   const isDark = useShellTheme();
   const [pageNumber, setPageNumber] = useState(1);
+  const [search, setSearch] = useState('');
+  const [role, setRole] = useState('');
+  const [departmentId, setDepartmentId] = useState('');
+  const [positionId, setPositionId] = useState('');
   const [assignUser, setAssignUser] = useState<UserListRow | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const { data: roles = [] } = useGetAllRolesQuery();
+  const { data: departments = [] } = useGetDepartmentsQuery();
+  const { data: positions = [] } = useGetPositionsQuery();
 
   const { data, isLoading, isError, isFetching } = useGetAllUsersQuery({
     pageNumber,
     pageSize: PAGE_SIZE,
+    search: search.trim(),
+    role,
+    departmentId,
+    positionId,
   });
 
   const muted = isDark ? 'text-slate-400' : 'text-slate-500';
@@ -129,10 +145,7 @@ const IstifadecilerPage: React.FC = () => {
   const hasNext = data?.hasNextPage ?? false;
   const hasPrev = data?.hasPreviousPage ?? false;
 
-  const paginationStrong = isDark
-    ? 'font-medium text-white'
-    : 'font-medium text-slate-900';
-  const paginationOutlineBtn = isDark
+  const outlineButtonClass = isDark
     ? 'border-slate-500 bg-slate-800/90 text-slate-100 hover:bg-slate-700 hover:text-white'
     : '';
   const summaryCard = isDark
@@ -148,6 +161,25 @@ const IstifadecilerPage: React.FC = () => {
   const tableClass = isDark
     ? 'border-slate-800 bg-slate-900/70'
     : 'border-slate-200 bg-white';
+  const filterPanel = isDark
+    ? 'border-slate-800 bg-slate-900/70 text-slate-100 shadow-black/20'
+    : 'border-slate-200 bg-white text-slate-950 shadow-slate-200/70';
+  const inputClass = [
+    'h-10 w-full rounded-lg border px-3 text-sm outline-none ring-blue-500/40 transition focus:ring-2',
+    isDark
+      ? 'border-slate-700 bg-slate-950 text-slate-100 placeholder:text-slate-500'
+      : 'border-slate-200 bg-white text-slate-900 placeholder:text-slate-400',
+  ].join(' ');
+  const selectClass = inputClass;
+  const hasActiveFilters = Boolean(search || role || departmentId || positionId);
+
+  const resetFilters = () => {
+    setSearch('');
+    setRole('');
+    setDepartmentId('');
+    setPositionId('');
+    setPageNumber(1);
+  };
 
   return (
     <div className="space-y-5">
@@ -216,6 +248,105 @@ const IstifadecilerPage: React.FC = () => {
 
       {data && (
         <>
+          <section className={['rounded-xl border p-4 shadow-lg', filterPanel].join(' ')}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/15 text-blue-500">
+                  <Filter className="h-5 w-5" />
+                </span>
+                <div>
+                  <h2 className="font-semibold">Filterlər</h2>
+                  <p className={['text-sm', muted].join(' ')}>
+                    İstifadəçiləri rol, departament, pozisiya və axtarış üzrə süzün.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={outlineButtonClass}
+                disabled={!hasActiveFilters || isFetching}
+                onClick={resetFilters}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Təmizlə
+              </Button>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={muted}>Axtarış</span>
+                <input
+                  className={inputClass}
+                  placeholder="Ad və ya e-poçt"
+                  value={search}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setPageNumber(1);
+                  }}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={muted}>Rol</span>
+                <select
+                  className={selectClass}
+                  value={role}
+                  onChange={(event) => {
+                    setRole(event.target.value);
+                    setPageNumber(1);
+                  }}
+                >
+                  <option value="">Bütün rollar</option>
+                  {roles.map((item) => (
+                    <option key={item.name} value={item.name}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={muted}>Departament</span>
+                <select
+                  className={selectClass}
+                  value={departmentId}
+                  onChange={(event) => {
+                    setDepartmentId(event.target.value);
+                    setPageNumber(1);
+                  }}
+                >
+                  <option value="">Bütün departamentlər</option>
+                  {departments.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={muted}>Pozisiya</span>
+                <select
+                  className={selectClass}
+                  value={positionId}
+                  onChange={(event) => {
+                    setPositionId(event.target.value);
+                    setPageNumber(1);
+                  }}
+                >
+                  <option value="">Bütün pozisiyalar</option>
+                  {positions.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </section>
+
           <div className="grid grid-cols-12 gap-4">
             <div
               className={[
@@ -269,39 +400,16 @@ const IstifadecilerPage: React.FC = () => {
             <DataTable columns={columns} data={rows} className={tableClass} />
           </div>
 
-          <div
-            className={[
-              'flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between',
-              isDark ? 'border-slate-800' : 'border-slate-200',
-            ].join(' ')}
-          >
-            <p className={`text-sm ${muted}`}>
-              Səhifə <span className={paginationStrong}>{pageNumber}</span> /{' '}
-              <span className={paginationStrong}>{totalPages}</span>
-            </p>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={paginationOutlineBtn}
-                disabled={!hasPrev || isFetching}
-                onClick={() => setPageNumber((p) => Math.max(1, p - 1))}
-              >
-                Əvvəl
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={paginationOutlineBtn}
-                disabled={!hasNext || isFetching}
-                onClick={() => setPageNumber((p) => p + 1)}
-              >
-                Növbəti
-              </Button>
-            </div>
-          </div>
+          <DataPagination
+            hasNext={hasNext}
+            hasPrev={hasPrev}
+            isFetching={isFetching}
+            onPageChange={setPageNumber}
+            page={data.pageNumber ?? pageNumber}
+            pageSize={PAGE_SIZE}
+            totalCount={totalCount}
+            totalPages={totalPages}
+          />
         </>
       )}
     </div>

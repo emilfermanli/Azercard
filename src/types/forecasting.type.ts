@@ -23,10 +23,6 @@ export interface ForecastParams {
   horizon?: number;
 }
 
-export interface ForecastAllParams {
-  horizon?: number;
-}
-
 export interface ForecastTrainParams {
   bank?: string;
   mcc?: string;

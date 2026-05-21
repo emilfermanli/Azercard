@@ -16,7 +16,7 @@ import {
   ZoomOut,
 } from 'lucide-react';
 
-import { DataTable } from '@/components';
+import { DataPagination, DataTable } from '@/components';
 import {
   useGetWorldmapFilterQuery,
   useGetWorldmapHeatmapQuery,
@@ -85,6 +85,7 @@ const INITIAL_VIEW_STATE = {
 
 const MAP_MIN_ZOOM = 0.8;
 const MAP_MAX_ZOOM = 6;
+const PAGE_SIZE = 10;
 
 const BASE_MAP_TILE_URL = {
   dark: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
@@ -180,10 +181,11 @@ const WorldmapPage: React.FC = () => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mapMode, setMapMode] = useState<MapMode>('flow');
+  const [page, setPage] = useState(1);
   const [viewState, setViewState] = useState<WorldMapViewState>(INITIAL_VIEW_STATE);
-  const { data, isLoading, isError } = useGetWorldmapFilterQuery({
-    Page: 1,
-    PageSize: 100,
+  const { data, isLoading, isError, isFetching } = useGetWorldmapFilterQuery({
+    Page: page,
+    PageSize: PAGE_SIZE,
   });
   const {
     data: heatmapData,
@@ -843,6 +845,16 @@ const WorldmapPage: React.FC = () => {
           </section>
 
           <DataTable columns={columns} data={rows} />
+          <DataPagination
+            hasNext={data?.hasNext ?? false}
+            hasPrev={data?.hasPrev ?? page > 1}
+            isFetching={isFetching}
+            onPageChange={setPage}
+            page={data?.page ?? page}
+            pageSize={PAGE_SIZE}
+            totalCount={data?.totalCount ?? rows.length}
+            totalPages={data?.totalPages ?? 1}
+          />
         </>
       )}
     </div>

@@ -1,11 +1,14 @@
 export interface AzmapItem {
   reportMonth: string;
+  city?: string | null;
   bankName: string | null;
   sourceCity: string | null;
   sourceCityClean: string | null;
   sourceCityCategory: string | null;
   totalAmount: number;
   totalCount: number;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 export interface AzmapFilterResponse {

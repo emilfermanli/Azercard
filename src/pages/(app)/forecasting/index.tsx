@@ -1,22 +1,483 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { TrendingUp } from 'lucide-react';
+import {
+  Activity,
+  BarChart3,
+  BrainCircuit,
+  LineChart as LineChartIcon,
+  Play,
+  RefreshCw,
+  TrendingUp,
+} from 'lucide-react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Scatter,
+  ScatterChart,
+  Tooltip,
+  XAxis,
+  YAxis,
+  ZAxis,
+} from 'recharts';
+import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
-import { DataTable } from '@/components';
-import { useGetAllForecastsQuery } from '@/services/forecasting.service';
-import type { ForecastResult } from '@/types/forecasting.type';
+import { Button, DataTable } from '@/components';
+import {
+  useGetForecastQuery,
+  useTrainAllForecastingMutation,
+  useTrainGlobalForecastingMutation,
+} from '@/services/forecasting.service';
+import { useGetGeneralBanksQuery, useGetGeneralMccGroupsQuery } from '@/services/general.service';
+import type { ForecastResult, MonthlyForecast } from '@/types/forecasting.type';
+import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 
 import {
   DataPageHeader,
   formatAmount,
+  formatDate,
   formatNumber,
   PageError,
   PageLoading,
   StatCard,
 } from '../_data-page-ui';
 
+type ForecastPoint = MonthlyForecast & {
+  monthLabel: string;
+};
+
+type ModelPoint = {
+  bankName: string;
+  mccGroup: string;
+  modelUsed: string;
+  accuracy: number;
+  confidenceLevel: number;
+  forecastCount: number;
+};
+
+type ModelSummary = {
+  label: string;
+  accuracy: number;
+  confidence: number;
+  count: number;
+};
+
+type ForecastingResponse = ForecastResult | ForecastResult[];
+
+type SelectOption = {
+  id: string;
+  label: string;
+  value: string;
+};
+
+const HORIZON_OPTIONS = [3, 6, 9, 12, 24];
+
+function formatPercent(value: number | null | undefined) {
+  return `${formatAmount(value)}%`;
+}
+
+function formatShortAmount(value: number) {
+  if (value >= 1_000_000_000) return `${formatAmount(value / 1_000_000_000)} mlrd`;
+  if (value >= 1_000_000) return `${formatAmount(value / 1_000_000)} mln`;
+  if (value >= 1_000) return `${formatAmount(value / 1_000)} min`;
+  return formatAmount(value);
+}
+
+function getForecasts(result: ForecastResult | undefined) {
+  return (result?.forecasts ?? []).map((forecast) => ({
+    ...forecast,
+    monthLabel: formatDate(forecast.month),
+  }));
+}
+
+function normalizeForecastResults(data: ForecastingResponse | undefined) {
+  if (!data) return [];
+  return Array.isArray(data) ? data : [data];
+}
+
+function average(values: number[]) {
+  if (!values.length) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function getTotalPredictedAmount(points: ForecastPoint[]) {
+  return points.reduce((sum, point) => sum + point.predictedAmount, 0);
+}
+
+function getTotalPredictedCount(points: ForecastPoint[]) {
+  return points.reduce((sum, point) => sum + point.predictedCount, 0);
+}
+
+function chartAxisColor(isDark: boolean) {
+  return isDark ? '#94a3b8' : '#64748b';
+}
+
+function ForecastTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ dataKey?: string | number; value?: number }>;
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
+  const labelMap: Record<string, string> = {
+    amountLowerBound: 'Aşağı məbləğ həddi',
+    amountUpperBound: 'Yuxarı məbləğ həddi',
+    predictedAmount: 'Proqnoz məbləği',
+    predictedCount: 'Proqnoz sayı',
+  };
+
+  return (
+    <div className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 shadow-xl">
+      <p className="font-semibold">{label}</p>
+      {payload.map((item) => (
+        <p key={String(item.dataKey)} className="mt-1">
+          {labelMap[String(item.dataKey)] ?? String(item.dataKey)}:{' '}
+          {formatAmount(item.value)}
+        </p>
+      ))}
+    </div>
+  );
+}
+
+function ModelTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: Array<{ payload: ModelPoint }>;
+}) {
+  if (!active || !payload?.length) return null;
+  const item = payload[0]?.payload;
+
+  return (
+    <div className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 shadow-xl">
+      <p className="font-semibold">{item.bankName}</p>
+      <p className="mt-1">{item.mccGroup}</p>
+      <p>{item.modelUsed}</p>
+      <p className="mt-1">Dəqiqlik: {formatPercent(item.accuracy)}</p>
+      <p>Etibar səviyyəsi: {formatPercent(item.confidenceLevel)}</p>
+      <p>Ay sayı: {formatNumber(item.forecastCount)}</p>
+    </div>
+  );
+}
+
+function Panel({
+  icon: Icon,
+  title,
+  subtitle,
+  children,
+}: {
+  icon: typeof TrendingUp;
+  title: string;
+  subtitle: string;
+  children: React.ReactNode;
+}) {
+  const isDark = useShellTheme();
+
+  return (
+    <section
+      className={[
+        'rounded-xl border p-4 shadow-lg',
+        isDark
+          ? 'border-slate-800 bg-slate-900/70 text-slate-100 shadow-black/20'
+          : 'border-slate-200 bg-white text-slate-950 shadow-slate-200/70',
+      ].join(' ')}
+    >
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/15 text-blue-500">
+          <Icon className="h-5 w-5" />
+        </span>
+        <div>
+          <h2 className="font-semibold">{title}</h2>
+          <p className={['text-sm', isDark ? 'text-slate-300' : 'text-slate-500'].join(' ')}>
+            {subtitle}
+          </p>
+        </div>
+      </div>
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
+
+function ForecastLineChart({ data }: { data: ForecastPoint[] }) {
+  const isDark = useShellTheme();
+
+  return (
+    <div className="h-80">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ bottom: 8, left: 4, right: 18, top: 12 }}>
+          <CartesianGrid
+            stroke={isDark ? '#1e293b' : '#e2e8f0'}
+            strokeDasharray="3 3"
+          />
+          <XAxis
+            dataKey="monthLabel"
+            tick={{ fill: chartAxisColor(isDark), fontSize: 11 }}
+            tickLine={false}
+          />
+          <YAxis
+            tick={{ fill: chartAxisColor(isDark), fontSize: 11 }}
+            tickFormatter={(value) => formatShortAmount(Number(value))}
+            tickLine={false}
+          />
+          <Tooltip content={<ForecastTooltip />} />
+          <Legend />
+          <Line
+            dataKey="amountUpperBound"
+            dot={false}
+            name="Yuxarı hədd"
+            stroke="#94a3b8"
+            strokeDasharray="5 5"
+            strokeWidth={2}
+            type="monotone"
+          />
+          <Line
+            dataKey="predictedAmount"
+            name="Proqnoz məbləği"
+            stroke="#2563eb"
+            strokeWidth={3}
+            type="monotone"
+          />
+          <Line
+            dataKey="amountLowerBound"
+            dot={false}
+            name="Aşağı hədd"
+            stroke="#94a3b8"
+            strokeDasharray="5 5"
+            strokeWidth={2}
+            type="monotone"
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function ForecastCountChart({ data }: { data: ForecastPoint[] }) {
+  const isDark = useShellTheme();
+
+  return (
+    <div className="h-72">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ bottom: 8, left: 4, right: 18, top: 12 }}>
+          <CartesianGrid
+            vertical={false}
+            stroke={isDark ? '#1e293b' : '#e2e8f0'}
+            strokeDasharray="3 3"
+          />
+          <XAxis
+            dataKey="monthLabel"
+            tick={{ fill: chartAxisColor(isDark), fontSize: 11 }}
+            tickLine={false}
+          />
+          <YAxis
+            tick={{ fill: chartAxisColor(isDark), fontSize: 11 }}
+            tickFormatter={(value) => formatNumber(Number(value))}
+            tickLine={false}
+          />
+          <Tooltip content={<ForecastTooltip />} />
+          <Bar
+            dataKey="predictedCount"
+            fill="#10b981"
+            name="Proqnoz sayı"
+            radius={[6, 6, 0, 0]}
+          />
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function ModelQualityChart({ data }: { data: ModelPoint[] }) {
+  const isDark = useShellTheme();
+
+  return (
+    <div className="h-80">
+      <ResponsiveContainer width="100%" height="100%">
+        <ScatterChart margin={{ bottom: 12, left: 4, right: 18, top: 12 }}>
+          <CartesianGrid
+            stroke={isDark ? '#1e293b' : '#e2e8f0'}
+            strokeDasharray="3 3"
+          />
+          <XAxis
+            dataKey="accuracy"
+            name="Dəqiqlik"
+            tick={{ fill: chartAxisColor(isDark), fontSize: 11 }}
+            tickLine={false}
+            type="number"
+            unit="%"
+          />
+          <YAxis
+            dataKey="confidenceLevel"
+            name="Etibar səviyyəsi"
+            tick={{ fill: chartAxisColor(isDark), fontSize: 11 }}
+            tickLine={false}
+            type="number"
+            unit="%"
+          />
+          <ZAxis dataKey="forecastCount" range={[80, 420]} />
+          <Tooltip content={<ModelTooltip />} cursor={{ strokeDasharray: '3 3' }} />
+          <Scatter data={data} fill="#2563eb" fillOpacity={0.78} />
+        </ScatterChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 const ForecastingPage: React.FC = () => {
-  const { data = [], isLoading, isError } = useGetAllForecastsQuery({ horizon: 6 });
+  const isDark = useShellTheme();
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [horizon, setHorizon] = useState(6);
+  const [selectedBank, setSelectedBank] = useState<SelectOption | null>(null);
+  const [selectedMcc, setSelectedMcc] = useState<SelectOption | null>(null);
+  const { data: banks = [], isLoading: banksLoading } = useGetGeneralBanksQuery();
+  const { data: mccGroups = [], isLoading: mccGroupsLoading } =
+    useGetGeneralMccGroupsQuery();
+  const { data, isLoading, isError, refetch, isFetching } = useGetForecastQuery({
+    ...(selectedBank ? { bank: selectedBank.value } : {}),
+    ...(selectedMcc ? { mcc: selectedMcc.value } : {}),
+    horizon,
+  }) as {
+    data?: ForecastingResponse;
+    isLoading: boolean;
+    isError: boolean;
+    refetch: () => unknown;
+    isFetching: boolean;
+  };
+  const [trainGlobal, trainGlobalState] = useTrainGlobalForecastingMutation();
+  const [trainAll, trainAllState] = useTrainAllForecastingMutation();
+  const bankOptions = useMemo<SelectOption[]>(
+    () =>
+      banks
+        .filter((bank) => bank.bankName)
+        .map((bank) => ({
+          id: bank.id,
+          label: bank.bankName,
+          value: bank.bankName,
+        })),
+    [banks]
+  );
+  const mccOptions = useMemo<SelectOption[]>(
+    () =>
+      mccGroups
+        .filter((mccGroup) => mccGroup.mccName)
+        .map((mccGroup) => ({
+          id: mccGroup.id,
+          label: mccGroup.mccName,
+          value: mccGroup.mccName,
+        })),
+    [mccGroups]
+  );
+  const selectStyles = useMemo<StylesConfig<SelectOption, false>>(
+    () => ({
+      control: (base, state) => ({
+        ...base,
+        minHeight: 40,
+        borderRadius: 8,
+        borderColor: state.isFocused
+          ? '#3b82f6'
+          : isDark
+            ? '#334155'
+            : '#e2e8f0',
+        backgroundColor: isDark ? '#020617' : '#ffffff',
+        boxShadow: state.isFocused ? '0 0 0 2px rgb(59 130 246 / 0.4)' : 'none',
+        ':hover': {
+          borderColor: state.isFocused
+            ? '#3b82f6'
+            : isDark
+              ? '#475569'
+              : '#cbd5e1',
+        },
+      }),
+      input: (base) => ({
+        ...base,
+        color: isDark ? '#f8fafc' : '#0f172a',
+      }),
+      menu: (base) => ({
+        ...base,
+        zIndex: 30,
+        border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+        backgroundColor: isDark ? '#020617' : '#ffffff',
+        boxShadow: isDark
+          ? '0 18px 40px rgb(0 0 0 / 0.35)'
+          : '0 18px 40px rgb(15 23 42 / 0.12)',
+      }),
+      option: (base, state) => ({
+        ...base,
+        backgroundColor: state.isSelected
+          ? '#2563eb'
+          : state.isFocused
+            ? isDark
+              ? '#1e293b'
+              : '#eff6ff'
+            : 'transparent',
+        color: state.isSelected ? '#ffffff' : isDark ? '#f8fafc' : '#0f172a',
+      }),
+      placeholder: (base) => ({
+        ...base,
+        color: isDark ? '#94a3b8' : '#64748b',
+      }),
+      singleValue: (base) => ({
+        ...base,
+        color: isDark ? '#f8fafc' : '#0f172a',
+      }),
+    }),
+    [isDark]
+  );
+  const results = useMemo(() => normalizeForecastResults(data), [data]);
+  const selectedForecast = results[selectedIndex] ?? results[0];
+  const forecastPoints = useMemo(() => getForecasts(selectedForecast), [selectedForecast]);
+
+  const modelPoints = useMemo<ModelPoint[]>(
+    () =>
+      results.map((item) => ({
+        bankName: item.bankName ?? 'Naməlum bank',
+        mccGroup: item.mccGroup ?? 'Naməlum MCC',
+        modelUsed: item.modelUsed ?? 'Naməlum model',
+        accuracy: item.accuracy,
+        confidenceLevel: item.confidenceLevel,
+        forecastCount: item.forecasts?.length ?? 0,
+      })),
+    [results]
+  );
+
+  const modelSummary = useMemo<ModelSummary[]>(() => {
+    const map = new Map<string, ModelSummary & { accuracies: number[]; confidences: number[] }>();
+
+    results.forEach((item) => {
+      const label = item.modelUsed ?? 'Naməlum model';
+      const current = map.get(label);
+
+      if (current) {
+        current.count += 1;
+        current.accuracies.push(item.accuracy);
+        current.confidences.push(item.confidenceLevel);
+        current.accuracy = average(current.accuracies);
+        current.confidence = average(current.confidences);
+        return;
+      }
+
+      map.set(label, {
+        label,
+        accuracy: item.accuracy,
+        confidence: item.confidenceLevel,
+        count: 1,
+        accuracies: [item.accuracy],
+        confidences: [item.confidenceLevel],
+      });
+    });
+
+    return Array.from(map.values())
+      .map(({ accuracies: _accuracies, confidences: _confidences, ...item }) => item)
+      .sort((a, b) => b.accuracy - a.accuracy);
+  }, [results]);
 
   const columns = useMemo<ColumnDef<ForecastResult, unknown>[]>(
     () => [
@@ -26,12 +487,12 @@ const ForecastingPage: React.FC = () => {
       {
         accessorKey: 'accuracy',
         header: 'Dəqiqlik',
-        cell: ({ getValue }) => formatAmount(getValue() as number),
+        cell: ({ getValue }) => formatPercent(getValue() as number),
       },
       {
         accessorKey: 'confidenceLevel',
         header: 'Etibar səviyyəsi',
-        cell: ({ getValue }) => formatAmount(getValue() as number),
+        cell: ({ getValue }) => formatPercent(getValue() as number),
       },
       {
         id: 'forecastCount',
@@ -42,12 +503,18 @@ const ForecastingPage: React.FC = () => {
     []
   );
 
+  const totalPredictedAmount = getTotalPredictedAmount(forecastPoints);
+  const totalPredictedCount = getTotalPredictedCount(forecastPoints);
+  const avgAccuracy = average(results.map((item) => item.accuracy));
+  const avgConfidence = average(results.map((item) => item.confidenceLevel));
+  const trainBusy = trainGlobalState.isLoading || trainAllState.isLoading;
+
   return (
     <div className="space-y-5">
       <DataPageHeader
         eyebrow="Proqnoz"
-        title="Forecasting"
-        description="Bank və MCC qrupları üzrə proqnoz modelləri və növbəti aylar üçün nəticələr."
+        title="Proqnozlaşdırma"
+        description="Bank və MCC qrupları üzrə model keyfiyyəti, etibar intervalı və növbəti ay proqnozları."
         icon={TrendingUp}
         tone="blue"
       />
@@ -56,9 +523,243 @@ const ForecastingPage: React.FC = () => {
       {!isLoading && !isError && (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Model nəticəsi" value={formatNumber(data.length)} />
+            <StatCard label="Model nəticəsi" value={formatNumber(results.length)} />
+            <StatCard label="Proqnoz məbləği" value={formatShortAmount(totalPredictedAmount)} />
+            <StatCard label="Proqnoz sayı" value={formatNumber(totalPredictedCount)} />
+            <StatCard label="Orta dəqiqlik" value={formatPercent(avgAccuracy)} />
           </div>
-          <DataTable columns={columns} data={data} />
+
+          <section
+            className={[
+              'rounded-xl border p-4 shadow-lg',
+              isDark
+                ? 'border-slate-800 bg-slate-900/70 text-slate-100 shadow-black/20'
+                : 'border-slate-200 bg-white text-slate-950 shadow-slate-200/70',
+            ].join(' ')}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h2 className="font-semibold">Proqnoz filterləri</h2>
+                <p className={['mt-1 text-sm', isDark ? 'text-slate-300' : 'text-slate-500'].join(' ')}>
+                  Bank, MCC qrupu və gələcək neçə ay üçün proqnoz gətiriləcəyini seçin.
+                </p>
+              </div>
+              <div className="grid w-full gap-3 md:grid-cols-[minmax(190px,1fr)_minmax(220px,1fr)_120px] xl:w-auto xl:min-w-[640px]">
+                <label className="space-y-1.5 text-sm font-medium">
+                  <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>Bank</span>
+                  <Select
+                    isClearable
+                    isLoading={banksLoading}
+                    noOptionsMessage={() => 'Bank tapılmadı'}
+                    onChange={(option: SingleValue<SelectOption>) => {
+                      setSelectedIndex(0);
+                      setSelectedBank(option);
+                    }}
+                    options={bankOptions}
+                    placeholder="Bank axtar"
+                    styles={selectStyles}
+                    value={selectedBank}
+                  />
+                </label>
+                <label className="space-y-1.5 text-sm font-medium">
+                  <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>MCC</span>
+                  <Select
+                    isClearable
+                    isLoading={mccGroupsLoading}
+                    noOptionsMessage={() => 'MCC qrupu tapılmadı'}
+                    onChange={(option: SingleValue<SelectOption>) => {
+                      setSelectedIndex(0);
+                      setSelectedMcc(option);
+                    }}
+                    options={mccOptions}
+                    placeholder="MCC axtar"
+                    styles={selectStyles}
+                    value={selectedMcc}
+                  />
+                </label>
+                <label className="space-y-1.5 text-sm font-medium">
+                  <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>Horizon</span>
+                  <select
+                    className={[
+                      'h-10 w-full rounded-lg border px-3 text-sm outline-none ring-blue-500/40 transition focus:ring-2',
+                      isDark
+                        ? 'border-slate-700 bg-slate-950 text-slate-100'
+                        : 'border-slate-200 bg-white text-slate-900',
+                    ].join(' ')}
+                    onChange={(event) => {
+                      setSelectedIndex(0);
+                      setHorizon(Number(event.target.value));
+                    }}
+                    value={horizon}
+                  >
+                    {HORIZON_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option} ay
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </div>
+          </section>
+
+          <section
+            className={[
+              'rounded-xl border p-4 shadow-lg',
+              isDark
+                ? 'border-slate-800 bg-slate-900/70 text-slate-100 shadow-black/20'
+                : 'border-slate-200 bg-white text-slate-950 shadow-slate-200/70',
+            ].join(' ')}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/15 text-blue-500">
+                  <BrainCircuit className="h-5 w-5" />
+                </span>
+                <div>
+                  <h2 className="font-semibold">Proqnoz model idarəetməsi</h2>
+                  <p className={['text-sm', isDark ? 'text-slate-300' : 'text-slate-500'].join(' ')}>
+                    Model hazırlama və ümumi proqnoz nəticələrini yeniləmə
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  disabled={trainBusy}
+                  onClick={() => void trainGlobal().then(() => refetch())}
+                  size="sm"
+                  type="button"
+                >
+                  <Play className="mr-2 h-4 w-4" />
+                  Qlobal modeli hazırla
+                </Button>
+                <Button
+                  disabled={trainBusy}
+                  onClick={() => void trainAll().then(() => refetch())}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                  className={
+                    isDark
+                      ? 'border-slate-700 bg-slate-900 text-slate-100 hover:bg-slate-800 hover:text-slate-100'
+                      : undefined
+                  }
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Hamısını hazırla
+                </Button>
+              </div>
+            </div>
+            {(trainGlobalState.isError || trainAllState.isError) && (
+              <p className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
+                Model hazırlama sorğusu uğursuz oldu.
+              </p>
+            )}
+            {(trainGlobalState.isSuccess || trainAllState.isSuccess) && !isFetching && (
+              <p className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
+                Model hazırlama sorğusu tamamlandı.
+              </p>
+            )}
+          </section>
+
+          <section className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)]">
+            <Panel
+              icon={Activity}
+              title="Proqnoz seçimi"
+              subtitle="Qrafik üçün bank və MCC kombinasiyası"
+            >
+              <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
+                {results.map((item, index) => (
+                  <button
+                    key={`${item.bankName}-${item.mccGroup}-${index}`}
+                    className={[
+                      'w-full rounded-lg border px-3 py-2 text-left text-sm transition',
+                      selectedIndex === index
+                        ? 'border-blue-500 bg-blue-500/10 text-blue-500'
+                        : isDark
+                          ? 'border-slate-800 bg-slate-950/30 text-slate-200 hover:bg-slate-800/70'
+                          : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50',
+                    ].join(' ')}
+                    onClick={() => setSelectedIndex(index)}
+                    type="button"
+                  >
+                    <span className="block truncate font-semibold">
+                      {item.bankName ?? 'Naməlum bank'}
+                    </span>
+                    <span className={['mt-1 block truncate text-xs', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
+                      {item.mccGroup ?? 'Naməlum MCC'} • {item.modelUsed ?? 'Model'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </Panel>
+
+            <Panel
+              icon={LineChartIcon}
+              title="Proqnoz məbləği"
+              subtitle={`Aşağı və yuxarı etibar həddi ilə ${horizon} aylıq proqnoz`}
+            >
+              <ForecastLineChart data={forecastPoints} />
+            </Panel>
+          </section>
+
+          <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <Panel
+              icon={BarChart3}
+              title="Proqnoz sayı"
+              subtitle="Aylar üzrə gözlənilən əməliyyat sayı"
+            >
+              <ForecastCountChart data={forecastPoints} />
+            </Panel>
+
+            <Panel
+              icon={BrainCircuit}
+              title="Model keyfiyyət matrisi"
+              subtitle={`Orta etibar səviyyəsi: ${formatPercent(avgConfidence)}`}
+            >
+              <ModelQualityChart data={modelPoints} />
+            </Panel>
+          </section>
+
+          <section className="grid gap-5 xl:grid-cols-3">
+            {modelSummary.slice(0, 3).map((model) => (
+              <Panel
+                key={model.label}
+                icon={TrendingUp}
+                title={model.label}
+                subtitle={`${formatNumber(model.count)} nəticə üzrə model göstəricisi`}
+              >
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div
+                    className={[
+                      'rounded-lg border p-3',
+                      isDark ? 'border-slate-800 bg-slate-950/40' : 'border-slate-100 bg-slate-50',
+                    ].join(' ')}
+                  >
+                    <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>Dəqiqlik</p>
+                    <p className="mt-1 text-2xl font-semibold text-blue-500">
+                      {formatPercent(model.accuracy)}
+                    </p>
+                  </div>
+                  <div
+                    className={[
+                      'rounded-lg border p-3',
+                      isDark ? 'border-slate-800 bg-slate-950/40' : 'border-slate-100 bg-slate-50',
+                    ].join(' ')}
+                  >
+                    <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+                      Etibar səviyyəsi
+                    </p>
+                    <p className="mt-1 text-2xl font-semibold text-emerald-500">
+                      {formatPercent(model.confidence)}
+                    </p>
+                  </div>
+                </div>
+              </Panel>
+            ))}
+          </section>
+
+          <DataTable columns={columns} data={results} />
         </>
       )}
     </div>

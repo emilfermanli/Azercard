@@ -1,4 +1,9 @@
-import { flexRender, getCoreRowModel, useReactTable, type ColumnDef } from '@tanstack/react-table';
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  type ColumnDef,
+} from '@tanstack/react-table';
 
 import { cn } from '@/utils';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
@@ -40,13 +45,22 @@ export function DataTable<TData>({ columns, data, className }: DataTableProps<TD
   return (
     <div className={cn('overflow-x-auto rounded-xl border', shell.wrap, className)}>
       <table className="w-full min-w-[520px] border-collapse text-left text-sm">
+        <colgroup>
+          {table.getAllLeafColumns().map((column) => (
+            <col key={column.id} className={column.id === 'sira' ? 'w-16' : undefined} />
+          ))}
+        </colgroup>
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id} className={cn('border-b', shell.headRow)}>
               {headerGroup.headers.map((header) => (
                 <th
                   key={header.id}
-                  className={cn('px-4 py-3 font-semibold first:rounded-tl-xl last:rounded-tr-xl', shell.th)}
+                  className={cn(
+                    'px-4 py-3 font-semibold first:rounded-tl-xl last:rounded-tr-xl',
+                    header.column.id === 'sira' && 'w-16 min-w-16 max-w-16 px-3',
+                    shell.th
+                  )}
                 >
                   {header.isPlaceholder
                     ? null
@@ -59,7 +73,10 @@ export function DataTable<TData>({ columns, data, className }: DataTableProps<TD
         <tbody className={shell.body}>
           {table.getRowModel().rows.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} className={cn('px-4 py-10 text-center', shell.empty)}>
+              <td
+                colSpan={columns.length}
+                className={cn('px-4 py-10 text-center', shell.empty)}
+              >
                 Məlumat yoxdur
               </td>
             </tr>
@@ -67,7 +84,14 @@ export function DataTable<TData>({ columns, data, className }: DataTableProps<TD
             table.getRowModel().rows.map((row) => (
               <tr key={row.id} className={cn('border-b last:border-0', shell.row)}>
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className={cn('px-4 py-2.5 align-middle', shell.cell)}>
+                  <td
+                    key={cell.id}
+                    className={cn(
+                      'px-4 py-2.5 align-middle',
+                      cell.column.id === 'sira' && 'w-16 min-w-16 max-w-16 px-3',
+                      shell.cell
+                    )}
+                  >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}

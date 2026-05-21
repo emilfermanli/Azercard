@@ -10,10 +10,19 @@ function normalizeRoleNames(raw: string[] | undefined): string[] {
   return raw.map((r) => (typeof r === 'string' ? r.trim() : '')).filter(Boolean);
 }
 
+function normalizeText(raw: unknown): string {
+  return typeof raw === 'string' ? raw.trim() : '';
+}
+
 function mapItemToRow(item: UserListItemApi): UserListRow {
   return {
     id: item.id,
     userName: item.userName,
+    firstName: normalizeText(item.firstName),
+    lastName: normalizeText(item.lastName),
+    phoneNumber: normalizeText(item.phoneNumber),
+    departmentId: normalizeText(item.departmentId),
+    positionId: normalizeText(item.positionId),
     email: item.email,
     roleNames: normalizeRoleNames(item.roleName),
   };

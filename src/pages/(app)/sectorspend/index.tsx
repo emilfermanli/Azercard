@@ -1,11 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
   Activity,
   BarChart3,
   CircleDollarSign,
+  Filter,
   Globe2,
   PieChart as PieChartIcon,
+  RotateCcw,
   WalletCards,
 } from 'lucide-react';
 import {
@@ -23,8 +25,10 @@ import {
   YAxis,
   ZAxis,
 } from 'recharts';
+import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
-import { DataPagination, DataTable } from '@/components';
+import { Button, DataPagination, DataTable } from '@/components';
+import { useGetGeneralBanksQuery, useGetGeneralMccGroupsQuery } from '@/services/general.service';
 import { useGetSectorSpendFilterQuery } from '@/services/sectorspend.service';
 import type {
   SectorSpendItem,
@@ -68,8 +72,23 @@ type ScatterPoint = {
   marketShare: number;
 };
 
+type SelectOption = {
+  id?: string;
+  label: string;
+  value: string;
+};
+
+type NumberOption = {
+  label: string;
+  value: number;
+};
+
 const CHART_COLORS = ['#f59e0b', '#2563eb', '#10b981', '#06b6d4', '#ef4444', '#8b5cf6'];
 const PAGE_SIZE = 10;
+const FLAG_OPTIONS: NumberOption[] = [
+  { label: 'Bəli', value: 1 },
+  { label: 'Xeyr', value: 0 },
+];
 
 function formatPercent(value: number | null | undefined) {
   return `${formatAmount(value)}%`;
@@ -90,6 +109,47 @@ function average(values: number[]) {
 function cleanText(value: string | null | undefined, fallback: string) {
   const text = value?.trim();
   return text || fallback;
+}
+
+function translateCategory(value: string | null | undefined, fallback = 'Naməlum') {
+  const text = cleanOptionValue(value);
+  const translations: Record<string, string> = {
+    Domestic: 'Daxili',
+    Foreign: 'Xarici',
+    Local: 'Yerli',
+    International: 'Beynəlxalq',
+    Cash: 'Nağd',
+    'Non-cash': 'Nağdsız',
+    NonCash: 'Nağdsız',
+    Card: 'Kart',
+  };
+
+  return text ? translations[text] ?? text : fallback;
+}
+
+function cleanOptionValue(value: string | null | undefined) {
+  return value?.trim() ?? '';
+}
+
+function toUniqueOptions(
+  values: Array<string | null | undefined>,
+  selectedValue = '',
+  getLabel: (value: string) => string = (value) => value
+) {
+  const map = new Map<string, SelectOption>();
+
+  values.forEach((value) => {
+    const cleanValue = cleanOptionValue(value);
+    if (cleanValue) map.set(cleanValue, { label: getLabel(cleanValue), value: cleanValue });
+  });
+
+  if (selectedValue && !map.has(selectedValue)) {
+    map.set(selectedValue, { label: getLabel(selectedValue), value: selectedValue });
+  }
+
+  return Array.from(map.values()).sort((a, b) =>
+    a.label.localeCompare(b.label, 'az')
+  );
 }
 
 function getRows(data: SectorSpendResponse | undefined) {
@@ -201,8 +261,8 @@ function ChartTooltip({
       <p className="font-semibold">{item.name}</p>
       <p className="mt-1">Məbləğ: {formatAmount(item.amount)}</p>
       <p>Say: {formatNumber(item.count)}</p>
-      <p>Avg ticket: {formatAmount(item.avgTicket)}</p>
-      <p>Sector payı: {formatPercent(item.marketShare)}</p>
+      <p>Orta çek: {formatAmount(item.avgTicket)}</p>
+      <p>Sektor payı: {formatPercent(item.marketShare)}</p>
     </div>
   );
 }
@@ -222,9 +282,9 @@ function ScatterTooltip({
       <p className="font-semibold">{item.city}</p>
       <p className="mt-1">{item.channel}</p>
       <p>Məbləğ: {formatAmount(item.amount)}</p>
-      <p>Avg ticket: {formatAmount(item.avgTicket)}</p>
-      <p>Local ratio: {formatPercent(item.localRatio)}</p>
-      <p>Sector payı: {formatPercent(item.marketShare)}</p>
+      <p>Orta çek: {formatAmount(item.avgTicket)}</p>
+      <p>Yerli pay: {formatPercent(item.localRatio)}</p>
+      <p>Sektor payı: {formatPercent(item.marketShare)}</p>
     </div>
   );
 }
@@ -330,7 +390,7 @@ function LocalRatioScatter({ data }: { data: ScatterPoint[] }) {
           />
           <XAxis
             dataKey="localRatio"
-            name="Local ratio"
+            name="Yerli pay"
             tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 11 }}
             tickLine={false}
             type="number"
@@ -338,7 +398,7 @@ function LocalRatioScatter({ data }: { data: ScatterPoint[] }) {
           />
           <YAxis
             dataKey="marketShare"
-            name="Sector payı"
+            name="Sektor payı"
             tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 11 }}
             tickLine={false}
             type="number"
@@ -355,8 +415,30 @@ function LocalRatioScatter({ data }: { data: ScatterPoint[] }) {
 
 const SectorSpendPage: React.FC = () => {
   const isDark = useShellTheme();
+  const reportMonthInputRef = useRef<HTMLInputElement>(null);
+  const [bankName, setBankName] = useState('');
+  const [mccGroup, setMccGroup] = useState('');
+  const [sourceChannel, setSourceChannel] = useState('');
+  const [operationType, setOperationType] = useState('');
+  const [sourceCityCategory, setSourceCityCategory] = useState('');
+  const [sourceCountryCategory, setSourceCountryCategory] = useState('');
+  const [isAcquiring, setIsAcquiring] = useState<number | null>(null);
+  const [isIssuing, setIsIssuing] = useState<number | null>(null);
+  const [reportMonth, setReportMonth] = useState('');
   const [page, setPage] = useState(1);
+  const { data: banks = [], isLoading: banksLoading } = useGetGeneralBanksQuery();
+  const { data: mccGroups = [], isLoading: mccGroupsLoading } =
+    useGetGeneralMccGroupsQuery();
   const { data, isLoading, isError, isFetching } = useGetSectorSpendFilterQuery({
+    ...(bankName ? { bankName } : {}),
+    ...(mccGroup ? { mccGroup } : {}),
+    ...(sourceChannel ? { sourceChannel } : {}),
+    ...(operationType ? { operationType } : {}),
+    ...(sourceCityCategory ? { sourceCityCategory } : {}),
+    ...(sourceCountryCategory ? { sourceCountryCategory } : {}),
+    ...(isAcquiring != null ? { isAcquiring } : {}),
+    ...(isIssuing != null ? { isIssuing } : {}),
+    ...(reportMonth ? { month: reportMonth } : {}),
     page,
     pageSize: PAGE_SIZE,
   });
@@ -367,6 +449,20 @@ const SectorSpendPage: React.FC = () => {
   const totalPages = !response || Array.isArray(response) ? 1 : response.totalPages;
   const hasNext = !response || Array.isArray(response) ? false : response.hasNext;
   const hasPrev = !response || Array.isArray(response) ? page > 1 : response.hasPrev;
+
+  useEffect(() => {
+    setPage(1);
+  }, [
+    bankName,
+    mccGroup,
+    sourceChannel,
+    operationType,
+    sourceCityCategory,
+    sourceCountryCategory,
+    isAcquiring,
+    isIssuing,
+    reportMonth,
+  ]);
 
   const columns = useMemo<ColumnDef<SectorSpendItem, unknown>[]>(
     () => [
@@ -389,17 +485,17 @@ const SectorSpendPage: React.FC = () => {
       },
       {
         accessorKey: 'avgTicket',
-        header: 'Avg ticket',
+        header: 'Orta çek',
         cell: ({ getValue }) => formatAmount(getValue() as number),
       },
       {
         accessorKey: 'localRatioPct',
-        header: 'Local ratio',
+        header: 'Yerli pay',
         cell: ({ getValue }) => formatPercent(getValue() as number),
       },
       {
         accessorKey: 'sectorMarketSharePct',
-        header: 'Sector payı',
+        header: 'Sektor payı',
         cell: ({ getValue }) => formatPercent(getValue() as number),
       },
       {
@@ -416,7 +512,7 @@ const SectorSpendPage: React.FC = () => {
     [rows]
   );
   const channelMix = useMemo(
-    () => groupRows(rows, (row) => cleanText(row.sourceChannel, 'Naməlum kanal')),
+    () => groupRows(rows, (row) => translateCategory(row.sourceChannel, 'Naməlum kanal')),
     [rows]
   );
   const cityMix = useMemo(
@@ -424,18 +520,18 @@ const SectorSpendPage: React.FC = () => {
     [rows]
   );
   const countryCategoryMix = useMemo(
-    () => groupRows(rows, (row) => cleanText(row.sourceCountryCategory, 'Naməlum')),
+    () => groupRows(rows, (row) => translateCategory(row.sourceCountryCategory)),
     [rows]
   );
   const operationMix = useMemo(
-    () => groupRows(rows, (row) => cleanText(row.operationType, 'Naməlum əməliyyat')),
+    () => groupRows(rows, (row) => translateCategory(row.operationType, 'Naməlum əməliyyat')),
     [rows]
   );
   const scatterData = useMemo<ScatterPoint[]>(
     () =>
       rows.map((row) => ({
         city: cleanText(row.sourceCity, 'Naməlum şəhər'),
-        channel: cleanText(row.sourceChannel, 'Naməlum kanal'),
+        channel: translateCategory(row.sourceChannel, 'Naməlum kanal'),
         amount: row.totalAmount,
         avgTicket: row.avgTicket,
         localRatio: row.localRatioPct,
@@ -443,6 +539,88 @@ const SectorSpendPage: React.FC = () => {
       })),
     [rows]
   );
+  const bankOptions = useMemo<SelectOption[]>(
+    () =>
+      banks
+        .filter((bank) => bank.bankName)
+        .map((bank) => ({
+          id: bank.id,
+          label: bank.bankName,
+          value: bank.id,
+        })),
+    [banks]
+  );
+  const mccGroupOptions = useMemo<SelectOption[]>(
+    () => {
+      const lookupOptions = mccGroups
+        .filter((item) => item.mccName)
+        .map((item) => ({
+          id: item.id,
+          label: item.mccName,
+          value: item.mccName,
+        }));
+
+      return toUniqueOptions(
+        [...lookupOptions.map((item) => item.value), ...rows.map((row) => row.mccGroup)],
+        mccGroup
+      ).map((option) => ({
+        ...option,
+        id: lookupOptions.find((item) => item.value === option.value)?.id,
+      }));
+    },
+    [mccGroup, mccGroups, rows]
+  );
+  const sourceChannelOptions = useMemo(
+    () =>
+      toUniqueOptions(
+        rows.map((row) => row.sourceChannel),
+        sourceChannel,
+        translateCategory
+      ),
+    [rows, sourceChannel]
+  );
+  const operationTypeOptions = useMemo(
+    () =>
+      toUniqueOptions(
+        rows.map((row) => row.operationType),
+        operationType,
+        translateCategory
+      ),
+    [operationType, rows]
+  );
+  const sourceCityCategoryOptions = useMemo(
+    () =>
+      toUniqueOptions(
+        rows.map((row) => row.sourceCityCategory),
+        sourceCityCategory,
+        translateCategory
+      ),
+    [rows, sourceCityCategory]
+  );
+  const sourceCountryCategoryOptions = useMemo(
+    () =>
+      toUniqueOptions(
+        rows.map((row) => row.sourceCountryCategory),
+        sourceCountryCategory,
+        translateCategory
+      ),
+    [rows, sourceCountryCategory]
+  );
+  const selectedBank = bankOptions.find((item) => item.value === bankName) ?? null;
+  const selectedMccGroup =
+    mccGroupOptions.find((item) => item.value === mccGroup) ?? null;
+  const selectedSourceChannel =
+    sourceChannelOptions.find((item) => item.value === sourceChannel) ?? null;
+  const selectedOperationType =
+    operationTypeOptions.find((item) => item.value === operationType) ?? null;
+  const selectedSourceCityCategory =
+    sourceCityCategoryOptions.find((item) => item.value === sourceCityCategory) ?? null;
+  const selectedSourceCountryCategory =
+    sourceCountryCategoryOptions.find((item) => item.value === sourceCountryCategory) ??
+    null;
+  const selectedIsAcquiring =
+    FLAG_OPTIONS.find((item) => item.value === isAcquiring) ?? null;
+  const selectedIsIssuing = FLAG_OPTIONS.find((item) => item.value === isIssuing) ?? null;
 
   const totalAmount = rows.reduce((sum, row) => sum + row.totalAmount, 0);
   const totalLocalAmount = rows.reduce((sum, row) => sum + row.totalLocalAmount, 0);
@@ -450,13 +628,103 @@ const SectorSpendPage: React.FC = () => {
   const avgTicket = totalCount > 0 ? totalAmount / totalCount : 0;
   const avgLocalRatio = average(rows.map((row) => row.localRatioPct));
   const topSector = sectorMix[0];
+  const panelClass = isDark
+    ? 'border-slate-800 bg-slate-900/70 text-slate-100 shadow-black/20'
+    : 'border-slate-200 bg-white text-slate-950 shadow-slate-200/70';
+  const mutedText = isDark ? 'text-slate-300' : 'text-slate-500';
+  const inputClass = [
+    'h-10 w-full rounded-lg border px-3 text-sm outline-none ring-amber-500/40 transition focus:ring-2',
+    isDark
+      ? 'border-slate-700 bg-slate-950 text-slate-100 placeholder:text-slate-500'
+      : 'border-slate-200 bg-white text-slate-900 placeholder:text-slate-400',
+  ].join(' ');
+  const outlineButtonClass = isDark
+    ? 'border-slate-500 bg-slate-800/90 text-slate-100 hover:bg-slate-700 hover:text-white'
+    : '';
+  const selectStyles = useMemo<StylesConfig<SelectOption, false>>(
+    () => ({
+      control: (base, state) => ({
+        ...base,
+        minHeight: 40,
+        borderRadius: 8,
+        borderColor: state.isFocused ? '#f59e0b' : isDark ? '#334155' : '#e2e8f0',
+        backgroundColor: isDark ? '#020617' : '#ffffff',
+        boxShadow: state.isFocused ? '0 0 0 2px rgb(245 158 11 / 0.35)' : 'none',
+        ':hover': {
+          borderColor: state.isFocused ? '#f59e0b' : isDark ? '#475569' : '#cbd5e1',
+        },
+      }),
+      input: (base) => ({
+        ...base,
+        color: isDark ? '#f8fafc' : '#0f172a',
+      }),
+      menu: (base) => ({
+        ...base,
+        zIndex: 80,
+        border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+        backgroundColor: isDark ? '#020617' : '#ffffff',
+        boxShadow: isDark
+          ? '0 18px 40px rgb(0 0 0 / 0.35)'
+          : '0 18px 40px rgb(15 23 42 / 0.12)',
+      }),
+      option: (base, state) => ({
+        ...base,
+        backgroundColor: state.isSelected
+          ? '#d97706'
+          : state.isFocused
+            ? isDark
+              ? '#78350f'
+              : '#fffbeb'
+            : 'transparent',
+        color: state.isSelected ? '#ffffff' : isDark ? '#f8fafc' : '#0f172a',
+      }),
+      placeholder: (base) => ({
+        ...base,
+        color: isDark ? '#94a3b8' : '#64748b',
+      }),
+      singleValue: (base) => ({
+        ...base,
+        color: isDark ? '#f8fafc' : '#0f172a',
+      }),
+    }),
+    [isDark]
+  );
+  const numberSelectStyles = selectStyles as unknown as StylesConfig<NumberOption, false>;
+  const hasActiveFilters = Boolean(
+    bankName ||
+      mccGroup ||
+      sourceChannel ||
+      operationType ||
+      sourceCityCategory ||
+      sourceCountryCategory ||
+      isAcquiring != null ||
+      isIssuing != null ||
+      reportMonth
+  );
+
+  const resetFilters = () => {
+    setBankName('');
+    setMccGroup('');
+    setSourceChannel('');
+    setOperationType('');
+    setSourceCityCategory('');
+    setSourceCountryCategory('');
+    setIsAcquiring(null);
+    setIsIssuing(null);
+    setReportMonth('');
+    setPage(1);
+  };
+
+  const openDatePicker = () => {
+    reportMonthInputRef.current?.showPicker?.();
+  };
 
   return (
     <div className="space-y-5">
       <DataPageHeader
         eyebrow="Sektor xərcləri"
-        title="Sector Spend"
-        description="MCC qrupu, kanal, şəhər və domestic/foreign istiqaməti üzrə xərcləmə analitikası."
+        title="Sektor xərcləri"
+        description="MCC qrupu, kanal, şəhər və daxili/xarici istiqamət üzrə xərcləmə analitikası."
         icon={WalletCards}
         tone="amber"
       />
@@ -464,18 +732,192 @@ const SectorSpendPage: React.FC = () => {
       {isError && <PageError />}
       {!isLoading && !isError && (
         <>
+          <section className={['rounded-xl border p-4 shadow-lg', panelClass].join(' ')}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/15 text-amber-500">
+                  <Filter className="h-5 w-5" />
+                </span>
+                <div>
+                  <h2 className="font-semibold">Filterlər</h2>
+                  <p className={['text-sm', mutedText].join(' ')}>
+                    Bank, MCC qrupu, kanal, əməliyyat tipi və ay üzrə xərcləmə məlumatlarını süzün.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={outlineButtonClass}
+                disabled={!hasActiveFilters || isFetching}
+                onClick={resetFilters}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Təmizlə
+              </Button>
+            </div>
+
+            <div className="mt-4 grid gap-3 grid-cols-4">
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Bank</span>
+                <Select
+                  inputId="sectorspend-filter-bank"
+                  isClearable
+                  isLoading={banksLoading}
+                  noOptionsMessage={() => 'Bank tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setBankName(option?.value ?? '')
+                  }
+                  options={bankOptions}
+                  placeholder="Bütün banklar"
+                  styles={selectStyles}
+                  value={selectedBank}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>MCC qrup</span>
+                <Select
+                  inputId="sectorspend-filter-mcc-group"
+                  isClearable
+                  isLoading={mccGroupsLoading}
+                  noOptionsMessage={() => 'MCC qrupu tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setMccGroup(option?.value ?? '')
+                  }
+                  options={mccGroupOptions}
+                  placeholder="Bütün MCC qrupları"
+                  styles={selectStyles}
+                  value={selectedMccGroup}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Kanal</span>
+                <Select
+                  inputId="sectorspend-filter-channel"
+                  isClearable
+                  noOptionsMessage={() => 'Kanal tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setSourceChannel(option?.value ?? '')
+                  }
+                  options={sourceChannelOptions}
+                  placeholder="Bütün kanallar"
+                  styles={selectStyles}
+                  value={selectedSourceChannel}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Əməliyyat tipi</span>
+                <Select
+                  inputId="sectorspend-filter-operation"
+                  isClearable
+                  noOptionsMessage={() => 'Əməliyyat tipi tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setOperationType(option?.value ?? '')
+                  }
+                  options={operationTypeOptions}
+                  placeholder="Bütün tiplər"
+                  styles={selectStyles}
+                  value={selectedOperationType}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Şəhər kateqoriyası</span>
+                <Select
+                  inputId="sectorspend-filter-city-category"
+                  isClearable
+                  noOptionsMessage={() => 'Kateqoriya tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setSourceCityCategory(option?.value ?? '')
+                  }
+                  options={sourceCityCategoryOptions}
+                  placeholder="Bütün kateqoriyalar"
+                  styles={selectStyles}
+                  value={selectedSourceCityCategory}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Ölkə kateqoriyası</span>
+                <Select
+                  inputId="sectorspend-filter-country-category"
+                  isClearable
+                  noOptionsMessage={() => 'Kateqoriya tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setSourceCountryCategory(option?.value ?? '')
+                  }
+                  options={sourceCountryCategoryOptions}
+                  placeholder="Bütün kateqoriyalar"
+                  styles={selectStyles}
+                  value={selectedSourceCountryCategory}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Ekvayrinq</span>
+                <Select
+                  inputId="sectorspend-filter-acquiring"
+                  isClearable
+                  isSearchable={false}
+                  noOptionsMessage={() => 'Dəyər tapılmadı'}
+                  onChange={(option: SingleValue<NumberOption>) =>
+                    setIsAcquiring(option?.value ?? null)
+                  }
+                  options={FLAG_OPTIONS}
+                  placeholder="Hamısı"
+                  styles={numberSelectStyles}
+                  value={selectedIsAcquiring}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Emitent</span>
+                <Select
+                  inputId="sectorspend-filter-issuing"
+                  isClearable
+                  isSearchable={false}
+                  noOptionsMessage={() => 'Dəyər tapılmadı'}
+                  onChange={(option: SingleValue<NumberOption>) =>
+                    setIsIssuing(option?.value ?? null)
+                  }
+                  options={FLAG_OPTIONS}
+                  placeholder="Hamısı"
+                  styles={numberSelectStyles}
+                  value={selectedIsIssuing}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Ay</span>
+                <input
+                  ref={reportMonthInputRef}
+                  className={inputClass}
+                  type="date"
+                  value={reportMonth}
+                  onChange={(event) => setReportMonth(event.target.value)}
+                  onClick={openDatePicker}
+                  onFocus={openDatePicker}
+                />
+              </label>
+            </div>
+          </section>
+
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Ümumi qeyd" value={formatNumber(recordCount)} />
             <StatCard label="Ümumi məbləğ" value={formatShortAmount(totalAmount)} />
-            <StatCard label="Local məbləğ" value={formatShortAmount(totalLocalAmount)} />
-            <StatCard label="Avg ticket" value={formatAmount(avgTicket)} />
+            <StatCard label="Yerli məbləğ" value={formatShortAmount(totalLocalAmount)} />
+            <StatCard label="Orta çek" value={formatAmount(avgTicket)} />
           </div>
 
           <section className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)]">
             <Panel
               icon={Activity}
-              title="Local ratio və sector payı"
-              subtitle="Bubble ölçüsü totalAmount dəyərinə görədir"
+              title="Yerli pay və sektor payı"
+              subtitle="Nöqtə ölçüsü ümumi məbləğə görədir"
             >
               <LocalRatioScatter data={scatterData} />
             </Panel>
@@ -483,7 +925,7 @@ const SectorSpendPage: React.FC = () => {
             <Panel
               icon={CircleDollarSign}
               title="Ən böyük sektor"
-              subtitle="MCC group üzrə ən yüksək xərcləmə"
+              subtitle="MCC qrupu üzrə ən yüksək xərcləmə"
             >
               {topSector ? (
                 <div
@@ -498,11 +940,11 @@ const SectorSpendPage: React.FC = () => {
                   </p>
                   <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>Sector payı</p>
+                      <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>Sektor payı</p>
                       <p className="font-semibold">{formatPercent(topSector.marketShare)}</p>
                     </div>
                     <div>
-                      <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>Local ratio</p>
+                      <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>Yerli pay</p>
                       <p className="font-semibold">{formatPercent(avgLocalRatio)}</p>
                     </div>
                     <div>
@@ -510,7 +952,7 @@ const SectorSpendPage: React.FC = () => {
                       <p className="font-semibold">{formatNumber(topSector.count)}</p>
                     </div>
                     <div>
-                      <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>Avg ticket</p>
+                      <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>Orta çek</p>
                       <p className="font-semibold">{formatAmount(topSector.avgTicket)}</p>
                     </div>
                   </div>
@@ -522,8 +964,8 @@ const SectorSpendPage: React.FC = () => {
           <section className="grid gap-5 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
             <Panel
               icon={PieChartIcon}
-              title="Country category"
-              subtitle="Domestic və Foreign xərcləmə bölgüsü"
+              title="Ölkə kateqoriyası"
+              subtitle="Daxili və xarici xərcləmə bölgüsü"
             >
               <DonutChart data={countryCategoryMix} />
             </Panel>
@@ -531,7 +973,7 @@ const SectorSpendPage: React.FC = () => {
             <Panel
               icon={BarChart3}
               title="Kanallar"
-              subtitle="Source channel üzrə xərcləmə həcmi"
+              subtitle="Mənbə kanalı üzrə xərcləmə həcmi"
             >
               <HorizontalChart color="#2563eb" data={channelMix} />
             </Panel>
@@ -541,7 +983,7 @@ const SectorSpendPage: React.FC = () => {
             <Panel
               icon={WalletCards}
               title="MCC sektorları"
-              subtitle="MCC group üzrə top xərclər"
+              subtitle="MCC qrupu üzrə ən yüksək xərclər"
             >
               <HorizontalChart color="#f59e0b" data={sectorMix} />
             </Panel>
@@ -549,7 +991,7 @@ const SectorSpendPage: React.FC = () => {
             <Panel
               icon={Globe2}
               title="Şəhərlər"
-              subtitle="Source city üzrə xərcləmə"
+              subtitle="Mənbə şəhəri üzrə xərcləmə"
             >
               <HorizontalChart color="#06b6d4" data={cityMix} />
             </Panel>
@@ -557,7 +999,7 @@ const SectorSpendPage: React.FC = () => {
             <Panel
               icon={Activity}
               title="Əməliyyat tipi"
-              subtitle="Cash və non-cash bölgüsü"
+              subtitle="Nağd və nağdsız bölgüsü"
             >
               <HorizontalChart color="#10b981" data={operationMix} />
             </Panel>

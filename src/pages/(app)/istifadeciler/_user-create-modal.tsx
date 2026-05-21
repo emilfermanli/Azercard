@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff, X } from 'lucide-react';
+import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
 import { Button, Input, LoadingSpinner } from '@/components';
-import { useGetDepartmentsQuery, useGetPositionsQuery } from '@/services/organization.service';
+import {
+  useGetDepartmentsQuery,
+  useGetPositionsQuery,
+} from '@/services/organization.service';
 import { useRegisterUserMutation } from '@/services/user.service';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import { cn } from '@/utils';
@@ -25,20 +29,31 @@ type Props = {
   onClose: () => void;
 };
 
+type SelectOption = {
+  label: string;
+  value: string;
+};
+
 export function UserCreateModal({ open, onClose }: Props) {
   const isDark = useShellTheme();
   const [backendErrors, setBackendErrors] = useState<string[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [registerUser, { isLoading }] = useRegisterUserMutation();
-  const { data: departments = [], isLoading: deptLoading } = useGetDepartmentsQuery(undefined, {
-    skip: !open,
-  });
-  const { data: positions = [], isLoading: posLoading } = useGetPositionsQuery(undefined, {
-    skip: !open,
-  });
+  const { data: departments = [], isLoading: deptLoading } = useGetDepartmentsQuery(
+    undefined,
+    {
+      skip: !open,
+    }
+  );
+  const { data: positions = [], isLoading: posLoading } = useGetPositionsQuery(
+    undefined,
+    {
+      skip: !open,
+    }
+  );
 
-  const { register, handleSubmit, reset } = useForm<FormValues>({
+  const { register, handleSubmit, reset, setValue, watch } = useForm<FormValues>({
     defaultValues: {
       email: '',
       password: '',
@@ -87,8 +102,6 @@ export function UserCreateModal({ open, onClose }: Props) {
     };
   }, [open]);
 
-  if (!open) return null;
-
   const panel = isDark
     ? 'border-slate-600 bg-slate-900 text-slate-100 shadow-2xl'
     : 'border-slate-200 bg-white text-slate-900 shadow-xl';
@@ -102,13 +115,77 @@ export function UserCreateModal({ open, onClose }: Props) {
       : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700'
   );
 
-  const selectClass = cn(
-    'h-9 w-full rounded-md border px-3 text-sm outline-none ring-offset-2 focus-visible:ring-2 focus-visible:ring-blue-500',
-    isDark ? 'border-slate-600 bg-slate-950/50 text-slate-100' : 'border-slate-200 bg-white text-slate-900'
-  );
-
   const listsLoading = deptLoading || posLoading;
   const canPickOrg = !listsLoading && departments.length > 0 && positions.length > 0;
+  const selectMenuPortalTarget =
+    typeof document === 'undefined' ? undefined : document.body;
+  const departmentId = watch('departmentId');
+  const positionId = watch('positionId');
+  const departmentOptions = useMemo<SelectOption[]>(
+    () => departments.map((item) => ({ label: item.name, value: item.id })),
+    [departments]
+  );
+  const positionOptions = useMemo<SelectOption[]>(
+    () => positions.map((item) => ({ label: item.name, value: item.id })),
+    [positions]
+  );
+  const selectedDepartment =
+    departmentOptions.find((option) => option.value === departmentId) ?? null;
+  const selectedPosition =
+    positionOptions.find((option) => option.value === positionId) ?? null;
+  const selectStyles = useMemo<StylesConfig<SelectOption, false>>(
+    () => ({
+      control: (base, state) => ({
+        ...base,
+        minHeight: 36,
+        borderRadius: 6,
+        borderColor: state.isFocused ? '#3b82f6' : isDark ? '#475569' : '#e2e8f0',
+        backgroundColor: isDark ? 'rgb(2 6 23 / 0.5)' : '#ffffff',
+        boxShadow: state.isFocused ? '0 0 0 2px rgb(59 130 246 / 0.4)' : 'none',
+        ':hover': {
+          borderColor: state.isFocused ? '#3b82f6' : isDark ? '#64748b' : '#cbd5e1',
+        },
+      }),
+      input: (base) => ({
+        ...base,
+        color: isDark ? '#f8fafc' : '#0f172a',
+      }),
+      menu: (base) => ({
+        ...base,
+        border: `1px solid ${isDark ? '#475569' : '#e2e8f0'}`,
+        backgroundColor: isDark ? '#020617' : '#ffffff',
+        boxShadow: isDark
+          ? '0 18px 40px rgb(0 0 0 / 0.35)'
+          : '0 18px 40px rgb(15 23 42 / 0.12)',
+      }),
+      menuPortal: (base) => ({
+        ...base,
+        zIndex: 240,
+      }),
+      option: (base, state) => ({
+        ...base,
+        backgroundColor: state.isSelected
+          ? '#2563eb'
+          : state.isFocused
+            ? isDark
+              ? '#1e293b'
+              : '#eff6ff'
+            : 'transparent',
+        color: state.isSelected ? '#ffffff' : isDark ? '#f8fafc' : '#0f172a',
+      }),
+      placeholder: (base) => ({
+        ...base,
+        color: isDark ? '#94a3b8' : '#64748b',
+      }),
+      singleValue: (base) => ({
+        ...base,
+        color: isDark ? '#f8fafc' : '#0f172a',
+      }),
+    }),
+    [isDark]
+  );
+
+  if (!open) return null;
 
   const onSubmit = handleSubmit(async (values) => {
     setBackendErrors([]);
@@ -131,7 +208,9 @@ export function UserCreateModal({ open, onClose }: Props) {
       onClose();
     } catch (error) {
       const messages = parseRejectedApiErrorMessages(error);
-      setBackendErrors(messages.length > 0 ? messages : ['İstifadəçi yaratmaq mümkün olmadı.']);
+      setBackendErrors(
+        messages.length > 0 ? messages : ['İstifadəçi yaratmaq mümkün olmadı.']
+      );
     }
   });
 
@@ -163,7 +242,9 @@ export function UserCreateModal({ open, onClose }: Props) {
             onClick={onClose}
             className={cn(
               'rounded-lg p-1 transition-colors',
-              isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-500 hover:bg-slate-100'
+              isDark
+                ? 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                : 'text-slate-500 hover:bg-slate-100'
             )}
             aria-label="Bağla"
           >
@@ -269,7 +350,9 @@ export function UserCreateModal({ open, onClose }: Props) {
               />
               <button
                 aria-label={
-                  showConfirmPassword ? 'Şifrə təkrarını gizlət' : 'Şifrə təkrarını göstər'
+                  showConfirmPassword
+                    ? 'Şifrə təkrarını gizlət'
+                    : 'Şifrə təkrarını göstər'
                 }
                 className={passwordToggleClass}
                 onClick={() => setShowConfirmPassword((value) => !value)}
@@ -299,8 +382,13 @@ export function UserCreateModal({ open, onClose }: Props) {
 
           {listsLoading ? (
             <div className="flex items-center gap-2 py-2">
-              <LoadingSpinner size="sm" className={isDark ? 'text-slate-400' : 'text-slate-500'} />
-              <span className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-500')}>
+              <LoadingSpinner
+                size="sm"
+                className={isDark ? 'text-slate-400' : 'text-slate-500'}
+              />
+              <span
+                className={cn('text-sm', isDark ? 'text-slate-400' : 'text-slate-500')}
+              >
                 Departament və pozisiyalar yüklənir…
               </span>
             </div>
@@ -314,35 +402,39 @@ export function UserCreateModal({ open, onClose }: Props) {
                 <label htmlFor="user-create-dept" className="text-sm font-medium">
                   Departament
                 </label>
-                <select
-                  id="user-create-dept"
-                  className={selectClass}
-                  {...register('departmentId')}
-                >
-                  <option value="">Seçin</option>
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.name}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  inputId="user-create-dept"
+                  menuPortalTarget={selectMenuPortalTarget}
+                  noOptionsMessage={() => 'Departament tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setValue('departmentId', option?.value ?? '', {
+                      shouldDirty: true,
+                    })
+                  }
+                  options={departmentOptions}
+                  placeholder="Seçin"
+                  styles={selectStyles}
+                  value={selectedDepartment}
+                />
               </div>
               <div className="flex flex-col gap-2">
                 <label htmlFor="user-create-pos" className="text-sm font-medium">
                   Pozisiya
                 </label>
-                <select
-                  id="user-create-pos"
-                  className={selectClass}
-                  {...register('positionId')}
-                >
-                  <option value="">Seçin</option>
-                  {positions.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                <Select
+                  inputId="user-create-pos"
+                  menuPortalTarget={selectMenuPortalTarget}
+                  noOptionsMessage={() => 'Pozisiya tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setValue('positionId', option?.value ?? '', {
+                      shouldDirty: true,
+                    })
+                  }
+                  options={positionOptions}
+                  placeholder="Seçin"
+                  styles={selectStyles}
+                  value={selectedPosition}
+                />
               </div>
             </div>
           )}

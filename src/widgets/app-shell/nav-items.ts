@@ -40,27 +40,27 @@ export const navLinks: NavLinkItem[] = [
   },
   {
     path: '/azmap',
-    label: 'AzMap',
+    label: 'Azərbaycan xəritəsi',
     icon: MapPinned,
   },
   {
     path: '/worldmap',
-    label: 'WorldMap',
+    label: 'Dünya xəritəsi',
     icon: Globe2,
   },
   {
     path: '/marketbenchmark',
-    label: 'Market Benchmark',
+    label: 'Bazar müqayisəsi',
     icon: BarChart3,
   },
   {
     path: '/sectorspend',
-    label: 'Sector Spend',
+    label: 'Sektor xərcləri',
     icon: WalletCards,
   },
   {
     path: '/forecasting',
-    label: 'Forecasting',
+    label: 'Proqnozlaşdırma',
     icon: TrendingUp,
   },
 ];

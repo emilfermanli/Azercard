@@ -3,23 +3,30 @@ import DeckGL from '@deck.gl/react';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import { BitmapLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers';
 import { TileLayer } from '@deck.gl/geo-layers';
+import { FlyToInterpolator } from '@deck.gl/core';
 import type { MapViewState, ViewStateChangeParameters } from '@deck.gl/core';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
   BarChart3,
+  Filter,
   Layers,
   Maximize2,
   Minimize2,
   MapPinned,
   RadioTower,
+  RotateCcw,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
+import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
-import { DataPagination, DataTable } from '@/components';
+import { Button, DataPagination, DataTable } from '@/components';
 import {
+  useGetAzmapBanksQuery,
+  useGetAzmapCitiesQuery,
   useGetAzmapFilterQuery,
   useGetAzmapHeatmapQuery,
+  useGetAzmapRegionsQuery,
 } from '@/services/azmap.service';
 import type { AzmapItem } from '@/types/azmap.type';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
@@ -37,6 +44,11 @@ import {
 type MapMode = 'points' | 'heatmap';
 type BaseMapStyle = 'dark' | 'light' | 'voyager' | 'minimal';
 
+type SelectOption = {
+  label: string;
+  value: string;
+};
+
 type CityPoint = {
   id: string;
   city: string;
@@ -45,6 +57,11 @@ type CityPoint = {
   totalAmount: number;
   totalCount: number;
   bankCount: number;
+};
+
+type ClusteredCityPoint = CityPoint & {
+  isCluster: boolean;
+  pointCount: number;
 };
 
 const INITIAL_VIEW_STATE: MapViewState = {
@@ -68,8 +85,8 @@ const BASE_MAP_TILE_URL: Record<BaseMapStyle, string> = {
 const BASE_MAP_OPTIONS: { label: string; value: BaseMapStyle }[] = [
   { label: 'Qara', value: 'dark' },
   { label: 'Açıq', value: 'light' },
-  { label: 'Voyager', value: 'voyager' },
-  { label: 'Minimal', value: 'minimal' },
+  { label: 'Səyahət', value: 'voyager' },
+  { label: 'Sadə', value: 'minimal' },
 ];
 
 function hasCoordinates(item: AzmapItem) {
@@ -125,21 +142,42 @@ function buildCityPoints(items: AzmapItem[]) {
   });
 
   return Array.from(pointMap.values())
-    .map(({ banks: _banks, ...point }) => point)
+    .map((item) => ({
+      id: item.id,
+      city: item.city,
+      category: item.category,
+      position: item.position,
+      totalAmount: item.totalAmount,
+      totalCount: item.totalCount,
+      bankCount: item.bankCount,
+    }))
     .sort((a, b) => b.totalAmount - a.totalAmount);
 }
 
 const AzmapPage: React.FC = () => {
   const isDark = useShellTheme();
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const reportMonthInputRef = useRef<HTMLInputElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mapMode, setMapMode] = useState<MapMode>('points');
   const [baseMapStyle, setBaseMapStyle] = useState<BaseMapStyle>(
     isDark ? 'dark' : 'light'
   );
+  const [bankName, setBankName] = useState('');
+  const [sourceCity, setSourceCity] = useState('');
+  const [sourceCityClean, setSourceCityClean] = useState('');
+  const [reportMonth, setReportMonth] = useState('');
   const [page, setPage] = useState(1);
   const [viewState, setViewState] = useState<MapViewState>(INITIAL_VIEW_STATE);
+  const { data: banks = [], isLoading: banksLoading } = useGetAzmapBanksQuery();
+  const { data: cities = [], isLoading: citiesLoading } = useGetAzmapCitiesQuery();
+  const { data: regions = [], isLoading: regionsLoading } = useGetAzmapRegionsQuery();
+  const queryMonth = reportMonth;
   const { data, isLoading, isError, isFetching } = useGetAzmapFilterQuery({
+    ...(bankName ? { BankName: bankName } : {}),
+    ...(sourceCity ? { SourceCity: sourceCity } : {}),
+    ...(sourceCityClean ? { SourceCityClean: sourceCityClean } : {}),
+    ...(queryMonth ? { ReportMonth: queryMonth } : {}),
     Page: page,
     PageSize: PAGE_SIZE,
   });
@@ -147,8 +185,16 @@ const AzmapPage: React.FC = () => {
     data: heatmapData,
     isError: isHeatmapError,
     isFetching: isHeatmapFetching,
-  } = useGetAzmapHeatmapQuery();
+  } = useGetAzmapHeatmapQuery({
+    ...(bankName ? { bankName } : {}),
+    ...(sourceCity ? { sourceCity } : {}),
+    ...(queryMonth ? { month: queryMonth } : {}),
+  });
   const rows = data?.items ?? [];
+
+  useEffect(() => {
+    setPage(1);
+  }, [bankName, sourceCity, sourceCityClean, reportMonth]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -188,10 +234,125 @@ const AzmapPage: React.FC = () => {
   );
 
   const cityPoints = useMemo(() => buildCityPoints(rows), [rows]);
+
+  const clusteredPoints = useMemo<ClusteredCityPoint[]>(() => {
+    const zoom = viewState.zoom ?? 6.35;
+    if (zoom >= 7.8) {
+      return cityPoints.map((p) => ({ ...p, isCluster: false, pointCount: 1 }));
+    }
+
+    // Dynamic threshold based on zoom level: at zoom 5, ~1.0 degree distance; zoom 6, ~0.5; etc.
+    const threshold = 1.0 / Math.pow(2, zoom - 5);
+    const result: ClusteredCityPoint[] = [];
+
+    cityPoints.forEach((point) => {
+      let merged = false;
+      for (const cluster of result) {
+        const dist = Math.sqrt(
+          Math.pow(point.position[0] - cluster.position[0], 2) +
+          Math.pow(point.position[1] - cluster.position[1], 2)
+        );
+        if (dist < threshold) {
+          const totalAmt = cluster.totalAmount + point.totalAmount;
+          if (totalAmt > 0) {
+            cluster.position[0] =
+              (cluster.position[0] * cluster.totalAmount +
+                point.position[0] * point.totalAmount) /
+              totalAmt;
+            cluster.position[1] =
+              (cluster.position[1] * cluster.totalAmount +
+                point.position[1] * point.totalAmount) /
+              totalAmt;
+          } else {
+            cluster.position[0] = (cluster.position[0] + point.position[0]) / 2;
+            cluster.position[1] = (cluster.position[1] + point.position[1]) / 2;
+          }
+          cluster.totalAmount += point.totalAmount;
+          cluster.totalCount += point.totalCount;
+          cluster.pointCount += 1;
+          cluster.isCluster = true;
+
+          // Merge names elegantly
+          if (!cluster.city.includes(point.city)) {
+            cluster.city = `${cluster.city}, ${point.city}`;
+          }
+          merged = true;
+          break;
+        }
+      }
+
+      if (!merged) {
+        result.push({
+          ...point,
+          isCluster: false,
+          pointCount: 1,
+        });
+      }
+    });
+
+    return result.sort((a, b) => b.totalAmount - a.totalAmount);
+  }, [cityPoints, viewState.zoom]);
+
   const heatmapPoints = useMemo(
     () => buildCityPoints(heatmapData?.length ? heatmapData : rows),
     [heatmapData, rows]
   );
+
+  const clusteredHeatmapPoints = useMemo<ClusteredCityPoint[]>(() => {
+    const zoom = viewState.zoom ?? 6.35;
+    if (zoom >= 7.8) {
+      return heatmapPoints.map((p) => ({ ...p, isCluster: false, pointCount: 1 }));
+    }
+
+    const threshold = 1.0 / Math.pow(2, zoom - 5);
+    const result: ClusteredCityPoint[] = [];
+
+    heatmapPoints.forEach((point) => {
+      let merged = false;
+      for (const cluster of result) {
+        const dist = Math.sqrt(
+          Math.pow(point.position[0] - cluster.position[0], 2) +
+          Math.pow(point.position[1] - cluster.position[1], 2)
+        );
+        if (dist < threshold) {
+          const totalAmt = cluster.totalAmount + point.totalAmount;
+          if (totalAmt > 0) {
+            cluster.position[0] =
+              (cluster.position[0] * cluster.totalAmount +
+                point.position[0] * point.totalAmount) /
+              totalAmt;
+            cluster.position[1] =
+              (cluster.position[1] * cluster.totalAmount +
+                point.position[1] * point.totalAmount) /
+              totalAmt;
+          } else {
+            cluster.position[0] = (cluster.position[0] + point.position[0]) / 2;
+            cluster.position[1] = (cluster.position[1] + point.position[1]) / 2;
+          }
+          cluster.totalAmount += point.totalAmount;
+          cluster.totalCount += point.totalCount;
+          cluster.pointCount += 1;
+          cluster.isCluster = true;
+
+          if (!cluster.city.includes(point.city)) {
+            cluster.city = `${cluster.city}, ${point.city}`;
+          }
+          merged = true;
+          break;
+        }
+      }
+
+      if (!merged) {
+        result.push({
+          ...point,
+          isCluster: false,
+          pointCount: 1,
+        });
+      }
+    });
+
+    return result.sort((a, b) => b.totalAmount - a.totalAmount);
+  }, [heatmapPoints, viewState.zoom]);
   const maxAmount = useMemo(
     () => Math.max(...cityPoints.map((point) => point.totalAmount), 1),
     [cityPoints]
@@ -212,6 +373,25 @@ const AzmapPage: React.FC = () => {
     () => new Set(rows.map((item) => item.bankName).filter(Boolean)).size,
     [rows]
   );
+  const bankOptions = useMemo<SelectOption[]>(
+    () => banks.filter(Boolean).map((item) => ({ label: item, value: item })),
+    [banks]
+  );
+  const cityOptions = useMemo<SelectOption[]>(
+    () => cities.filter(Boolean).map((item) => ({ label: item, value: item })),
+    [cities]
+  );
+  const regionOptions = useMemo<SelectOption[]>(
+    () => regions.filter(Boolean).map((item) => ({ label: item, value: item })),
+    [regions]
+  );
+  const selectedBank = bankOptions.find((item) => item.value === bankName) ?? null;
+  const selectedCity = cityOptions.find((item) => item.value === sourceCity) ?? null;
+  const selectedRegion =
+    regionOptions.find((item) => item.value === sourceCityClean) ?? null;
+  const hasActiveFilters = Boolean(
+    bankName || sourceCity || sourceCityClean || reportMonth
+  );
 
   const handleViewStateChange = ({
     viewState: nextViewState,
@@ -222,6 +402,8 @@ const AzmapPage: React.FC = () => {
       ...current,
       ...mapViewState,
       zoom: Math.min(MAP_MAX_ZOOM, Math.max(MAP_MIN_ZOOM, mapViewState.zoom)),
+      transitionDuration: undefined,
+      transitionInterpolator: undefined,
     }));
   };
 
@@ -229,6 +411,8 @@ const AzmapPage: React.FC = () => {
     setViewState((current) => ({
       ...current,
       zoom: Math.min(MAP_MAX_ZOOM, Math.max(MAP_MIN_ZOOM, current.zoom + delta)),
+      transitionDuration: 400,
+      transitionInterpolator: new FlyToInterpolator({ speed: 1.2 }),
     }));
   };
 
@@ -287,68 +471,182 @@ const AzmapPage: React.FC = () => {
             [239, 68, 68, 240],
           ],
         }),
-        new ScatterplotLayer<CityPoint>({
+        new ScatterplotLayer<ClusteredCityPoint>({
           id: 'azmap-heatmap-points',
-          data: heatmapPoints,
+          data: clusteredHeatmapPoints,
           getPosition: (point) => point.position,
           getRadius: (point) =>
-            2_500 + (point.totalAmount / maxHeatmapAmount) * 18_000,
-          getFillColor: [255, 255, 255, 70],
-          getLineColor: [255, 255, 255, 230],
-          lineWidthMinPixels: 1,
+            point.isCluster
+              ? 8_000 + point.pointCount * 1_000
+              : 2_500 + (point.totalAmount / maxHeatmapAmount) * 18_000,
+          getFillColor: (point) => (point.isCluster ? [255, 255, 255, 110] : [255, 255, 255, 70]),
+          getLineColor: (point) => (point.isCluster ? [255, 255, 255, 255] : [255, 255, 255, 230]),
+          radiusMinPixels: 12,
+          radiusMaxPixels: 50,
+          lineWidthMinPixels: 1.5,
           pickable: true,
           stroked: true,
+        }),
+        new TextLayer<ClusteredCityPoint>({
+          id: 'azmap-heatmap-cluster-counts',
+          data: clusteredHeatmapPoints.filter((p) => p.isCluster),
+          getPosition: (point) => point.position,
+          getText: (point) => String(point.pointCount),
+          getSize: 11,
+          getColor: [15, 23, 42, 255],
+          getPixelOffset: [0, 0],
+          fontWeight: 'bold',
         }),
       ];
     }
 
+    const getLabelText = (point: ClusteredCityPoint) => {
+      if (point.isCluster) {
+        const parts = point.city.split(', ');
+        const primary = parts[0];
+        return `${primary} (+${point.pointCount - 1})`;
+      }
+      return point.city;
+    };
+
     return [
       ...baseLayers,
-      new ScatterplotLayer<CityPoint>({
+      new ScatterplotLayer<ClusteredCityPoint>({
         id: 'azmap-city-points',
-        data: cityPoints,
+        data: clusteredPoints,
         getPosition: (point) => point.position,
-        getRadius: (point) => 3_000 + (point.totalAmount / maxAmount) * 28_000,
+        getRadius: (point) =>
+          point.isCluster
+            ? 8_000 + point.pointCount * 1_000
+            : 3_000 + (point.totalAmount / maxAmount) * 28_000,
         getFillColor: (point) =>
-          point.category === 'REGION' ? [16, 185, 129, 205] : [34, 211, 238, 210],
-        getLineColor: [255, 255, 255, 230],
-        lineWidthMinPixels: 1,
+          point.isCluster
+            ? [99, 102, 241, 215] // Indigo color for clusters
+            : point.category === 'REGION'
+              ? [16, 185, 129, 205]
+              : [34, 211, 238, 210],
+        getLineColor: (point) => (point.isCluster ? [79, 70, 229, 255] : [255, 255, 255, 230]),
+        radiusMinPixels: 14,
+        radiusMaxPixels: 60,
+        lineWidthMinPixels: 1.5,
         pickable: true,
         stroked: true,
       }),
-      new TextLayer<CityPoint>({
-        id: 'azmap-city-labels',
-        data: cityPoints.slice(0, 10),
+      new TextLayer<ClusteredCityPoint>({
+        id: 'azmap-cluster-counts',
+        data: clusteredPoints.filter((p) => p.isCluster),
         getPosition: (point) => point.position,
-        getText: (point) => point.city,
+        getText: (point) => String(point.pointCount),
         getSize: 12,
+        getColor: [255, 255, 255, 255],
+        getPixelOffset: [0, 0],
+        fontWeight: 'bold',
+      }),
+      new TextLayer<ClusteredCityPoint>({
+        id: 'azmap-city-labels',
+        data: clusteredPoints.slice(0, 15),
+        getPosition: (point) => point.position,
+        getText: (point) => getLabelText(point),
+        getSize: 11,
         getColor: isDark ? [226, 232, 240, 235] : [15, 23, 42, 235],
         getPixelOffset: [0, 22],
         background: true,
         getBackgroundColor: isDark ? [15, 23, 42, 190] : [255, 255, 255, 215],
-        backgroundPadding: [6, 3],
+        backgroundPadding: [5, 3],
       }),
     ];
   }, [
     baseMapStyle,
     cityPoints,
+    clusteredPoints,
+    clusteredHeatmapPoints,
     heatmapPoints,
     isDark,
     mapMode,
     maxAmount,
     maxHeatmapAmount,
+    viewState.zoom,
   ]);
 
   const panelClass = isDark
     ? 'border-slate-800 bg-slate-900/70 text-slate-100 shadow-black/20'
     : 'border-slate-200 bg-white text-slate-950 shadow-slate-200/70';
   const mutedText = isDark ? 'text-slate-300' : 'text-slate-500';
+  const inputClass = [
+    'h-10 w-full rounded-lg border px-3 text-sm outline-none ring-emerald-500/40 transition focus:ring-2',
+    isDark
+      ? 'border-slate-700 bg-slate-950 text-slate-100 placeholder:text-slate-500'
+      : 'border-slate-200 bg-white text-slate-900 placeholder:text-slate-400',
+  ].join(' ');
+  const outlineButtonClass = isDark
+    ? 'border-slate-500 bg-slate-800/90 text-slate-100 hover:bg-slate-700 hover:text-white'
+    : '';
+  const selectStyles = useMemo<StylesConfig<SelectOption, false>>(
+    () => ({
+      control: (base, state) => ({
+        ...base,
+        minHeight: 40,
+        borderRadius: 8,
+        borderColor: state.isFocused ? '#10b981' : isDark ? '#334155' : '#e2e8f0',
+        backgroundColor: isDark ? '#020617' : '#ffffff',
+        boxShadow: state.isFocused ? '0 0 0 2px rgb(16 185 129 / 0.35)' : 'none',
+        ':hover': {
+          borderColor: state.isFocused ? '#10b981' : isDark ? '#475569' : '#cbd5e1',
+        },
+      }),
+      input: (base) => ({
+        ...base,
+        color: isDark ? '#f8fafc' : '#0f172a',
+      }),
+      menu: (base) => ({
+        ...base,
+        zIndex: 80,
+        border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+        backgroundColor: isDark ? '#020617' : '#ffffff',
+        boxShadow: isDark
+          ? '0 18px 40px rgb(0 0 0 / 0.35)'
+          : '0 18px 40px rgb(15 23 42 / 0.12)',
+      }),
+      option: (base, state) => ({
+        ...base,
+        backgroundColor: state.isSelected
+          ? '#059669'
+          : state.isFocused
+            ? isDark
+              ? '#064e3b'
+              : '#ecfdf5'
+            : 'transparent',
+        color: state.isSelected ? '#ffffff' : isDark ? '#f8fafc' : '#0f172a',
+      }),
+      placeholder: (base) => ({
+        ...base,
+        color: isDark ? '#94a3b8' : '#64748b',
+      }),
+      singleValue: (base) => ({
+        ...base,
+        color: isDark ? '#f8fafc' : '#0f172a',
+      }),
+    }),
+    [isDark]
+  );
   const mapButtonClass = [
     'flex h-10 w-10 items-center justify-center rounded-lg border shadow-lg transition hover:scale-[1.03]',
     isDark
       ? 'border-slate-700 bg-slate-950/90 text-slate-100 hover:bg-slate-900'
       : 'border-slate-200 bg-white/95 text-slate-700 hover:bg-slate-50',
   ].join(' ');
+
+  const resetFilters = () => {
+    setBankName('');
+    setSourceCity('');
+    setSourceCityClean('');
+    setReportMonth('');
+    setPage(1);
+  };
+
+  const openDatePicker = () => {
+    reportMonthInputRef.current?.showPicker?.();
+  };
 
   return (
     <div className="space-y-5">
@@ -363,6 +661,99 @@ const AzmapPage: React.FC = () => {
       {isError && <PageError />}
       {!isLoading && !isError && (
         <>
+          <section className={['rounded-xl border p-4 shadow-lg', panelClass].join(' ')}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-500">
+                  <Filter className="h-5 w-5" />
+                </span>
+                <div>
+                  <h2 className="font-semibold">Filterlər</h2>
+                  <p className={['text-sm', mutedText].join(' ')}>
+                    Bank, şəhər, region, kateqoriya və ay üzrə xəritə məlumatlarını süzün.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={outlineButtonClass}
+                disabled={!hasActiveFilters || isFetching}
+                onClick={resetFilters}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Təmizlə
+              </Button>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Bank</span>
+                <Select
+                  inputId="azmap-filter-bank"
+                  isClearable
+                  isLoading={banksLoading}
+                  noOptionsMessage={() => 'Bank tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setBankName(option?.value ?? '')
+                  }
+                  options={bankOptions}
+                  placeholder="Bütün banklar"
+                  styles={selectStyles}
+                  value={selectedBank}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Şəhər</span>
+                <Select
+                  inputId="azmap-filter-city"
+                  isClearable
+                  isLoading={citiesLoading}
+                  noOptionsMessage={() => 'Şəhər tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setSourceCity(option?.value ?? '')
+                  }
+                  options={cityOptions}
+                  placeholder="Bütün şəhərlər"
+                  styles={selectStyles}
+                  value={selectedCity}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Region</span>
+                <Select
+                  inputId="azmap-filter-region"
+                  isClearable
+                  isLoading={regionsLoading}
+                  noOptionsMessage={() => 'Region tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setSourceCityClean(option?.value ?? '')
+                  }
+                  options={regionOptions}
+                  placeholder="Bütün regionlar"
+                  styles={selectStyles}
+                  value={selectedRegion}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Ay</span>
+                <input
+                  ref={reportMonthInputRef}
+                  className={inputClass}
+                  type="date"
+                  value={reportMonth}
+                  onChange={(event) => setReportMonth(event.target.value)}
+                  onClick={openDatePicker}
+                  onFocus={openDatePicker}
+                />
+              </label>
+            </div>
+          </section>
+
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Ümumi qeyd" value={formatNumber(data?.totalCount)} />
             <StatCard label="Ümumi məbləğ" value={formatShortAmount(totalAmount)} />
@@ -374,9 +765,7 @@ const AzmapPage: React.FC = () => {
             <div
               className={[
                 'overflow-hidden rounded-xl border shadow-lg',
-                isDark
-                  ? 'border-slate-800 bg-slate-950'
-                  : 'border-slate-200 bg-slate-50',
+                isDark ? 'border-slate-800 bg-slate-950' : 'border-slate-200 bg-slate-50',
               ].join(' ')}
             >
               <div className="space-y-3 border-b border-white/10 px-4 py-3">
@@ -392,7 +781,7 @@ const AzmapPage: React.FC = () => {
                   <p className={['mt-1 text-sm', mutedText].join(' ')}>
                     {mapMode === 'points'
                       ? 'Marker ölçüsü şəhər üzrə ümumi məbləğə görə hesablanır.'
-                      : 'Heatmap sıxlığı şəhər və region üzrə əməliyyat həcmini göstərir.'}
+                      : 'İstilik xəritəsinin sıxlığı şəhər və region üzrə əməliyyat həcmini göstərir.'}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
@@ -406,7 +795,7 @@ const AzmapPage: React.FC = () => {
                   >
                     {[
                       { label: 'Nöqtələr', value: 'points' as const },
-                      { label: 'Heatmap', value: 'heatmap' as const },
+                      { label: 'İstilik xəritəsi', value: 'heatmap' as const },
                     ].map((item) => (
                       <button
                         key={item.value}
@@ -432,7 +821,9 @@ const AzmapPage: React.FC = () => {
                 ref={mapContainerRef}
                 className={[
                   'relative',
-                  isFullscreen ? 'h-screen min-h-screen w-screen' : 'h-[520px] min-h-[420px]',
+                  isFullscreen
+                    ? 'h-screen min-h-screen w-screen'
+                    : 'h-[520px] min-h-[420px]',
                   isDark
                     ? 'bg-[radial-gradient(circle_at_50%_40%,rgba(16,185,129,0.18),rgba(2,6,23,0.98)_58%)]'
                     : 'bg-[radial-gradient(circle_at_50%_40%,rgba(187,247,208,0.55),rgba(248,250,252,1)_62%)]',
@@ -520,7 +911,7 @@ const AzmapPage: React.FC = () => {
                           : 'border-slate-200 bg-white/95 text-slate-700',
                     ].join(' ')}
                   >
-                    {isHeatmapError ? 'Heatmap API yüklənmədi' : 'Heatmap yüklənir...'}
+                    {isHeatmapError ? 'İstilik xəritəsi yüklənmədi' : 'İstilik xəritəsi yüklənir...'}
                   </div>
                 )}
                 <div
@@ -558,7 +949,22 @@ const AzmapPage: React.FC = () => {
                   controller
                   getTooltip={({ object }) => {
                     if (!object) return null;
-                    const point = object as CityPoint;
+                    const point = object as ClusteredCityPoint;
+
+                    if (point.isCluster) {
+                      return {
+                        html: `
+                          <div style="padding: 4px; font-family: sans-serif;">
+                            <strong style="color: #6366f1;">Qruplaşdırılmış Bölgə (${point.pointCount} şəhər)</strong><br/>
+                            <span style="color: #94a3b8; font-size: 11px;">${point.city}</span><br/>
+                            <div style="margin-top: 6px; border-top: 1px solid #334155; padding-top: 4px;">
+                              <strong>Məbləğ:</strong> ${formatAmount(point.totalAmount)}<br/>
+                              <strong>Əməliyyat:</strong> ${formatNumber(point.totalCount)}
+                            </div>
+                          </div>
+                        `,
+                      };
+                    }
 
                     return {
                       html: `<strong>${point.city}</strong><br/>Məbləğ: ${formatAmount(point.totalAmount)}<br/>Say: ${formatNumber(point.totalCount)}`,
@@ -585,9 +991,9 @@ const AzmapPage: React.FC = () => {
                     <BarChart3 className="h-5 w-5" />
                   </span>
                   <div>
-                    <h3 className="font-semibold">Top regionlar</h3>
+                    <h3 className="font-semibold">Ən böyük regionlar</h3>
                     <p className={['text-sm', mutedText].join(' ')}>
-                      Məbləğ üzrə aggregate
+                      Məbləğ üzrə ümumiləşdirmə
                     </p>
                   </div>
                 </div>

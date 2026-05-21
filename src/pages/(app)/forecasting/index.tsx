@@ -7,6 +7,7 @@ import {
   LineChart as LineChartIcon,
   Play,
   RefreshCw,
+  RotateCcw,
   TrendingUp,
 } from 'lucide-react';
 import {
@@ -74,7 +75,17 @@ type SelectOption = {
   value: string;
 };
 
-const HORIZON_OPTIONS = [3, 6, 9, 12, 24];
+type HorizonOption = {
+  label: string;
+  value: number;
+};
+
+const DEFAULT_HORIZON = 6;
+const HORIZON_OPTIONS = [3, DEFAULT_HORIZON, 9, 12, 24];
+const HORIZON_SELECT_OPTIONS: HorizonOption[] = HORIZON_OPTIONS.map((option) => ({
+  label: `${option} ay`,
+  value: option,
+}));
 
 function formatPercent(value: number | null | undefined) {
   return `${formatAmount(value)}%`;
@@ -334,7 +345,7 @@ function ModelQualityChart({ data }: { data: ModelPoint[] }) {
 const ForecastingPage: React.FC = () => {
   const isDark = useShellTheme();
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [horizon, setHorizon] = useState(6);
+  const [horizon, setHorizon] = useState(DEFAULT_HORIZON);
   const [selectedBank, setSelectedBank] = useState<SelectOption | null>(null);
   const [selectedMcc, setSelectedMcc] = useState<SelectOption | null>(null);
   const { data: banks = [], isLoading: banksLoading } = useGetGeneralBanksQuery();
@@ -360,7 +371,7 @@ const ForecastingPage: React.FC = () => {
         .map((bank) => ({
           id: bank.id,
           label: bank.bankName,
-          value: bank.bankName,
+          value: bank.id,
         })),
     [banks]
   );
@@ -431,6 +442,7 @@ const ForecastingPage: React.FC = () => {
     }),
     [isDark]
   );
+  const horizonSelectStyles = selectStyles as unknown as StylesConfig<HorizonOption, false>;
   const results = useMemo(() => normalizeForecastResults(data), [data]);
   const selectedForecast = results[selectedIndex] ?? results[0];
   const forecastPoints = useMemo(() => getForecasts(selectedForecast), [selectedForecast]);
@@ -440,7 +452,7 @@ const ForecastingPage: React.FC = () => {
       results.map((item) => ({
         bankName: item.bankName ?? 'Naməlum bank',
         mccGroup: item.mccGroup ?? 'Naməlum MCC',
-        modelUsed: item.modelUsed ?? 'Naməlum model',
+        modelUsed: item.modelUsed ?? 'Naməlum alqoritm',
         accuracy: item.accuracy,
         confidenceLevel: item.confidenceLevel,
         forecastCount: item.forecasts?.length ?? 0,
@@ -452,7 +464,7 @@ const ForecastingPage: React.FC = () => {
     const map = new Map<string, ModelSummary & { accuracies: number[]; confidences: number[] }>();
 
     results.forEach((item) => {
-      const label = item.modelUsed ?? 'Naməlum model';
+      const label = item.modelUsed ?? 'Naməlum alqoritm';
       const current = map.get(label);
 
       if (current) {
@@ -475,7 +487,12 @@ const ForecastingPage: React.FC = () => {
     });
 
     return Array.from(map.values())
-      .map(({ accuracies: _accuracies, confidences: _confidences, ...item }) => item)
+      .map((item) => ({
+        label: item.label,
+        accuracy: item.accuracy,
+        confidence: item.confidence,
+        count: item.count,
+      }))
       .sort((a, b) => b.accuracy - a.accuracy);
   }, [results]);
 
@@ -483,7 +500,7 @@ const ForecastingPage: React.FC = () => {
     () => [
       { accessorKey: 'bankName', header: 'Bank' },
       { accessorKey: 'mccGroup', header: 'MCC qrup' },
-      { accessorKey: 'modelUsed', header: 'Model' },
+      { accessorKey: 'modelUsed', header: 'Alqoritm' },
       {
         accessorKey: 'accuracy',
         header: 'Dəqiqlik',
@@ -508,13 +525,28 @@ const ForecastingPage: React.FC = () => {
   const avgAccuracy = average(results.map((item) => item.accuracy));
   const avgConfidence = average(results.map((item) => item.confidenceLevel));
   const trainBusy = trainGlobalState.isLoading || trainAllState.isLoading;
+  const selectedHorizon =
+    HORIZON_SELECT_OPTIONS.find((option) => option.value === horizon) ?? null;
+  const hasActiveFilters = Boolean(
+    selectedBank || selectedMcc || horizon !== DEFAULT_HORIZON
+  );
+  const outlineButtonClass = isDark
+    ? 'border-slate-700 bg-slate-900 text-slate-100 hover:bg-slate-800 hover:text-slate-100'
+    : undefined;
+
+  const resetFilters = () => {
+    setSelectedIndex(0);
+    setSelectedBank(null);
+    setSelectedMcc(null);
+    setHorizon(DEFAULT_HORIZON);
+  };
 
   return (
     <div className="space-y-5">
       <DataPageHeader
         eyebrow="Proqnoz"
         title="Proqnozlaşdırma"
-        description="Bank və MCC qrupları üzrə model keyfiyyəti, etibar intervalı və növbəti ay proqnozları."
+        description="Bank və MCC qrupları üzrə alqoritm keyfiyyəti, etibar intervalı və növbəti ay proqnozları."
         icon={TrendingUp}
         tone="blue"
       />
@@ -523,7 +555,7 @@ const ForecastingPage: React.FC = () => {
       {!isLoading && !isError && (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Model nəticəsi" value={formatNumber(results.length)} />
+            <StatCard label="Alqoritm nəticəsi" value={formatNumber(results.length)} />
             <StatCard label="Proqnoz məbləği" value={formatShortAmount(totalPredictedAmount)} />
             <StatCard label="Proqnoz sayı" value={formatNumber(totalPredictedCount)} />
             <StatCard label="Orta dəqiqlik" value={formatPercent(avgAccuracy)} />
@@ -537,14 +569,29 @@ const ForecastingPage: React.FC = () => {
                 : 'border-slate-200 bg-white text-slate-950 shadow-slate-200/70',
             ].join(' ')}
           >
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <h2 className="font-semibold">Proqnoz filterləri</h2>
-                <p className={['mt-1 text-sm', isDark ? 'text-slate-300' : 'text-slate-500'].join(' ')}>
-                  Bank, MCC qrupu və gələcək neçə ay üçün proqnoz gətiriləcəyini seçin.
-                </p>
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="font-semibold">Proqnoz filterləri</h2>
+                  <p className={['mt-1 text-sm', isDark ? 'text-slate-300' : 'text-slate-500'].join(' ')}>
+                    Bank, MCC qrupu və gələcək neçə ay üçün proqnoz gətiriləcəyini seçin.
+                  </p>
+                </div>
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className={outlineButtonClass}
+                    disabled={!hasActiveFilters || isFetching}
+                    onClick={resetFilters}
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                    Təmizlə
+                  </Button>
+                </div>
               </div>
-              <div className="grid w-full gap-3 md:grid-cols-[minmax(190px,1fr)_minmax(220px,1fr)_120px] xl:w-auto xl:min-w-[640px]">
+              <div className="grid w-full gap-3 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_160px]">
                 <label className="space-y-1.5 text-sm font-medium">
                   <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>Bank</span>
                   <Select
@@ -578,26 +625,19 @@ const ForecastingPage: React.FC = () => {
                   />
                 </label>
                 <label className="space-y-1.5 text-sm font-medium">
-                  <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>Horizon</span>
-                  <select
-                    className={[
-                      'h-10 w-full rounded-lg border px-3 text-sm outline-none ring-blue-500/40 transition focus:ring-2',
-                      isDark
-                        ? 'border-slate-700 bg-slate-950 text-slate-100'
-                        : 'border-slate-200 bg-white text-slate-900',
-                    ].join(' ')}
-                    onChange={(event) => {
+                  <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>Üfüq</span>
+                  <Select
+                    inputId="forecasting-filter-horizon"
+                    isSearchable={false}
+                    onChange={(option: SingleValue<HorizonOption>) => {
                       setSelectedIndex(0);
-                      setHorizon(Number(event.target.value));
+                      setHorizon(option?.value ?? DEFAULT_HORIZON);
                     }}
-                    value={horizon}
-                  >
-                    {HORIZON_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option} ay
-                      </option>
-                    ))}
-                  </select>
+                    options={HORIZON_SELECT_OPTIONS}
+                    placeholder="Üfüq"
+                    styles={horizonSelectStyles}
+                    value={selectedHorizon}
+                  />
                 </label>
               </div>
             </div>
@@ -617,9 +657,9 @@ const ForecastingPage: React.FC = () => {
                   <BrainCircuit className="h-5 w-5" />
                 </span>
                 <div>
-                  <h2 className="font-semibold">Proqnoz model idarəetməsi</h2>
+                  <h2 className="font-semibold">Proqnoz alqoritminin idarəetməsi</h2>
                   <p className={['text-sm', isDark ? 'text-slate-300' : 'text-slate-500'].join(' ')}>
-                    Model hazırlama və ümumi proqnoz nəticələrini yeniləmə
+                    Alqoritm hazırlama və ümumi proqnoz nəticələrini yeniləmə
                   </p>
                 </div>
               </div>
@@ -631,7 +671,7 @@ const ForecastingPage: React.FC = () => {
                   type="button"
                 >
                   <Play className="mr-2 h-4 w-4" />
-                  Qlobal modeli hazırla
+                  Qlobal alqoritmi hazırla
                 </Button>
                 <Button
                   disabled={trainBusy}
@@ -639,11 +679,7 @@ const ForecastingPage: React.FC = () => {
                   size="sm"
                   type="button"
                   variant="outline"
-                  className={
-                    isDark
-                      ? 'border-slate-700 bg-slate-900 text-slate-100 hover:bg-slate-800 hover:text-slate-100'
-                      : undefined
-                  }
+                  className={outlineButtonClass}
                 >
                   <RefreshCw className="mr-2 h-4 w-4" />
                   Hamısını hazırla
@@ -652,12 +688,12 @@ const ForecastingPage: React.FC = () => {
             </div>
             {(trainGlobalState.isError || trainAllState.isError) && (
               <p className="mt-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-400">
-                Model hazırlama sorğusu uğursuz oldu.
+                Alqoritm hazırlama sorğusu uğursuz oldu.
               </p>
             )}
             {(trainGlobalState.isSuccess || trainAllState.isSuccess) && !isFetching && (
               <p className="mt-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
-                Model hazırlama sorğusu tamamlandı.
+                Alqoritm hazırlama sorğusu tamamlandı.
               </p>
             )}
           </section>
@@ -687,7 +723,7 @@ const ForecastingPage: React.FC = () => {
                       {item.bankName ?? 'Naməlum bank'}
                     </span>
                     <span className={['mt-1 block truncate text-xs', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
-                      {item.mccGroup ?? 'Naməlum MCC'} • {item.modelUsed ?? 'Model'}
+                      {item.mccGroup ?? 'Naməlum MCC'} • {item.modelUsed ?? 'Alqoritm'}
                     </span>
                   </button>
                 ))}
@@ -714,7 +750,7 @@ const ForecastingPage: React.FC = () => {
 
             <Panel
               icon={BrainCircuit}
-              title="Model keyfiyyət matrisi"
+              title="Alqoritm keyfiyyət matrisi"
               subtitle={`Orta etibar səviyyəsi: ${formatPercent(avgConfidence)}`}
             >
               <ModelQualityChart data={modelPoints} />
@@ -727,7 +763,7 @@ const ForecastingPage: React.FC = () => {
                 key={model.label}
                 icon={TrendingUp}
                 title={model.label}
-                subtitle={`${formatNumber(model.count)} nəticə üzrə model göstəricisi`}
+                subtitle={`${formatNumber(model.count)} nəticə üzrə alqoritm göstəricisi`}
               >
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div

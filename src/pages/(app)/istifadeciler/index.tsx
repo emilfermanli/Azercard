@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { Eye, Filter, Plus, RotateCcw, ShieldPlus, Users } from 'lucide-react';
+import {
+  Eye,
+  Filter,
+  Pencil,
+  Plus,
+  RotateCcw,
+  ShieldPlus,
+  Trash2,
+  Users,
+} from 'lucide-react';
+import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
 import { Button, DataPagination, DataTable, LoadingSpinner } from '@/components';
 import type { UserListRow } from '@/types/user.type';
@@ -17,9 +27,16 @@ import { dataTableActionButtonClass } from '@/utils/data-table-action-button';
 
 import { AssignRoleModal } from './_assign-role-modal';
 import { UserCreateModal } from './_user-create-modal';
+import { UserDeleteModal } from './_user-delete-modal';
+import { UserEditModal } from './_user-edit-modal';
 import { UserViewModal } from './_user-view-modal';
 
 const PAGE_SIZE = 10;
+
+type SelectOption = {
+  label: string;
+  value: string;
+};
 
 const IstifadecilerPage: React.FC = () => {
   const isDark = useShellTheme();
@@ -31,11 +48,14 @@ const IstifadecilerPage: React.FC = () => {
   const [positionId, setPositionId] = useState('');
   const [viewUser, setViewUser] = useState<UserListRow | null>(null);
   const [assignUser, setAssignUser] = useState<UserListRow | null>(null);
+  const [editUser, setEditUser] = useState<UserListRow | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<UserListRow | null>(null);
   const debouncedSearch = useDebouncedValue(search.trim(), 450);
-  const { data: roles = [] } = useGetAllRolesQuery();
-  const { data: departments = [] } = useGetDepartmentsQuery();
-  const { data: positions = [] } = useGetPositionsQuery();
+  const { data: roles = [], isLoading: rolesLoading } = useGetAllRolesQuery();
+  const { data: departments = [], isLoading: departmentsLoading } =
+    useGetDepartmentsQuery();
+  const { data: positions = [], isLoading: positionsLoading } = useGetPositionsQuery();
 
   useEffect(() => {
     setQuerySearch(debouncedSearch);
@@ -65,12 +85,23 @@ const IstifadecilerPage: React.FC = () => {
         ),
       },
       {
-        accessorKey: 'userName',
-        header: 'İstifadəçi adı',
+        accessorKey: 'firstName',
+        header: 'Ad',
+        cell: ({ row }) => row.original.firstName || <span className={muted}>—</span>,
+      },
+      {
+        accessorKey: 'lastName',
+        header: 'Soyad',
+        cell: ({ row }) => row.original.lastName || <span className={muted}>—</span>,
       },
       {
         accessorKey: 'email',
         header: 'E-poçt',
+      },
+      {
+        accessorKey: 'phoneNumber',
+        header: 'Mobil nömrə',
+        cell: ({ row }) => row.original.phoneNumber || <span className={muted}>—</span>,
       },
       {
         id: 'roles',
@@ -146,11 +177,31 @@ const IstifadecilerPage: React.FC = () => {
               type="button"
               variant="ghost"
               size="icon"
+              className={cn('h-9 w-9', dataTableActionButtonClass(isDark, 'edit'))}
+              aria-label="Redaktə et"
+              onClick={() => setEditUser(row.original)}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
               className={cn('h-9 w-9', dataTableActionButtonClass(isDark, 'assignRole'))}
               aria-label="Rol təyin et"
               onClick={() => setAssignUser(row.original)}
             >
               <ShieldPlus className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={cn('h-9 w-9', dataTableActionButtonClass(isDark, 'delete'))}
+              aria-label="Sil"
+              onClick={() => setDeleteTarget(row.original)}
+            >
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         ),
@@ -190,8 +241,68 @@ const IstifadecilerPage: React.FC = () => {
       ? 'border-slate-700 bg-slate-950 text-slate-100 placeholder:text-slate-500'
       : 'border-slate-200 bg-white text-slate-900 placeholder:text-slate-400',
   ].join(' ');
-  const selectClass = inputClass;
   const hasActiveFilters = Boolean(search || role || departmentId || positionId);
+  const selectOptions = useMemo(
+    () => ({
+      roles: roles.map((item) => ({ label: item.name, value: item.name })),
+      departments: departments.map((item) => ({ label: item.name, value: item.id })),
+      positions: positions.map((item) => ({ label: item.name, value: item.id })),
+    }),
+    [departments, positions, roles]
+  );
+  const selectStyles = useMemo<StylesConfig<SelectOption, false>>(
+    () => ({
+      control: (base, state) => ({
+        ...base,
+        minHeight: 40,
+        borderRadius: 8,
+        borderColor: state.isFocused ? '#3b82f6' : isDark ? '#334155' : '#e2e8f0',
+        backgroundColor: isDark ? '#020617' : '#ffffff',
+        boxShadow: state.isFocused ? '0 0 0 2px rgb(59 130 246 / 0.4)' : 'none',
+        ':hover': {
+          borderColor: state.isFocused ? '#3b82f6' : isDark ? '#475569' : '#cbd5e1',
+        },
+      }),
+      input: (base) => ({
+        ...base,
+        color: isDark ? '#f8fafc' : '#0f172a',
+      }),
+      menu: (base) => ({
+        ...base,
+        zIndex: 80,
+        border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+        backgroundColor: isDark ? '#020617' : '#ffffff',
+        boxShadow: isDark
+          ? '0 18px 40px rgb(0 0 0 / 0.35)'
+          : '0 18px 40px rgb(15 23 42 / 0.12)',
+      }),
+      option: (base, state) => ({
+        ...base,
+        backgroundColor: state.isSelected
+          ? '#2563eb'
+          : state.isFocused
+            ? isDark
+              ? '#1e293b'
+              : '#eff6ff'
+            : 'transparent',
+        color: state.isSelected ? '#ffffff' : isDark ? '#f8fafc' : '#0f172a',
+      }),
+      placeholder: (base) => ({
+        ...base,
+        color: isDark ? '#94a3b8' : '#64748b',
+      }),
+      singleValue: (base) => ({
+        ...base,
+        color: isDark ? '#f8fafc' : '#0f172a',
+      }),
+    }),
+    [isDark]
+  );
+  const selectedRole = selectOptions.roles.find((item) => item.value === role) ?? null;
+  const selectedDepartment =
+    selectOptions.departments.find((item) => item.value === departmentId) ?? null;
+  const selectedPosition =
+    selectOptions.positions.find((item) => item.value === positionId) ?? null;
 
   const resetFilters = () => {
     setSearch('');
@@ -210,10 +321,20 @@ const IstifadecilerPage: React.FC = () => {
         onClose={() => setAssignUser(null)}
       />
       <UserCreateModal open={createOpen} onClose={() => setCreateOpen(false)} />
+      <UserEditModal
+        open={editUser !== null}
+        user={editUser}
+        onClose={() => setEditUser(null)}
+      />
       <UserViewModal
         open={viewUser !== null}
         user={viewUser}
         onClose={() => setViewUser(null)}
+      />
+      <UserDeleteModal
+        open={deleteTarget !== null}
+        user={deleteTarget}
+        onClose={() => setDeleteTarget(null)}
       />
 
       <div className={['rounded-xl border p-4 shadow-lg sm:p-5', headerPanel].join(' ')}>
@@ -315,59 +436,56 @@ const IstifadecilerPage: React.FC = () => {
 
               <label className="space-y-1.5 text-sm font-medium">
                 <span className={muted}>Rol</span>
-                <select
-                  className={selectClass}
-                  value={role}
-                  onChange={(event) => {
-                    setRole(event.target.value);
+                <Select
+                  inputId="users-filter-role"
+                  isClearable
+                  isLoading={rolesLoading}
+                  noOptionsMessage={() => 'Rol tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) => {
+                    setRole(option?.value ?? '');
                     setQueryPageNumber(1);
                   }}
-                >
-                  <option value="">Bütün rollar</option>
-                  {roles.map((item) => (
-                    <option key={item.name} value={item.name}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
+                  options={selectOptions.roles}
+                  placeholder="Bütün rollar"
+                  styles={selectStyles}
+                  value={selectedRole}
+                />
               </label>
 
               <label className="space-y-1.5 text-sm font-medium">
                 <span className={muted}>Departament</span>
-                <select
-                  className={selectClass}
-                  value={departmentId}
-                  onChange={(event) => {
-                    setDepartmentId(event.target.value);
+                <Select
+                  inputId="users-filter-department"
+                  isClearable
+                  isLoading={departmentsLoading}
+                  noOptionsMessage={() => 'Departament tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) => {
+                    setDepartmentId(option?.value ?? '');
                     setQueryPageNumber(1);
                   }}
-                >
-                  <option value="">Bütün departamentlər</option>
-                  {departments.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
+                  options={selectOptions.departments}
+                  placeholder="Bütün departamentlər"
+                  styles={selectStyles}
+                  value={selectedDepartment}
+                />
               </label>
 
               <label className="space-y-1.5 text-sm font-medium">
                 <span className={muted}>Pozisiya</span>
-                <select
-                  className={selectClass}
-                  value={positionId}
-                  onChange={(event) => {
-                    setPositionId(event.target.value);
+                <Select
+                  inputId="users-filter-position"
+                  isClearable
+                  isLoading={positionsLoading}
+                  noOptionsMessage={() => 'Pozisiya tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) => {
+                    setPositionId(option?.value ?? '');
                     setQueryPageNumber(1);
                   }}
-                >
-                  <option value="">Bütün pozisiyalar</option>
-                  {positions.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.name}
-                    </option>
-                  ))}
-                </select>
+                  options={selectOptions.positions}
+                  placeholder="Bütün pozisiyalar"
+                  styles={selectStyles}
+                  value={selectedPosition}
+                />
               </label>
             </div>
           </section>

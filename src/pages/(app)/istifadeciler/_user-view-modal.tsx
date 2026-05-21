@@ -77,20 +77,43 @@ export function UserViewModal({ open, user, onClose }: Props) {
         </div>
 
         <div className="flex flex-col gap-4">
-          <div>
-            <p className={cn('text-xs font-medium uppercase tracking-wide', muted)}>İstifadəçi adı</p>
-            <p className="mt-1 text-sm font-medium">{user.userName || '—'}</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className={cn('text-xs font-medium uppercase tracking-wide', muted)}>
+                Ad
+              </p>
+              <p className="mt-1 text-sm font-medium">{user.firstName || '—'}</p>
+            </div>
+            <div>
+              <p className={cn('text-xs font-medium uppercase tracking-wide', muted)}>
+                Soyad
+              </p>
+              <p className="mt-1 text-sm font-medium">{user.lastName || '—'}</p>
+            </div>
           </div>
           <div>
-            <p className={cn('text-xs font-medium uppercase tracking-wide', muted)}>E-poçt</p>
+            <p className={cn('text-xs font-medium uppercase tracking-wide', muted)}>
+              E-poçt
+            </p>
             <p className="mt-1 text-sm">{user.email || '—'}</p>
           </div>
           <div>
-            <p className={cn('text-xs font-medium uppercase tracking-wide', muted)}>Rollar</p>
+            <p className={cn('text-xs font-medium uppercase tracking-wide', muted)}>
+              Mobil nömrə
+            </p>
+            <p className="mt-1 text-sm">{user.phoneNumber || '—'}</p>
+          </div>
+          <div>
+            <p className={cn('text-xs font-medium uppercase tracking-wide', muted)}>
+              Rollar
+            </p>
             {user.roleNames.length > 0 ? (
               <div className="mt-2 flex flex-wrap gap-2">
                 {user.roleNames.map((role) => (
-                  <span key={role} className={cn('rounded-md px-2 py-1 text-xs font-semibold', badgeClass)}>
+                  <span
+                    key={role}
+                    className={cn('rounded-md px-2 py-1 text-xs font-semibold', badgeClass)}
+                  >
                     {role}
                   </span>
                 ))}

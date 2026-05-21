@@ -1,5 +1,6 @@
 import type {
   AssignRolePayload,
+  EditUserPayload,
   GetAllUsersParams,
   GetAllUsersResult,
   RegisterUserPayload,
@@ -39,6 +40,23 @@ export const userApi = createApi({
       }),
       invalidatesTags: [{ type: 'User', id: 'LIST' }],
     }),
+    removeRole: builder.mutation<unknown, AssignRolePayload>({
+      query: (body) => ({
+        url: 'Auth/remove-role',
+        method: 'DELETE',
+        body,
+      }),
+      invalidatesTags: [{ type: 'User', id: 'LIST' }],
+    }),
+    editUser: builder.mutation<unknown, EditUserPayload>({
+      query: ({ userId, ...body }) => ({
+        url: 'Auth/edit',
+        method: 'PUT',
+        params: { userId },
+        body,
+      }),
+      invalidatesTags: [{ type: 'User', id: 'LIST' }],
+    }),
     registerUser: builder.mutation<unknown, RegisterUserPayload>({
       query: (body) => ({
         url: 'Auth/register',
@@ -47,8 +65,22 @@ export const userApi = createApi({
       }),
       invalidatesTags: [{ type: 'User', id: 'LIST' }],
     }),
+    deleteUser: builder.mutation<unknown, string>({
+      query: (userId) => ({
+        url: 'Auth/delete/User',
+        method: 'DELETE',
+        params: { userId },
+      }),
+      invalidatesTags: [{ type: 'User', id: 'LIST' }],
+    }),
   }),
 });
 
-export const { useGetAllUsersQuery, useAssignRoleMutation, useRegisterUserMutation } =
-  userApi;
+export const {
+  useGetAllUsersQuery,
+  useAssignRoleMutation,
+  useRemoveRoleMutation,
+  useEditUserMutation,
+  useRegisterUserMutation,
+  useDeleteUserMutation,
+} = userApi;

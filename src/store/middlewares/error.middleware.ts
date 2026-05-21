@@ -11,7 +11,7 @@ type RejectedPayload = {
   data?: unknown;
 };
 
-const locallyHandledErrorEndpoints = new Set(['createRole', 'registerUser']);
+const locallyHandledErrorEndpoints = new Set(['createRole', 'registerUser', 'editUser']);
 
 export const ErrorMiddleware: Middleware =
   (api: MiddlewareAPI) => (next) => (action: any) => {
@@ -33,7 +33,7 @@ export const ErrorMiddleware: Middleware =
             }`);
 
       if (!endpointName || !locallyHandledErrorEndpoints.has(endpointName)) {
-        toast({ description });
+        toast({ description, variant: 'destructive' });
       }
 
       const status = parseApiErrorStatusCode(data, payload?.status);

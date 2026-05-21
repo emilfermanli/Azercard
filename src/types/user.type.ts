@@ -9,6 +9,11 @@ export interface CurrentUserApiResponse {
 export interface UserListItemApi {
   id: string;
   userName: string;
+  firstName?: string | null;
+  lastName?: string | null;
+  phoneNumber?: string | null;
+  departmentId?: string | null;
+  positionId?: string | null;
   email: string;
   roleName: string[];
 }
@@ -62,10 +67,25 @@ export type RegisterUserPayload = {
   positionId: string;
 };
 
+export type EditUserPayload = {
+  userId: string;
+  email: string;
+  phone: string;
+  firstName: string;
+  lastName: string;
+  departmentId: string | null;
+  positionId: string | null;
+};
+
 /** Cədvəl üçün sadələşdirilmiş sətir */
 export interface UserListRow {
   id: string;
   userName: string;
+  firstName: string;
+  lastName: string;
+  phoneNumber: string;
+  departmentId: string;
+  positionId: string;
   email: string;
   /** Trim edilmiş, boş olmayan rol adları (sıra API-dakı kimi) */
   roleNames: string[];

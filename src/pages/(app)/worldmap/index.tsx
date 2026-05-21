@@ -3,6 +3,7 @@ import DeckGL from '@deck.gl/react';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import { ArcLayer, BitmapLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers';
 import { TileLayer } from '@deck.gl/geo-layers';
+import { FlyToInterpolator } from '@deck.gl/core';
 import type { MapViewState, ViewStateChangeParameters } from '@deck.gl/core';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
@@ -77,6 +78,11 @@ type HeatmapPoint = {
   totalCount: number;
 };
 
+type ClusteredHeatmapPoint = HeatmapPoint & {
+  isCluster: boolean;
+  pointCount: number;
+};
+
 const INITIAL_VIEW_STATE = {
   longitude: 48,
   latitude: 34,
@@ -98,8 +104,8 @@ const BASE_MAP_TILE_URL: Record<BaseMapStyle, string> = {
 const BASE_MAP_OPTIONS: { label: string; value: BaseMapStyle }[] = [
   { label: 'Qara', value: 'dark' },
   { label: 'Açıq', value: 'light' },
-  { label: 'Voyager', value: 'voyager' },
-  { label: 'Minimal', value: 'minimal' },
+  { label: 'Səyahət', value: 'voyager' },
+  { label: 'Sadə', value: 'minimal' },
 ];
 const WORLD_TILE_LONGITUDE_OFFSETS = [-720, -360, 0, 360, 720];
 
@@ -156,6 +162,20 @@ function formatShortAmount(value: number) {
   if (value >= 1_000_000) return `${formatAmount(value / 1_000_000)} mln`;
   if (value >= 1_000) return `${formatAmount(value / 1_000)} min`;
   return formatAmount(value);
+}
+
+function translateCategory(value: string | null | undefined) {
+  const text = value?.trim();
+  if (!text) return 'Naməlum';
+
+  const translations: Record<string, string> = {
+    Domestic: 'Daxili',
+    Foreign: 'Xarici',
+    Local: 'Yerli',
+    International: 'Beynəlxalq',
+  };
+
+  return translations[text] ?? text;
 }
 
 function normalizeHeatmapResponse(
@@ -263,6 +283,8 @@ const WorldmapPage: React.FC = () => {
         ...current,
         ...mapViewState,
         zoom: Math.min(MAP_MAX_ZOOM, Math.max(MAP_MIN_ZOOM, mapViewState.zoom)),
+        transitionDuration: undefined,
+        transitionInterpolator: undefined,
       };
     });
   };
@@ -271,6 +293,8 @@ const WorldmapPage: React.FC = () => {
     setViewState((current) => ({
       ...current,
       zoom: Math.min(MAP_MAX_ZOOM, Math.max(MAP_MIN_ZOOM, current.zoom + delta)),
+      transitionDuration: 400,
+      transitionInterpolator: new FlyToInterpolator({ speed: 1.2 }),
     }));
   };
 
@@ -296,12 +320,12 @@ const WorldmapPage: React.FC = () => {
       },
       {
         accessorKey: 'isIssuing',
-        header: 'Issuing',
+        header: 'Emitent',
         cell: ({ getValue }) => (toBool(getValue() as boolean | number) ? 'Bəli' : 'Xeyr'),
       },
       {
         accessorKey: 'isAcquiring',
-        header: 'Acquiring',
+        header: 'Ekvayrinq',
         cell: ({ getValue }) => (toBool(getValue() as boolean | number) ? 'Bəli' : 'Xeyr'),
       },
       {
@@ -370,12 +394,12 @@ const WorldmapPage: React.FC = () => {
       [
         {
           country: sourceCountry,
-          category: item.sourceCountryCategory ?? 'Unknown',
+          category: translateCategory(item.sourceCountryCategory),
           position: sourcePosition,
         },
         {
           country: targetCountry,
-          category: item.targetCountryCategory ?? 'Unknown',
+          category: translateCategory(item.targetCountryCategory),
           position: targetPosition,
         },
       ].forEach((point) => {
@@ -442,6 +466,62 @@ const WorldmapPage: React.FC = () => {
     () => normalizeHeatmapResponse(heatmapData, mapData.countryPoints),
     [heatmapData, mapData.countryPoints]
   );
+
+  const clusteredHeatmapPoints = useMemo<ClusteredHeatmapPoint[]>(() => {
+    const zoom = viewState.zoom ?? 1.35;
+    if (zoom >= 4.0) {
+      return heatmapPoints.map((p) => ({ ...p, isCluster: false, pointCount: 1 }));
+    }
+
+    const threshold = 18.0 / Math.pow(2, zoom - 1);
+    const result: ClusteredHeatmapPoint[] = [];
+
+    heatmapPoints.forEach((point) => {
+      let merged = false;
+      for (const cluster of result) {
+        const dist = Math.sqrt(
+          Math.pow(point.position[0] - cluster.position[0], 2) +
+          Math.pow(point.position[1] - cluster.position[1], 2)
+        );
+        if (dist < threshold) {
+          const totalWt = cluster.weight + point.weight;
+          if (totalWt > 0) {
+            cluster.position[0] =
+              (cluster.position[0] * cluster.weight +
+                point.position[0] * point.weight) /
+              totalWt;
+            cluster.position[1] =
+              (cluster.position[1] * cluster.weight +
+                point.position[1] * point.weight) /
+              totalWt;
+          } else {
+            cluster.position[0] = (cluster.position[0] + point.position[0]) / 2;
+            cluster.position[1] = (cluster.position[1] + point.position[1]) / 2;
+          }
+          cluster.weight += point.weight;
+          cluster.totalCount += point.totalCount;
+          cluster.pointCount += 1;
+          cluster.isCluster = true;
+
+          if (!cluster.country.includes(point.country)) {
+            cluster.country = `${cluster.country}, ${point.country}`;
+          }
+          merged = true;
+          break;
+        }
+      }
+
+      if (!merged) {
+        result.push({
+          ...point,
+          isCluster: false,
+          pointCount: 1,
+        });
+      }
+    });
+
+    return result.sort((a, b) => b.weight - a.weight);
+  }, [heatmapPoints, viewState.zoom]);
   const maxHeatmapWeight = useMemo(
     () => Math.max(...heatmapPoints.map((point) => point.weight), 1),
     [heatmapPoints]
@@ -489,6 +569,15 @@ const WorldmapPage: React.FC = () => {
     ];
 
     if (mapMode === 'heatmap') {
+      const getLabelText = (point: ClusteredHeatmapPoint) => {
+        if (point.isCluster) {
+          const parts = point.country.split(', ');
+          const primary = parts[0];
+          return `${primary} (+${point.pointCount - 1})`;
+        }
+        return point.country;
+      };
+
       return [
         ...baseLayers,
         new HeatmapLayer<HeatmapPoint>({
@@ -509,28 +598,43 @@ const WorldmapPage: React.FC = () => {
           ],
           pickable: false,
         }),
-        new ScatterplotLayer<HeatmapPoint>({
+        new ScatterplotLayer<ClusteredHeatmapPoint>({
           id: 'worldmap-heatmap-points',
-          data: heatmapPoints,
+          data: clusteredHeatmapPoints,
           getPosition: (point) => point.position,
-          getRadius: (point) => 55_000 + (point.weight / maxHeatmapWeight) * 260_000,
-          getFillColor: [255, 255, 255, 60],
-          getLineColor: [255, 255, 255, 210],
-          lineWidthMinPixels: 1,
+          getRadius: (point) =>
+            point.isCluster
+              ? 110_000 + point.pointCount * 15_000
+              : 55_000 + (point.weight / maxHeatmapWeight) * 260_000,
+          getFillColor: (point) => (point.isCluster ? [255, 255, 255, 110] : [255, 255, 255, 60]),
+          getLineColor: (point) => (point.isCluster ? [255, 255, 255, 255] : [255, 255, 255, 210]),
+          radiusMinPixels: 12,
+          radiusMaxPixels: 50,
+          lineWidthMinPixels: 1.5,
           pickable: true,
           stroked: true,
         }),
-        new TextLayer<HeatmapPoint>({
-          id: 'worldmap-heatmap-labels',
-          data: heatmapPoints.slice(0, 10),
+        new TextLayer<ClusteredHeatmapPoint>({
+          id: 'worldmap-heatmap-cluster-counts',
+          data: clusteredHeatmapPoints.filter((p) => p.isCluster),
           getPosition: (point) => point.position,
-          getText: (point) => point.country,
-          getSize: 12,
+          getText: (point) => String(point.pointCount),
+          getSize: 11,
+          getColor: [15, 23, 42, 255],
+          getPixelOffset: [0, 0],
+          fontWeight: 'bold',
+        }),
+        new TextLayer<ClusteredHeatmapPoint>({
+          id: 'worldmap-heatmap-labels',
+          data: clusteredHeatmapPoints.slice(0, 12),
+          getPosition: (point) => point.position,
+          getText: (point) => getLabelText(point),
+          getSize: 11,
           getColor: [255, 255, 255, 235],
           getPixelOffset: [0, 22],
           background: true,
           getBackgroundColor: isDark ? [15, 23, 42, 190] : [15, 23, 42, 165],
-          backgroundPadding: [6, 3],
+          backgroundPadding: [5, 3],
         }),
       ];
     }
@@ -565,7 +669,7 @@ const WorldmapPage: React.FC = () => {
         getPosition: (point) => point.position,
         getRadius: (point) => 70_000 + (point.totalAmount / mapData.maxAmount) * 240_000,
         getFillColor: (point) =>
-          point.category === 'Domestic' ? domesticPointColor : foreignPointColor,
+          point.category === 'Daxili' ? domesticPointColor : foreignPointColor,
         getLineColor: [255, 255, 255, 240],
         lineWidthMinPixels: 1,
         stroked: true,
@@ -584,7 +688,16 @@ const WorldmapPage: React.FC = () => {
         backgroundPadding: [6, 3],
       }),
     ];
-  }, [baseMapStyle, heatmapPoints, isDark, mapData, mapMode, maxHeatmapWeight]);
+  }, [
+    baseMapStyle,
+    heatmapPoints,
+    clusteredHeatmapPoints,
+    isDark,
+    mapData,
+    mapMode,
+    maxHeatmapWeight,
+    viewState.zoom,
+  ]);
 
   const panelClass = isDark
     ? 'border-slate-800 bg-slate-900/70 text-slate-100 shadow-black/20'
@@ -639,7 +752,7 @@ const WorldmapPage: React.FC = () => {
                   <p className={['mt-1 text-sm', mutedText].join(' ')}>
                     {mapMode === 'flow'
                       ? 'Xətt qalınlığı məbləğə, marker ölçüsü ölkə üzrə ümumi həcmə görədir.'
-                      : 'Heatmap rəngi və sıxlığı ölkələr üzrə əməliyyat həcmini göstərir.'}
+                      : 'İstilik xəritəsinin rəngi və sıxlığı ölkələr üzrə əməliyyat həcmini göstərir.'}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
@@ -653,7 +766,7 @@ const WorldmapPage: React.FC = () => {
                   >
                     {[
                       { label: 'Axınlar', value: 'flow' as const },
-                      { label: 'Heatmap', value: 'heatmap' as const },
+                      { label: 'İstilik xəritəsi', value: 'heatmap' as const },
                     ].map((item) => (
                       <button
                         key={item.value}
@@ -767,7 +880,7 @@ const WorldmapPage: React.FC = () => {
                           : 'border-slate-200 bg-white/95 text-slate-700',
                     ].join(' ')}
                   >
-                    {isHeatmapError ? 'Heatmap API yüklənmədi' : 'Heatmap yüklənir...'}
+                    {isHeatmapError ? 'İstilik xəritəsi yüklənmədi' : 'İstilik xəritəsi yüklənir...'}
                   </div>
                 )}
                 <div
@@ -784,7 +897,7 @@ const WorldmapPage: React.FC = () => {
                         Xarici
                       </span>
                       <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-emerald-500">
-                        Domestic
+                        Daxili
                       </span>
                       <span className="rounded-full bg-amber-500/15 px-3 py-1 text-amber-500">
                         Ölkədaxili
@@ -820,17 +933,33 @@ const WorldmapPage: React.FC = () => {
                   controller
                   getTooltip={({ object }) => {
                     if (!object) return null;
-                    const item = object as Flow | CountryPoint | HeatmapPoint;
+                    const item = object as Flow | CountryPoint | ClusteredHeatmapPoint;
 
                     if ('sourceCountry' in item) {
                       return {
-                        html: `<strong>${item.sourceCountry} -> ${item.targetCountry}</strong><br/>${item.paymentSystem}<br/>Məbləğ: ${formatAmount(item.totalAmount)}<br/>Say: ${formatNumber(item.totalCount)}`,
+                        html: `<strong>${item.sourceCountry} → ${item.targetCountry}</strong><br/>${item.paymentSystem}<br/>Məbləğ: ${formatAmount(item.totalAmount)}<br/>Say: ${formatNumber(item.totalCount)}`,
                       };
                     }
 
                     if ('weight' in item) {
+                      const point = item as ClusteredHeatmapPoint;
+                      if (point.isCluster) {
+                        return {
+                          html: `
+                            <div style="padding: 4px; font-family: sans-serif;">
+                              <strong style="color: #06b6d4;">Qruplaşdırılmış Bölgə (${point.pointCount} ölkə)</strong><br/>
+                              <span style="color: #94a3b8; font-size: 11px;">${point.country}</span><br/>
+                              <div style="margin-top: 6px; border-top: 1px solid #334155; padding-top: 4px;">
+                                <strong>Dəyər:</strong> ${formatAmount(point.weight)}<br/>
+                                <strong>Əməliyyat:</strong> ${formatNumber(point.totalCount)}
+                              </div>
+                            </div>
+                          `,
+                        };
+                      }
+
                       return {
-                        html: `<strong>${item.country}</strong><br/>Heatmap dəyəri: ${formatAmount(item.weight)}<br/>Say: ${formatNumber(item.totalCount)}`,
+                        html: `<strong>${point.country}</strong><br/>İstilik xəritəsi dəyəri: ${formatAmount(point.weight)}<br/>Say: ${formatNumber(point.totalCount)}`,
                       };
                     }
 
@@ -859,9 +988,9 @@ const WorldmapPage: React.FC = () => {
                     <ArrowRightLeft className="h-5 w-5" />
                   </span>
                   <div>
-                    <h3 className="font-semibold">Top marşrutlar</h3>
+                    <h3 className="font-semibold">Ən çox istifadə olunan marşrutlar</h3>
                     <p className={['text-sm', mutedText].join(' ')}>
-                      Aggregate olunmuş axınlar
+                      Ümumiləşdirilmiş axınlar
                     </p>
                   </div>
                 </div>
@@ -870,7 +999,7 @@ const WorldmapPage: React.FC = () => {
                     <div key={flow.id}>
                       <div className="flex items-center justify-between gap-3 text-sm">
                         <span className="min-w-0 truncate font-medium">
-                          {flow.sourceCountry} {'->'} {flow.targetCountry}
+                          {flow.sourceCountry} {'→'} {flow.targetCountry}
                         </span>
                         <span className="shrink-0 tabular-nums">
                           {formatShortAmount(flow.totalAmount)}
@@ -933,10 +1062,10 @@ const WorldmapPage: React.FC = () => {
                     <Landmark className="h-5 w-5" />
                   </span>
                   <div>
-                    <h3 className="font-semibold">Segment</h3>
+                    <h3 className="font-semibold">Seqment</h3>
                     <p className={['text-sm', mutedText].join(' ')}>
                       {formatNumber(foreignFlows)} xarici qeyd,{' '}
-                      {formatNumber(Math.max(rows.length - foreignFlows, 0))} domestic qeyd
+                      {formatNumber(Math.max(rows.length - foreignFlows, 0))} daxili qeyd
                     </p>
                   </div>
                 </div>

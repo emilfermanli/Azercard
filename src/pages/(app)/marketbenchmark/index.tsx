@@ -1,6 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { BarChart3, CreditCard, Landmark, PieChart as PieChartIcon, Trophy } from 'lucide-react';
+import {
+  BarChart3,
+  CreditCard,
+  Filter,
+  Landmark,
+  PieChart as PieChartIcon,
+  RotateCcw,
+  Trophy,
+} from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -16,8 +24,10 @@ import {
   YAxis,
   ZAxis,
 } from 'recharts';
+import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
-import { DataPagination, DataTable } from '@/components';
+import { Button, DataPagination, DataTable } from '@/components';
+import { useGetGeneralBanksQuery } from '@/services/general.service';
 import { useGetMarketbenchmarkFilterQuery } from '@/services/marketbenchmark.service';
 import type { MarketBenchmarkItem } from '@/types/marketbenchmark.type';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
@@ -55,6 +65,12 @@ type BenchmarkScatterPoint = {
   amount: number;
 };
 
+type SelectOption = {
+  id?: string;
+  label: string;
+  value: string;
+};
+
 const CHART_COLORS = ['#2563eb', '#10b981', '#06b6d4', '#f59e0b', '#ef4444', '#8b5cf6'];
 const PAGE_SIZE = 10;
 
@@ -73,6 +89,27 @@ function cleanBrand(value: string | null) {
   if (!value) return 'Naməlum';
   const [, product] = value.split(':');
   return (product || value).trim() || 'Naməlum';
+}
+
+function cleanOptionValue(value: string | null | undefined) {
+  return value?.trim() ?? '';
+}
+
+function toUniqueOptions(values: Array<string | null | undefined>, selectedValue = '') {
+  const map = new Map<string, SelectOption>();
+
+  values.forEach((value) => {
+    const cleanValue = cleanOptionValue(value);
+    if (cleanValue) map.set(cleanValue, { label: cleanValue, value: cleanValue });
+  });
+
+  if (selectedValue && !map.has(selectedValue)) {
+    map.set(selectedValue, { label: selectedValue, value: selectedValue });
+  }
+
+  return Array.from(map.values()).sort((a, b) =>
+    a.label.localeCompare(b.label, 'az')
+  );
 }
 
 function average(values: number[]) {
@@ -134,7 +171,7 @@ function ChartTooltip({
     <div className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-100 shadow-xl">
       <p className="font-semibold">{item.name}</p>
       <p className="mt-1">Məbləğ: {formatAmount(item.amount)}</p>
-      <p>Market payı: {formatPercent(item.marketShare)}</p>
+      <p>Bazar payı: {formatPercent(item.marketShare)}</p>
       <p>Kart payı: {formatPercent(item.cardShare)}</p>
     </div>
   );
@@ -155,7 +192,7 @@ function ScatterTooltip({
       <p className="font-semibold">{item.bank}</p>
       <p className="mt-1">{item.region}</p>
       <p>{item.brand}</p>
-      <p className="mt-1">Market payı: {formatPercent(item.marketShare)}</p>
+      <p className="mt-1">Bazar payı: {formatPercent(item.marketShare)}</p>
       <p>Kart payı: {formatPercent(item.cardShare)}</p>
       <p>Məbləğ: {formatAmount(item.amount)}</p>
     </div>
@@ -301,7 +338,7 @@ function ShareScatterChart({ data }: { data: BenchmarkScatterPoint[] }) {
           />
           <XAxis
             dataKey="marketShare"
-            name="Market payı"
+            name="Bazar payı"
             tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 11 }}
             tickLine={false}
             type="number"
@@ -326,12 +363,28 @@ function ShareScatterChart({ data }: { data: BenchmarkScatterPoint[] }) {
 
 const MarketBenchmarkPage: React.FC = () => {
   const isDark = useShellTheme();
+  const reportMonthInputRef = useRef<HTMLInputElement>(null);
+  const [bankName, setBankName] = useState('');
+  const [regionNameClean, setRegionNameClean] = useState('');
+  const [cardBrandName, setCardBrandName] = useState('');
+  const [productType, setProductType] = useState('');
+  const [reportMonth, setReportMonth] = useState('');
   const [page, setPage] = useState(1);
+  const { data: banks = [], isLoading: banksLoading } = useGetGeneralBanksQuery();
   const { data, isLoading, isError, isFetching } = useGetMarketbenchmarkFilterQuery({
+    ...(bankName ? { BankName: bankName } : {}),
+    ...(regionNameClean ? { RegionNameClean: regionNameClean } : {}),
+    ...(cardBrandName ? { CardBrandName: cardBrandName } : {}),
+    ...(productType ? { ProductType: productType } : {}),
+    ...(reportMonth ? { ReportMonth: reportMonth } : {}),
     Page: page,
     PageSize: PAGE_SIZE,
   });
   const rows = data?.items ?? [];
+
+  useEffect(() => {
+    setPage(1);
+  }, [bankName, regionNameClean, cardBrandName, productType, reportMonth]);
 
   const columns = useMemo<ColumnDef<MarketBenchmarkItem, unknown>[]>(
     () => [
@@ -350,7 +403,7 @@ const MarketBenchmarkPage: React.FC = () => {
       },
       {
         accessorKey: 'marketSharePct',
-        header: 'Market payı',
+        header: 'Bazar payı',
         cell: ({ getValue }) => formatPercent(getValue() as number),
       },
       {
@@ -404,6 +457,36 @@ const MarketBenchmarkPage: React.FC = () => {
       })),
     [rows]
   );
+  const bankOptions = useMemo<SelectOption[]>(
+    () =>
+      banks
+        .filter((bank) => bank.bankName)
+        .map((bank) => ({
+          id: bank.id,
+          label: bank.bankName,
+          value: bank.id,
+        })),
+    [banks]
+  );
+  const regionOptions = useMemo(
+    () => toUniqueOptions(rows.map((row) => row.regionNameClean), regionNameClean),
+    [regionNameClean, rows]
+  );
+  const brandOptions = useMemo(
+    () => toUniqueOptions(rows.map((row) => row.cardBrandName), cardBrandName),
+    [cardBrandName, rows]
+  );
+  const productOptions = useMemo(
+    () => toUniqueOptions(rows.map((row) => row.productType), productType),
+    [productType, rows]
+  );
+  const selectedBank = bankOptions.find((item) => item.value === bankName) ?? null;
+  const selectedRegion =
+    regionOptions.find((item) => item.value === regionNameClean) ?? null;
+  const selectedBrand =
+    brandOptions.find((item) => item.value === cardBrandName) ?? null;
+  const selectedProduct =
+    productOptions.find((item) => item.value === productType) ?? null;
 
   const totalBankAmount = rows.reduce((sum, row) => sum + row.bankTransAmount, 0);
   const totalBankCards = rows.reduce((sum, row) => sum + row.bankCardCount, 0);
@@ -413,11 +496,88 @@ const MarketBenchmarkPage: React.FC = () => {
     (best, row) => (!best || row.marketSharePct > best.marketSharePct ? row : best),
     null
   );
+  const panelClass = isDark
+    ? 'border-slate-800 bg-slate-900/70 text-slate-100 shadow-black/20'
+    : 'border-slate-200 bg-white text-slate-950 shadow-slate-200/70';
+  const mutedText = isDark ? 'text-slate-300' : 'text-slate-500';
+  const inputClass = [
+    'h-10 w-full rounded-lg border px-3 text-sm outline-none ring-blue-500/40 transition focus:ring-2',
+    isDark
+      ? 'border-slate-700 bg-slate-950 text-slate-100 placeholder:text-slate-500'
+      : 'border-slate-200 bg-white text-slate-900 placeholder:text-slate-400',
+  ].join(' ');
+  const outlineButtonClass = isDark
+    ? 'border-slate-500 bg-slate-800/90 text-slate-100 hover:bg-slate-700 hover:text-white'
+    : '';
+  const selectStyles = useMemo<StylesConfig<SelectOption, false>>(
+    () => ({
+      control: (base, state) => ({
+        ...base,
+        minHeight: 40,
+        borderRadius: 8,
+        borderColor: state.isFocused ? '#3b82f6' : isDark ? '#334155' : '#e2e8f0',
+        backgroundColor: isDark ? '#020617' : '#ffffff',
+        boxShadow: state.isFocused ? '0 0 0 2px rgb(59 130 246 / 0.4)' : 'none',
+        ':hover': {
+          borderColor: state.isFocused ? '#3b82f6' : isDark ? '#475569' : '#cbd5e1',
+        },
+      }),
+      input: (base) => ({
+        ...base,
+        color: isDark ? '#f8fafc' : '#0f172a',
+      }),
+      menu: (base) => ({
+        ...base,
+        zIndex: 80,
+        border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+        backgroundColor: isDark ? '#020617' : '#ffffff',
+        boxShadow: isDark
+          ? '0 18px 40px rgb(0 0 0 / 0.35)'
+          : '0 18px 40px rgb(15 23 42 / 0.12)',
+      }),
+      option: (base, state) => ({
+        ...base,
+        backgroundColor: state.isSelected
+          ? '#2563eb'
+          : state.isFocused
+            ? isDark
+              ? '#1e3a8a'
+              : '#eff6ff'
+            : 'transparent',
+        color: state.isSelected ? '#ffffff' : isDark ? '#f8fafc' : '#0f172a',
+      }),
+      placeholder: (base) => ({
+        ...base,
+        color: isDark ? '#94a3b8' : '#64748b',
+      }),
+      singleValue: (base) => ({
+        ...base,
+        color: isDark ? '#f8fafc' : '#0f172a',
+      }),
+    }),
+    [isDark]
+  );
+  const hasActiveFilters = Boolean(
+    bankName || regionNameClean || cardBrandName || productType || reportMonth
+  );
+
+  const resetFilters = () => {
+    setBankName('');
+    setRegionNameClean('');
+    setCardBrandName('');
+    setProductType('');
+    setReportMonth('');
+    setPage(1);
+  };
+
+  const openDatePicker = () => {
+    reportMonthInputRef.current?.showPicker?.();
+  };
 
   return (
     <div className="space-y-5">
       <DataPageHeader
-        eyebrow="Benchmark"
+        eyebrow="Müqayisə"
         title="Bazar müqayisəsi"
         description="Bankların bazar payı, kart payı və region üzrə müqayisəli performansı."
         icon={BarChart3}
@@ -427,17 +587,124 @@ const MarketBenchmarkPage: React.FC = () => {
       {isError && <PageError />}
       {!isLoading && !isError && (
         <>
+          <section className={['rounded-xl border p-4 shadow-lg', panelClass].join(' ')}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/15 text-blue-500">
+                  <Filter className="h-5 w-5" />
+                </span>
+                <div>
+                  <h2 className="font-semibold">Filterlər</h2>
+                  <p className={['text-sm', mutedText].join(' ')}>
+                    Bank, region, kart brendi, məhsul tipi və ay üzrə müqayisə məlumatlarını süzün.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={outlineButtonClass}
+                disabled={!hasActiveFilters || isFetching}
+                onClick={resetFilters}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Təmizlə
+              </Button>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Bank</span>
+                <Select
+                  inputId="marketbenchmark-filter-bank"
+                  isClearable
+                  isLoading={banksLoading}
+                  noOptionsMessage={() => 'Bank tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setBankName(option?.value ?? '')
+                  }
+                  options={bankOptions}
+                  placeholder="Bütün banklar"
+                  styles={selectStyles}
+                  value={selectedBank}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Region</span>
+                <Select
+                  inputId="marketbenchmark-filter-region"
+                  isClearable
+                  noOptionsMessage={() => 'Region tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setRegionNameClean(option?.value ?? '')
+                  }
+                  options={regionOptions}
+                  placeholder="Bütün regionlar"
+                  styles={selectStyles}
+                  value={selectedRegion}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Kart brendi</span>
+                <Select
+                  inputId="marketbenchmark-filter-brand"
+                  isClearable
+                  noOptionsMessage={() => 'Kart brendi tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setCardBrandName(option?.value ?? '')
+                  }
+                  options={brandOptions}
+                  placeholder="Bütün brendlər"
+                  styles={selectStyles}
+                  value={selectedBrand}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Məhsul tipi</span>
+                <Select
+                  inputId="marketbenchmark-filter-product"
+                  isClearable
+                  noOptionsMessage={() => 'Məhsul tipi tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setProductType(option?.value ?? '')
+                  }
+                  options={productOptions}
+                  placeholder="Bütün məhsullar"
+                  styles={selectStyles}
+                  value={selectedProduct}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Ay</span>
+                <input
+                  ref={reportMonthInputRef}
+                  className={inputClass}
+                  type="date"
+                  value={reportMonth}
+                  onChange={(event) => setReportMonth(event.target.value)}
+                  onClick={openDatePicker}
+                  onFocus={openDatePicker}
+                />
+              </label>
+            </div>
+          </section>
+
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Ümumi qeyd" value={formatNumber(data?.totalCount)} />
             <StatCard label="Bank məbləği" value={formatShortAmount(totalBankAmount)} />
-            <StatCard label="Orta market payı" value={formatPercent(avgMarketShare)} />
+            <StatCard label="Orta bazar payı" value={formatPercent(avgMarketShare)} />
             <StatCard label="Orta kart payı" value={formatPercent(avgCardShare)} />
           </div>
 
           <section className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
             <BenchmarkPanel
               icon={BarChart3}
-              title="Market və kart payı matrisi"
+              title="Bazar və kart payı matrisi"
               subtitle="Hər nöqtə bank, region və kart məhsulu kəsişməsini göstərir"
             >
               <ShareScatterChart data={scatterData} />
@@ -446,7 +713,7 @@ const MarketBenchmarkPage: React.FC = () => {
             <BenchmarkPanel
               icon={Landmark}
               title="Ən güclü mövqe"
-              subtitle="Seçilmiş məlumatlarda ən yüksək market payı"
+              subtitle="Seçilmiş məlumatlarda ən yüksək bazar payı"
             >
               {bestRow ? (
                 <div
@@ -481,7 +748,7 @@ const MarketBenchmarkPage: React.FC = () => {
             <BenchmarkPanel
               icon={PieChartIcon}
               title="Məhsul tipi"
-              subtitle="Bank məbləği üzrə donut bölgüsü"
+              subtitle="Bank məbləği üzrə dairəvi bölgü"
             >
               <DonutChart data={productChartData} />
             </BenchmarkPanel>
@@ -489,7 +756,7 @@ const MarketBenchmarkPage: React.FC = () => {
             <BenchmarkPanel
               icon={BarChart3}
               title="Regionlar"
-              subtitle="Region üzrə horizontal əməliyyat chartı"
+              subtitle="Region üzrə üfüqi əməliyyat qrafiki"
             >
               <HorizontalAmountChart color="#06b6d4" data={regionChartData} />
             </BenchmarkPanel>
@@ -499,7 +766,7 @@ const MarketBenchmarkPage: React.FC = () => {
             <BenchmarkPanel
               icon={Trophy}
               title="Bank liderləri"
-              subtitle="Bank üzrə aggregate əməliyyat həcmi"
+              subtitle="Bank üzrə ümumiləşdirilmiş əməliyyat həcmi"
             >
               <HorizontalAmountChart color="#2563eb" data={bankChartData} />
             </BenchmarkPanel>
@@ -507,7 +774,7 @@ const MarketBenchmarkPage: React.FC = () => {
             <BenchmarkPanel
               icon={CreditCard}
               title="Kart brendləri"
-              subtitle={`${formatNumber(totalBankCards)} bank kartı üzrə chart`}
+              subtitle={`${formatNumber(totalBankCards)} bank kartı üzrə qrafik`}
             >
               <HorizontalAmountChart color="#8b5cf6" data={brandChartData} />
             </BenchmarkPanel>

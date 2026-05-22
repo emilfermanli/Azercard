@@ -571,7 +571,7 @@ const ForecastingPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5 px-4 sm:px-6 xl:pr-5">
+    <div className="space-y-5 pt-2 pb-2 pl-2 pr-4 sm:pt-3 sm:pb-3 sm:pl-3 sm:pr-6">
       <DataPageHeader
         eyebrow="Proqnoz"
         title="Proqnozlaşdırma"
@@ -617,7 +617,8 @@ const ForecastingPage: React.FC = () => {
                 aria-expanded={filterDrawerOpen}
                 aria-label={filterDrawerOpen ? 'Filter panelini bağla' : 'Filter panelini aç'}
                 className={[
-                  'absolute right-full bottom-32 z-[90] translate-x-[calc(50%-16px)] -rotate-90 origin-center flex h-8 items-center gap-1.5 rounded-t-md border-x border-t px-3.5 text-[10px] font-bold uppercase tracking-wider shadow-2xl transition pointer-events-auto',
+                  'absolute right-full bottom-32 z-[90] -rotate-90 origin-center flex h-8 items-center gap-1.5 rounded-t-md border-x border-t px-3.5 text-[10px] font-bold uppercase tracking-wider shadow-2xl transition-all duration-300 pointer-events-auto',
+                  filterDrawerOpen ? 'translate-x-[calc(50%-16px)]' : 'translate-x-[calc(50%-28px)]',
                   isDark
                     ? 'border-blue-500/30 bg-slate-950/95 text-blue-400 hover:text-blue-300 hover:bg-slate-900'
                     : 'border-blue-200 bg-white/95 text-blue-600 hover:text-blue-700 hover:bg-blue-50',
@@ -631,8 +632,9 @@ const ForecastingPage: React.FC = () => {
                   <ChevronLeft className="h-3.5 w-3.5 rotate-90 text-blue-500" />
                 )}
                 <span>Filterlər</span>
+                <Filter className="h-3 w-3 text-blue-500" />
                 {hasActiveFilters && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500" aria-hidden="true" />
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" aria-hidden="true" />
                 )}
               </button>
               <div

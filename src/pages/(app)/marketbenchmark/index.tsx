@@ -9,6 +9,8 @@ import {
   RotateCcw,
   Trophy,
   X,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import {
   Bar,
@@ -646,7 +648,7 @@ const MarketBenchmarkPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 px-4 sm:px-6 xl:pr-5">
       <DataPageHeader
         eyebrow="Müqayisə"
         title="Bazar müqayisəsi"
@@ -658,37 +660,15 @@ const MarketBenchmarkPage: React.FC = () => {
       {isError && <PageError />}
       {!isLoading && !isError && (
         <>
-          <button
-            aria-expanded={filterDrawerOpen}
-            aria-label="Filter panelini aç"
-            className={[
-              'fixed bottom-6 right-6 z-[90] flex h-11 items-center gap-2 rounded-lg border px-3 text-sm font-semibold shadow-xl transition hover:translate-y-[-2px]',
-              isDark
-                ? 'border-blue-400/30 bg-slate-950/95 text-blue-100 shadow-black/30 hover:bg-slate-900'
-                : 'border-blue-200 bg-white/95 text-blue-700 shadow-slate-200/80 hover:bg-blue-50',
-            ].join(' ')}
-            onClick={() => setFilterDrawerOpen(true)}
-            type="button"
-          >
-            <Filter className="h-4 w-4" />
-            <span className="hidden sm:inline">Filterlər</span>
-            {hasActiveFilters && (
-              <span className="h-2 w-2 rounded-full bg-blue-500" aria-hidden="true" />
-            )}
-          </button>
-
           <div
             aria-hidden={!filterDrawerOpen}
-            className={[
-              'fixed inset-0 z-[110] h-dvh transition',
-              filterDrawerOpen ? 'pointer-events-auto' : 'pointer-events-none',
-            ].join(' ')}
+            className="fixed inset-0 z-[110] h-dvh transition pointer-events-none"
           >
             <button
               aria-label="Filter panelini bağla"
               className={[
                 'absolute inset-0 bg-slate-950/40 transition-opacity',
-                filterDrawerOpen ? 'opacity-100' : 'opacity-0',
+                filterDrawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
               ].join(' ')}
               onClick={() => setFilterDrawerOpen(false)}
               type="button"
@@ -696,13 +676,35 @@ const MarketBenchmarkPage: React.FC = () => {
             <aside
               aria-label="Filterlər"
               className={[
-                'fixed bottom-0 right-0 top-0 flex h-dvh min-h-dvh w-full max-w-[420px] flex-col border-l shadow-2xl transition-transform duration-300 ease-out',
+                'fixed bottom-0 right-0 top-0 flex h-dvh min-h-dvh w-full max-w-[420px] flex-col border-l shadow-2xl transition-transform duration-300 ease-out pointer-events-auto',
                 filterDrawerOpen ? 'translate-x-0' : 'translate-x-full',
                 isDark
                   ? 'border-slate-800 bg-slate-950 text-slate-100'
                   : 'border-slate-200 bg-white text-slate-950',
               ].join(' ')}
             >
+              <button
+                aria-expanded={filterDrawerOpen}
+                aria-label={filterDrawerOpen ? 'Filter panelini bağla' : 'Filter panelini aç'}
+                className={[
+                  'absolute right-full bottom-32 z-[90] translate-x-[calc(50%-16px)] -rotate-90 origin-center flex h-8 items-center gap-1.5 rounded-t-md border-x border-t px-3.5 text-[10px] font-bold uppercase tracking-wider shadow-2xl transition pointer-events-auto',
+                  isDark
+                    ? 'border-blue-500/30 bg-slate-950/95 text-blue-400 hover:text-blue-300 hover:bg-slate-900'
+                    : 'border-blue-200 bg-white/95 text-blue-600 hover:text-blue-700 hover:bg-blue-50',
+                ].join(' ')}
+                onClick={() => setFilterDrawerOpen(!filterDrawerOpen)}
+                type="button"
+              >
+                {filterDrawerOpen ? (
+                  <ChevronRight className="h-3.5 w-3.5 rotate-90 text-blue-500" />
+                ) : (
+                  <ChevronLeft className="h-3.5 w-3.5 rotate-90 text-blue-500" />
+                )}
+                <span>Filterlər</span>
+                {hasActiveFilters && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500" aria-hidden="true" />
+                )}
+              </button>
               <div
                 className={[
                   'flex items-start justify-between gap-3 border-b p-4',

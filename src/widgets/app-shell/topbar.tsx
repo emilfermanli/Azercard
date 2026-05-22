@@ -31,8 +31,8 @@ export function Topbar({ isDark, onToggleTheme }: Props) {
   const fullName = [user?.firstName?.trim(), user?.lastName?.trim()]
     .filter(Boolean)
     .join(' ');
-  const displayName = fullName || user?.name?.trim() || user?.username?.trim() || 'Hesab';
-  const roleLabel = user?.role?.name ?? '—';
+  const displayName =
+    fullName || user?.name?.trim() || user?.username?.trim() || 'Test user';
   const initials = initialsFromUserName(displayName);
 
   useEffect(() => {
@@ -95,14 +95,6 @@ export function Topbar({ isDark, onToggleTheme }: Props) {
             <span className="min-w-0 max-w-[10rem]">
               <span className="block truncate font-medium leading-tight">
                 {displayName}
-              </span>
-              <span
-                className={[
-                  'block truncate text-xs leading-tight',
-                  isDark ? 'text-slate-400' : 'text-slate-500',
-                ].join(' ')}
-              >
-                {roleLabel}
               </span>
             </span>
             <ChevronDown

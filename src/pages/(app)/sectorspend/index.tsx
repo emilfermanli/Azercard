@@ -152,6 +152,31 @@ function toUniqueOptions(
   );
 }
 
+function mergeSelectOptions(current: SelectOption[], incoming: SelectOption[]) {
+  const map = new Map<string, SelectOption>();
+
+  current.forEach((option) => map.set(option.value, option));
+  incoming.forEach((option) => map.set(option.value, option));
+
+  return Array.from(map.values()).sort((a, b) =>
+    a.label.localeCompare(b.label, 'az')
+  );
+}
+
+function ensureSelectedOption(
+  options: SelectOption[],
+  selectedValue: string,
+  getLabel: (value: string) => string = (value) => value
+) {
+  if (!selectedValue || options.some((option) => option.value === selectedValue)) {
+    return options;
+  }
+
+  return mergeSelectOptions(options, [
+    { label: getLabel(selectedValue), value: selectedValue },
+  ]);
+}
+
 function getRows(data: SectorSpendResponse | undefined) {
   if (!data) return [];
   return Array.isArray(data) ? data : data.items;
@@ -426,6 +451,15 @@ const SectorSpendPage: React.FC = () => {
   const [isIssuing, setIsIssuing] = useState<number | null>(null);
   const [reportMonth, setReportMonth] = useState('');
   const [page, setPage] = useState(1);
+  const [mccGroupOptionCache, setMccGroupOptionCache] = useState<SelectOption[]>([]);
+  const [sourceChannelOptionCache, setSourceChannelOptionCache] = useState<SelectOption[]>([]);
+  const [operationTypeOptionCache, setOperationTypeOptionCache] = useState<SelectOption[]>([]);
+  const [sourceCityCategoryOptionCache, setSourceCityCategoryOptionCache] = useState<
+    SelectOption[]
+  >([]);
+  const [sourceCountryCategoryOptionCache, setSourceCountryCategoryOptionCache] = useState<
+    SelectOption[]
+  >([]);
   const { data: banks = [], isLoading: banksLoading } = useGetGeneralBanksQuery();
   const { data: mccGroups = [], isLoading: mccGroupsLoading } =
     useGetGeneralMccGroupsQuery();
@@ -443,7 +477,7 @@ const SectorSpendPage: React.FC = () => {
     pageSize: PAGE_SIZE,
   });
   const response = data as SectorSpendResponse | undefined;
-  const rows = getRows(response);
+  const rows = useMemo(() => getRows(response), [response]);
   const currentPage = !response || Array.isArray(response) ? page : response.page;
   const recordCount = getTotalCount(response, rows);
   const totalPages = !response || Array.isArray(response) ? 1 : response.totalPages;
@@ -463,6 +497,52 @@ const SectorSpendPage: React.FC = () => {
     isIssuing,
     reportMonth,
   ]);
+
+  useEffect(() => {
+    const lookupMccOptions = mccGroups
+      .filter((item) => item.mccName)
+      .map((item) => ({
+        id: item.id,
+        label: item.mccName,
+        value: item.mccName,
+      }));
+
+    setMccGroupOptionCache((current) =>
+      mergeSelectOptions(
+        current,
+        toUniqueOptions(
+          [...lookupMccOptions.map((item) => item.value), ...rows.map((row) => row.mccGroup)]
+        ).map((option) => ({
+          ...option,
+          id: lookupMccOptions.find((item) => item.value === option.value)?.id,
+        }))
+      )
+    );
+    setSourceChannelOptionCache((current) =>
+      mergeSelectOptions(
+        current,
+        toUniqueOptions(rows.map((row) => row.sourceChannel), '', translateCategory)
+      )
+    );
+    setOperationTypeOptionCache((current) =>
+      mergeSelectOptions(
+        current,
+        toUniqueOptions(rows.map((row) => row.operationType), '', translateCategory)
+      )
+    );
+    setSourceCityCategoryOptionCache((current) =>
+      mergeSelectOptions(
+        current,
+        toUniqueOptions(rows.map((row) => row.sourceCityCategory), '', translateCategory)
+      )
+    );
+    setSourceCountryCategoryOptionCache((current) =>
+      mergeSelectOptions(
+        current,
+        toUniqueOptions(rows.map((row) => row.sourceCountryCategory), '', translateCategory)
+      )
+    );
+  }, [mccGroups, rows]);
 
   const columns = useMemo<ColumnDef<SectorSpendItem, unknown>[]>(
     () => [
@@ -551,60 +631,44 @@ const SectorSpendPage: React.FC = () => {
     [banks]
   );
   const mccGroupOptions = useMemo<SelectOption[]>(
-    () => {
-      const lookupOptions = mccGroups
-        .filter((item) => item.mccName)
-        .map((item) => ({
-          id: item.id,
-          label: item.mccName,
-          value: item.mccName,
-        }));
-
-      return toUniqueOptions(
-        [...lookupOptions.map((item) => item.value), ...rows.map((row) => row.mccGroup)],
-        mccGroup
-      ).map((option) => ({
-        ...option,
-        id: lookupOptions.find((item) => item.value === option.value)?.id,
-      }));
-    },
-    [mccGroup, mccGroups, rows]
+    () => ensureSelectedOption(mccGroupOptionCache, mccGroup),
+    [mccGroup, mccGroupOptionCache]
   );
   const sourceChannelOptions = useMemo(
     () =>
-      toUniqueOptions(
-        rows.map((row) => row.sourceChannel),
+      ensureSelectedOption(
+        sourceChannelOptionCache,
         sourceChannel,
         translateCategory
       ),
-    [rows, sourceChannel]
+    [sourceChannel, sourceChannelOptionCache]
   );
   const operationTypeOptions = useMemo(
     () =>
-      toUniqueOptions(
-        rows.map((row) => row.operationType),
+      ensureSelectedOption(
+        operationTypeOptionCache,
         operationType,
         translateCategory
       ),
-    [operationType, rows]
+    [operationType, operationTypeOptionCache]
   );
   const sourceCityCategoryOptions = useMemo(
     () =>
-      toUniqueOptions(
-        rows.map((row) => row.sourceCityCategory),
+      ensureSelectedOption(
+        sourceCityCategoryOptionCache,
         sourceCityCategory,
         translateCategory
       ),
-    [rows, sourceCityCategory]
+    [sourceCityCategory, sourceCityCategoryOptionCache]
   );
   const sourceCountryCategoryOptions = useMemo(
     () =>
-      toUniqueOptions(
-        rows.map((row) => row.sourceCountryCategory),
+      ensureSelectedOption(
+        sourceCountryCategoryOptionCache,
         sourceCountryCategory,
         translateCategory
       ),
-    [rows, sourceCountryCategory]
+    [sourceCountryCategory, sourceCountryCategoryOptionCache]
   );
   const selectedBank = bankOptions.find((item) => item.value === bankName) ?? null;
   const selectedMccGroup =

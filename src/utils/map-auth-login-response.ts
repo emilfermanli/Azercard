@@ -49,6 +49,7 @@ function buildUserFromJwtPayload(payload: Record<string, unknown>, fallbackEmail
     surname: '',
     email,
     contactNumber: '',
+    position: '',
     role: {
       id: stablePositiveIntFromString(roleKey),
       key: roleKey,

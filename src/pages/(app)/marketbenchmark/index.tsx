@@ -112,6 +112,25 @@ function toUniqueOptions(values: Array<string | null | undefined>, selectedValue
   );
 }
 
+function mergeSelectOptions(current: SelectOption[], incoming: SelectOption[]) {
+  const map = new Map<string, SelectOption>();
+
+  current.forEach((option) => map.set(option.value, option));
+  incoming.forEach((option) => map.set(option.value, option));
+
+  return Array.from(map.values()).sort((a, b) =>
+    a.label.localeCompare(b.label, 'az')
+  );
+}
+
+function ensureSelectedOption(options: SelectOption[], selectedValue: string) {
+  if (!selectedValue || options.some((option) => option.value === selectedValue)) {
+    return options;
+  }
+
+  return mergeSelectOptions(options, [{ label: selectedValue, value: selectedValue }]);
+}
+
 function average(values: number[]) {
   if (!values.length) return 0;
   return values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -370,6 +389,9 @@ const MarketBenchmarkPage: React.FC = () => {
   const [productType, setProductType] = useState('');
   const [reportMonth, setReportMonth] = useState('');
   const [page, setPage] = useState(1);
+  const [regionOptionCache, setRegionOptionCache] = useState<SelectOption[]>([]);
+  const [brandOptionCache, setBrandOptionCache] = useState<SelectOption[]>([]);
+  const [productOptionCache, setProductOptionCache] = useState<SelectOption[]>([]);
   const { data: banks = [], isLoading: banksLoading } = useGetGeneralBanksQuery();
   const { data, isLoading, isError, isFetching } = useGetMarketbenchmarkFilterQuery({
     ...(bankName ? { BankName: bankName } : {}),
@@ -380,11 +402,23 @@ const MarketBenchmarkPage: React.FC = () => {
     Page: page,
     PageSize: PAGE_SIZE,
   });
-  const rows = data?.items ?? [];
+  const rows = useMemo(() => data?.items ?? [], [data?.items]);
 
   useEffect(() => {
     setPage(1);
   }, [bankName, regionNameClean, cardBrandName, productType, reportMonth]);
+
+  useEffect(() => {
+    setRegionOptionCache((current) =>
+      mergeSelectOptions(current, toUniqueOptions(rows.map((row) => row.regionNameClean)))
+    );
+    setBrandOptionCache((current) =>
+      mergeSelectOptions(current, toUniqueOptions(rows.map((row) => row.cardBrandName)))
+    );
+    setProductOptionCache((current) =>
+      mergeSelectOptions(current, toUniqueOptions(rows.map((row) => row.productType)))
+    );
+  }, [rows]);
 
   const columns = useMemo<ColumnDef<MarketBenchmarkItem, unknown>[]>(
     () => [
@@ -469,16 +503,16 @@ const MarketBenchmarkPage: React.FC = () => {
     [banks]
   );
   const regionOptions = useMemo(
-    () => toUniqueOptions(rows.map((row) => row.regionNameClean), regionNameClean),
-    [regionNameClean, rows]
+    () => ensureSelectedOption(regionOptionCache, regionNameClean),
+    [regionNameClean, regionOptionCache]
   );
   const brandOptions = useMemo(
-    () => toUniqueOptions(rows.map((row) => row.cardBrandName), cardBrandName),
-    [cardBrandName, rows]
+    () => ensureSelectedOption(brandOptionCache, cardBrandName),
+    [brandOptionCache, cardBrandName]
   );
   const productOptions = useMemo(
-    () => toUniqueOptions(rows.map((row) => row.productType), productType),
-    [productType, rows]
+    () => ensureSelectedOption(productOptionCache, productType),
+    [productOptionCache, productType]
   );
   const selectedBank = bankOptions.find((item) => item.value === bankName) ?? null;
   const selectedRegion =

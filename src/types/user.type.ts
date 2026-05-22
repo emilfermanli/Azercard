@@ -1,7 +1,11 @@
 export interface CurrentUserApiResponse {
   id: string;
   userName: string;
+  firstName?: string | null;
+  lastName?: string | null;
   email: string;
+  positionName?: string | null;
+  position?: string | null;
   roleName: string[];
 }
 
@@ -104,10 +108,13 @@ export interface GetAllUsersResult {
 export interface User {
   id: string | number;
   username: string;
+  firstName?: string | null;
+  lastName?: string | null;
   name: string;
   surname: string;
   email: string;
   contactNumber: string;
+  position: string;
   role: {
     id: number;
     name: string;

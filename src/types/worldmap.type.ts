@@ -38,6 +38,10 @@ export interface WorldmapFilterParams {
   IsAcquiring?: boolean | number;
   TotalAmount?: number;
   TotalCount?: number;
+  SourceLatitude?: number;
+  SourceLongitude?: number;
+  TargetLatitude?: number;
+  TargetLongitude?: number;
   Page?: number;
   PageSize?: number;
 }

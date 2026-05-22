@@ -87,6 +87,13 @@ export const authApi = createApi({
         if (isCurrentUserApiResponse(raw)) {
           return mapCurrentUserApiToUser(raw);
         }
+        const data =
+          raw && typeof raw === 'object' && 'data' in raw
+            ? (raw as ResponseType<unknown>).data
+            : null;
+        if (isCurrentUserApiResponse(data)) {
+          return mapCurrentUserApiToUser(data);
+        }
         return raw as User;
       },
       providesTags: [{ type: 'CurrentUser', id: 'ME' }],

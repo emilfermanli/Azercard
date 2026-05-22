@@ -15,6 +15,8 @@ type Props = {
 function initialsFromUserName(name: string): string {
   const s = name.trim();
   if (!s) return '?';
+  const parts = s.split(/\s+/).filter(Boolean);
+  if (parts.length > 1) return (parts[0]![0]! + parts[1]![0]!).toUpperCase();
   if (s.length === 1) return s.toUpperCase();
   return (s[0]! + s[1]!).toUpperCase();
 }
@@ -26,7 +28,12 @@ export function Topbar({ isDark, onToggleTheme }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const displayName = user?.username?.trim() || user?.name?.trim() || 'Hesab';
+  console.log(user, 'alksdmalksdm');
+
+  const fullName = [user?.firstName?.trim(), user?.lastName?.trim()]
+    .filter(Boolean)
+    .join(' ');
+  const displayName = fullName || user?.name?.trim() || user?.username?.trim() || 'Hesab';
   const roleLabel = user?.role?.name ?? '—';
   const initials = initialsFromUserName(displayName);
 
@@ -88,7 +95,9 @@ export function Topbar({ isDark, onToggleTheme }: Props) {
               {initials}
             </span>
             <span className="min-w-0 max-w-[10rem]">
-              <span className="block truncate font-medium leading-tight">{displayName}</span>
+              <span className="block truncate font-medium leading-tight">
+                {displayName}
+              </span>
               <span
                 className={[
                   'block truncate text-xs leading-tight',
@@ -99,9 +108,10 @@ export function Topbar({ isDark, onToggleTheme }: Props) {
               </span>
             </span>
             <ChevronDown
-              className={['h-4 w-4 shrink-0 opacity-70 transition', menuOpen ? 'rotate-180' : ''].join(
-                ' '
-              )}
+              className={[
+                'h-4 w-4 shrink-0 opacity-70 transition',
+                menuOpen ? 'rotate-180' : '',
+              ].join(' ')}
             />
           </button>
 
@@ -121,7 +131,9 @@ export function Topbar({ isDark, onToggleTheme }: Props) {
                 onClick={handleLogout}
                 className={[
                   'flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition',
-                  isDark ? 'hover:bg-red-950/50 hover:text-red-200' : 'hover:bg-red-50 hover:text-red-700',
+                  isDark
+                    ? 'hover:bg-red-950/50 hover:text-red-200'
+                    : 'hover:bg-red-50 hover:text-red-700',
                 ].join(' ')}
               >
                 <LogOut className="h-4 w-4 shrink-0" />

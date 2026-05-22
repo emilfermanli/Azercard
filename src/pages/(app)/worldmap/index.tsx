@@ -9,16 +9,20 @@ import type { ColumnDef } from '@tanstack/react-table';
 import {
   ArrowRightLeft,
   BadgeDollarSign,
+  Filter,
   Globe2,
   Landmark,
   Layers,
   Maximize2,
   Minimize2,
+  RotateCcw,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
+import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
-import { DataPagination, DataTable } from '@/components';
+import { Button, DataPagination, DataTable } from '@/components';
+import { useGetGeneralBanksQuery } from '@/services/general.service';
 import {
   useGetWorldmapFilterQuery,
   useGetWorldmapHeatmapQuery,
@@ -67,6 +71,16 @@ type PaymentSummary = {
   totalCount: number;
 };
 
+type SelectOption = {
+  label: string;
+  value: string;
+};
+
+type BooleanOption = {
+  label: string;
+  value: boolean;
+};
+
 type MapMode = 'flow' | 'heatmap';
 type BaseMapStyle = 'dark' | 'light' | 'voyager' | 'minimal';
 
@@ -94,6 +108,10 @@ const INITIAL_VIEW_STATE = {
 const MAP_MIN_ZOOM = 0.8;
 const MAP_MAX_ZOOM = 6;
 const PAGE_SIZE = 10;
+const FLAG_OPTIONS: BooleanOption[] = [
+  { label: 'Bəli', value: true },
+  { label: 'Xeyr', value: false },
+];
 
 const BASE_MAP_TILE_URL: Record<BaseMapStyle, string> = {
   dark: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
@@ -178,6 +196,63 @@ function translateCategory(value: string | null | undefined) {
   return translations[text] ?? text;
 }
 
+function cleanOptionValue(value: string | null | undefined) {
+  return value?.trim() ?? '';
+}
+
+function toUniqueOptions(
+  values: Array<string | null | undefined>,
+  selectedValue = '',
+  getLabel: (value: string) => string = (value) => value
+) {
+  const map = new Map<string, SelectOption>();
+
+  values.forEach((value) => {
+    const cleanValue = cleanOptionValue(value);
+    if (cleanValue) map.set(cleanValue, { label: getLabel(cleanValue), value: cleanValue });
+  });
+
+  if (selectedValue && !map.has(selectedValue)) {
+    map.set(selectedValue, { label: getLabel(selectedValue), value: selectedValue });
+  }
+
+  return Array.from(map.values()).sort((a, b) =>
+    a.label.localeCompare(b.label, 'az')
+  );
+}
+
+function mergeSelectOptions(current: SelectOption[], incoming: SelectOption[]) {
+  const map = new Map<string, SelectOption>();
+
+  current.forEach((option) => map.set(option.value, option));
+  incoming.forEach((option) => map.set(option.value, option));
+
+  return Array.from(map.values()).sort((a, b) =>
+    a.label.localeCompare(b.label, 'az')
+  );
+}
+
+function ensureSelectedOption(
+  options: SelectOption[],
+  selectedValue: string,
+  getLabel: (value: string) => string = (value) => value
+) {
+  if (!selectedValue || options.some((option) => option.value === selectedValue)) {
+    return options;
+  }
+
+  return mergeSelectOptions(options, [
+    { label: getLabel(selectedValue), value: selectedValue },
+  ]);
+}
+
+function parseNumberFilter(value: string) {
+  const normalized = value.trim().replace(',', '.');
+  if (!normalized) return undefined;
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 function normalizeHeatmapResponse(
   heatmap: WorldmapHeatmapResponse | undefined,
   countryPoints: CountryPoint[]
@@ -243,14 +318,61 @@ function normalizeHeatmapResponse(
 const WorldmapPage: React.FC = () => {
   const isDark = useShellTheme();
   const mapContainerRef = useRef<HTMLDivElement>(null);
+  const reportMonthInputRef = useRef<HTMLInputElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mapMode, setMapMode] = useState<MapMode>('flow');
   const [baseMapStyle, setBaseMapStyle] = useState<BaseMapStyle>(
     isDark ? 'dark' : 'light'
   );
+  const [bankId, setBankId] = useState('');
+  const [sourceCountry, setSourceCountry] = useState('');
+  const [sourceCountryCategory, setSourceCountryCategory] = useState('');
+  const [targetCountry, setTargetCountry] = useState('');
+  const [targetCountryCategory, setTargetCountryCategory] = useState('');
+  const [paymentSystem, setPaymentSystem] = useState('');
+  const [isIssuing, setIsIssuing] = useState<boolean | null>(null);
+  const [isAcquiring, setIsAcquiring] = useState<boolean | null>(null);
+  const [totalAmountFilter, setTotalAmountFilter] = useState('');
+  const [totalCountFilter, setTotalCountFilter] = useState('');
+  const [sourceLatitudeFilter, setSourceLatitudeFilter] = useState('');
+  const [sourceLongitudeFilter, setSourceLongitudeFilter] = useState('');
+  const [targetLatitudeFilter, setTargetLatitudeFilter] = useState('');
+  const [targetLongitudeFilter, setTargetLongitudeFilter] = useState('');
+  const [reportMonth, setReportMonth] = useState('');
   const [page, setPage] = useState(1);
+  const [sourceCountryOptionCache, setSourceCountryOptionCache] = useState<SelectOption[]>([]);
+  const [sourceCountryCategoryOptionCache, setSourceCountryCategoryOptionCache] = useState<
+    SelectOption[]
+  >([]);
+  const [targetCountryOptionCache, setTargetCountryOptionCache] = useState<SelectOption[]>([]);
+  const [targetCountryCategoryOptionCache, setTargetCountryCategoryOptionCache] = useState<
+    SelectOption[]
+  >([]);
+  const [paymentSystemOptionCache, setPaymentSystemOptionCache] = useState<SelectOption[]>([]);
   const [viewState, setViewState] = useState<WorldMapViewState>(INITIAL_VIEW_STATE);
+  const totalAmountNumber = parseNumberFilter(totalAmountFilter);
+  const totalCountNumber = parseNumberFilter(totalCountFilter);
+  const sourceLatitudeNumber = parseNumberFilter(sourceLatitudeFilter);
+  const sourceLongitudeNumber = parseNumberFilter(sourceLongitudeFilter);
+  const targetLatitudeNumber = parseNumberFilter(targetLatitudeFilter);
+  const targetLongitudeNumber = parseNumberFilter(targetLongitudeFilter);
+  const { data: banks = [], isLoading: banksLoading } = useGetGeneralBanksQuery();
   const { data, isLoading, isError, isFetching } = useGetWorldmapFilterQuery({
+    ...(reportMonth ? { ReportMonth: reportMonth } : {}),
+    ...(bankId ? { BankName: bankId } : {}),
+    ...(sourceCountry ? { SourceCountry: sourceCountry } : {}),
+    ...(sourceCountryCategory ? { SourceCountryCategory: sourceCountryCategory } : {}),
+    ...(targetCountry ? { TargetCountry: targetCountry } : {}),
+    ...(targetCountryCategory ? { TargetCountryCategory: targetCountryCategory } : {}),
+    ...(paymentSystem ? { PaymentSystem: paymentSystem } : {}),
+    ...(isIssuing != null ? { IsIssuing: isIssuing } : {}),
+    ...(isAcquiring != null ? { IsAcquiring: isAcquiring } : {}),
+    ...(totalAmountNumber != null ? { TotalAmount: totalAmountNumber } : {}),
+    ...(totalCountNumber != null ? { TotalCount: totalCountNumber } : {}),
+    ...(sourceLatitudeNumber != null ? { SourceLatitude: sourceLatitudeNumber } : {}),
+    ...(sourceLongitudeNumber != null ? { SourceLongitude: sourceLongitudeNumber } : {}),
+    ...(targetLatitudeNumber != null ? { TargetLatitude: targetLatitudeNumber } : {}),
+    ...(targetLongitudeNumber != null ? { TargetLongitude: targetLongitudeNumber } : {}),
     Page: page,
     PageSize: PAGE_SIZE,
   });
@@ -258,8 +380,31 @@ const WorldmapPage: React.FC = () => {
     data: heatmapData,
     isError: isHeatmapError,
     isFetching: isHeatmapFetching,
-  } = useGetWorldmapHeatmapQuery();
-  const rows = data?.items ?? [];
+  } = useGetWorldmapHeatmapQuery({
+    ...(bankId ? { bankName: bankId } : {}),
+    ...(reportMonth ? { month: reportMonth } : {}),
+  });
+  const rows = useMemo(() => data?.items ?? [], [data?.items]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [
+    bankId,
+    sourceCountry,
+    sourceCountryCategory,
+    targetCountry,
+    targetCountryCategory,
+    paymentSystem,
+    isIssuing,
+    isAcquiring,
+    totalAmountFilter,
+    totalCountFilter,
+    sourceLatitudeFilter,
+    sourceLongitudeFilter,
+    targetLatitudeFilter,
+    targetLongitudeFilter,
+    reportMonth,
+  ]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -272,6 +417,38 @@ const WorldmapPage: React.FC = () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, []);
+
+  useEffect(() => {
+    setSourceCountryOptionCache((current) =>
+      mergeSelectOptions(current, toUniqueOptions(rows.map((row) => row.sourceCountry)))
+    );
+    setSourceCountryCategoryOptionCache((current) =>
+      mergeSelectOptions(
+        current,
+        toUniqueOptions(
+          rows.map((row) => row.sourceCountryCategory),
+          '',
+          translateCategory
+        )
+      )
+    );
+    setTargetCountryOptionCache((current) =>
+      mergeSelectOptions(current, toUniqueOptions(rows.map((row) => row.targetCountry)))
+    );
+    setTargetCountryCategoryOptionCache((current) =>
+      mergeSelectOptions(
+        current,
+        toUniqueOptions(
+          rows.map((row) => row.targetCountryCategory),
+          '',
+          translateCategory
+        )
+      )
+    );
+    setPaymentSystemOptionCache((current) =>
+      mergeSelectOptions(current, toUniqueOptions(rows.map((row) => row.paymentSystem)))
+    );
+  }, [rows]);
 
   const handleViewStateChange = ({
     viewState: nextViewState,
@@ -526,6 +703,71 @@ const WorldmapPage: React.FC = () => {
     () => Math.max(...heatmapPoints.map((point) => point.weight), 1),
     [heatmapPoints]
   );
+  const bankOptions = useMemo(
+    () => {
+      const options = banks
+        .filter((bank) => bank.id && bank.bankName)
+        .map((bank) => ({
+          label: bank.bankName,
+          value: bank.id,
+        }))
+        .sort((a, b) => a.label.localeCompare(b.label, 'az'));
+
+      if (bankId && !options.some((option) => option.value === bankId)) {
+        options.push({ label: bankId, value: bankId });
+      }
+
+      return options;
+    },
+    [bankId, banks]
+  );
+  const sourceCountryOptions = useMemo(
+    () => ensureSelectedOption(sourceCountryOptionCache, sourceCountry),
+    [sourceCountry, sourceCountryOptionCache]
+  );
+  const sourceCountryCategoryOptions = useMemo(
+    () =>
+      ensureSelectedOption(
+        sourceCountryCategoryOptionCache,
+        sourceCountryCategory,
+        translateCategory
+      ),
+    [sourceCountryCategory, sourceCountryCategoryOptionCache]
+  );
+  const targetCountryOptions = useMemo(
+    () => ensureSelectedOption(targetCountryOptionCache, targetCountry),
+    [targetCountry, targetCountryOptionCache]
+  );
+  const targetCountryCategoryOptions = useMemo(
+    () =>
+      ensureSelectedOption(
+        targetCountryCategoryOptionCache,
+        targetCountryCategory,
+        translateCategory
+      ),
+    [targetCountryCategory, targetCountryCategoryOptionCache]
+  );
+  const paymentSystemOptions = useMemo(
+    () => ensureSelectedOption(paymentSystemOptionCache, paymentSystem),
+    [paymentSystem, paymentSystemOptionCache]
+  );
+  const selectedBank = bankOptions.find((item) => item.value === bankId) ?? null;
+  const selectedSourceCountry =
+    sourceCountryOptions.find((item) => item.value === sourceCountry) ?? null;
+  const selectedSourceCountryCategory =
+    sourceCountryCategoryOptions.find((item) => item.value === sourceCountryCategory) ??
+    null;
+  const selectedTargetCountry =
+    targetCountryOptions.find((item) => item.value === targetCountry) ?? null;
+  const selectedTargetCountryCategory =
+    targetCountryCategoryOptions.find((item) => item.value === targetCountryCategory) ??
+    null;
+  const selectedPaymentSystem =
+    paymentSystemOptions.find((item) => item.value === paymentSystem) ?? null;
+  const selectedIsIssuing =
+    FLAG_OPTIONS.find((item) => item.value === isIssuing) ?? null;
+  const selectedIsAcquiring =
+    FLAG_OPTIONS.find((item) => item.value === isAcquiring) ?? null;
 
   const deckLayers = useMemo(() => {
     const arcColor: [number, number, number, number] = isDark
@@ -703,12 +945,110 @@ const WorldmapPage: React.FC = () => {
     ? 'border-slate-800 bg-slate-900/70 text-slate-100 shadow-black/20'
     : 'border-slate-200 bg-white text-slate-950 shadow-slate-200/70';
   const mutedText = isDark ? 'text-slate-300' : 'text-slate-500';
+  const inputClass = [
+    'h-10 w-full rounded-lg border px-3 text-sm outline-none ring-cyan-500/40 transition focus:ring-2',
+    isDark
+      ? 'border-slate-700 bg-slate-950 text-slate-100 placeholder:text-slate-500'
+      : 'border-slate-200 bg-white text-slate-900 placeholder:text-slate-400',
+  ].join(' ');
+  const outlineButtonClass = isDark
+    ? 'border-slate-500 bg-slate-800/90 text-slate-100 hover:bg-slate-700 hover:text-white'
+    : '';
+  const selectStyles = useMemo<StylesConfig<SelectOption, false>>(
+    () => ({
+      control: (base, state) => ({
+        ...base,
+        minHeight: 40,
+        borderRadius: 8,
+        borderColor: state.isFocused ? '#06b6d4' : isDark ? '#334155' : '#e2e8f0',
+        backgroundColor: isDark ? '#020617' : '#ffffff',
+        boxShadow: state.isFocused ? '0 0 0 2px rgb(6 182 212 / 0.35)' : 'none',
+        ':hover': {
+          borderColor: state.isFocused ? '#06b6d4' : isDark ? '#475569' : '#cbd5e1',
+        },
+      }),
+      input: (base) => ({
+        ...base,
+        color: isDark ? '#f8fafc' : '#0f172a',
+      }),
+      menu: (base) => ({
+        ...base,
+        zIndex: 80,
+        border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+        backgroundColor: isDark ? '#020617' : '#ffffff',
+        boxShadow: isDark
+          ? '0 18px 40px rgb(0 0 0 / 0.35)'
+          : '0 18px 40px rgb(15 23 42 / 0.12)',
+      }),
+      option: (base, state) => ({
+        ...base,
+        backgroundColor: state.isSelected
+          ? '#0891b2'
+          : state.isFocused
+            ? isDark
+              ? '#164e63'
+              : '#ecfeff'
+            : 'transparent',
+        color: state.isSelected ? '#ffffff' : isDark ? '#f8fafc' : '#0f172a',
+      }),
+      placeholder: (base) => ({
+        ...base,
+        color: isDark ? '#94a3b8' : '#64748b',
+      }),
+      singleValue: (base) => ({
+        ...base,
+        color: isDark ? '#f8fafc' : '#0f172a',
+      }),
+    }),
+    [isDark]
+  );
+  const booleanSelectStyles = selectStyles as unknown as StylesConfig<BooleanOption, false>;
+  const hasActiveFilters = Boolean(
+    bankId ||
+      sourceCountry ||
+      sourceCountryCategory ||
+      targetCountry ||
+      targetCountryCategory ||
+      paymentSystem ||
+      isIssuing != null ||
+      isAcquiring != null ||
+      totalAmountFilter ||
+      totalCountFilter ||
+      sourceLatitudeFilter ||
+      sourceLongitudeFilter ||
+      targetLatitudeFilter ||
+      targetLongitudeFilter ||
+      reportMonth
+  );
   const mapButtonClass = [
     'flex h-10 w-10 items-center justify-center rounded-lg border shadow-lg transition hover:scale-[1.03]',
     isDark
       ? 'border-slate-700 bg-slate-950/90 text-slate-100 hover:bg-slate-900'
       : 'border-slate-200 bg-white/95 text-slate-700 hover:bg-slate-50',
   ].join(' ');
+
+  const resetFilters = () => {
+    setBankId('');
+    setSourceCountry('');
+    setSourceCountryCategory('');
+    setTargetCountry('');
+    setTargetCountryCategory('');
+    setPaymentSystem('');
+    setIsIssuing(null);
+    setIsAcquiring(null);
+    setTotalAmountFilter('');
+    setTotalCountFilter('');
+    setSourceLatitudeFilter('');
+    setSourceLongitudeFilter('');
+    setTargetLatitudeFilter('');
+    setTargetLongitudeFilter('');
+    setReportMonth('');
+    setPage(1);
+  };
+
+  const openDatePicker = () => {
+    reportMonthInputRef.current?.showPicker?.();
+  };
 
   return (
     <div className="space-y-5">
@@ -723,6 +1063,241 @@ const WorldmapPage: React.FC = () => {
       {isError && <PageError />}
       {!isLoading && !isError && (
         <>
+          <section className={['rounded-xl border p-4 shadow-lg', panelClass].join(' ')}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-500/15 text-cyan-500">
+                  <Filter className="h-5 w-5" />
+                </span>
+                <div>
+                  <h2 className="font-semibold">Filterlər</h2>
+                  <p className={['text-sm', mutedText].join(' ')}>
+                    Bank, ölkələr, ödəniş sistemi, istiqamət və ay üzrə dünya xəritəsi məlumatlarını süzün.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className={outlineButtonClass}
+                disabled={!hasActiveFilters || isFetching}
+                onClick={resetFilters}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Təmizlə
+              </Button>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Bank</span>
+                <Select
+                  inputId="worldmap-filter-bank"
+                  isClearable
+                  isLoading={banksLoading}
+                  noOptionsMessage={() => 'Bank tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setBankId(option?.value ?? '')
+                  }
+                  options={bankOptions}
+                  placeholder="Bütün banklar"
+                  styles={selectStyles}
+                  value={selectedBank}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Mənbə ölkə</span>
+                <Select
+                  inputId="worldmap-filter-source-country"
+                  isClearable
+                  noOptionsMessage={() => 'Ölkə tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setSourceCountry(option?.value ?? '')
+                  }
+                  options={sourceCountryOptions}
+                  placeholder="Bütün mənbələr"
+                  styles={selectStyles}
+                  value={selectedSourceCountry}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Hədəf ölkə</span>
+                <Select
+                  inputId="worldmap-filter-target-country"
+                  isClearable
+                  noOptionsMessage={() => 'Ölkə tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setTargetCountry(option?.value ?? '')
+                  }
+                  options={targetCountryOptions}
+                  placeholder="Bütün hədəflər"
+                  styles={selectStyles}
+                  value={selectedTargetCountry}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Ödəniş sistemi</span>
+                <Select
+                  inputId="worldmap-filter-payment-system"
+                  isClearable
+                  noOptionsMessage={() => 'Sistem tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setPaymentSystem(option?.value ?? '')
+                  }
+                  options={paymentSystemOptions}
+                  placeholder="Bütün sistemlər"
+                  styles={selectStyles}
+                  value={selectedPaymentSystem}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Mənbə kateqoriyası</span>
+                <Select
+                  inputId="worldmap-filter-source-category"
+                  isClearable
+                  noOptionsMessage={() => 'Kateqoriya tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setSourceCountryCategory(option?.value ?? '')
+                  }
+                  options={sourceCountryCategoryOptions}
+                  placeholder="Bütün kateqoriyalar"
+                  styles={selectStyles}
+                  value={selectedSourceCountryCategory}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Hədəf kateqoriyası</span>
+                <Select
+                  inputId="worldmap-filter-target-category"
+                  isClearable
+                  noOptionsMessage={() => 'Kateqoriya tapılmadı'}
+                  onChange={(option: SingleValue<SelectOption>) =>
+                    setTargetCountryCategory(option?.value ?? '')
+                  }
+                  options={targetCountryCategoryOptions}
+                  placeholder="Bütün kateqoriyalar"
+                  styles={selectStyles}
+                  value={selectedTargetCountryCategory}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Emitent</span>
+                <Select
+                  inputId="worldmap-filter-issuing"
+                  isClearable
+                  onChange={(option: SingleValue<BooleanOption>) =>
+                    setIsIssuing(option?.value ?? null)
+                  }
+                  options={FLAG_OPTIONS}
+                  placeholder="Hamısı"
+                  styles={booleanSelectStyles}
+                  value={selectedIsIssuing}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Ekvayrinq</span>
+                <Select
+                  inputId="worldmap-filter-acquiring"
+                  isClearable
+                  onChange={(option: SingleValue<BooleanOption>) =>
+                    setIsAcquiring(option?.value ?? null)
+                  }
+                  options={FLAG_OPTIONS}
+                  placeholder="Hamısı"
+                  styles={booleanSelectStyles}
+                  value={selectedIsAcquiring}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Ay</span>
+                <input
+                  ref={reportMonthInputRef}
+                  className={inputClass}
+                  type="date"
+                  value={reportMonth}
+                  onChange={(event) => setReportMonth(event.target.value)}
+                  onClick={openDatePicker}
+                  onFocus={openDatePicker}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Məbləğ</span>
+                <input
+                  className={inputClass}
+                  inputMode="decimal"
+                  placeholder="Məs: 1000"
+                  value={totalAmountFilter}
+                  onChange={(event) => setTotalAmountFilter(event.target.value)}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Say</span>
+                <input
+                  className={inputClass}
+                  inputMode="numeric"
+                  placeholder="Məs: 25"
+                  value={totalCountFilter}
+                  onChange={(event) => setTotalCountFilter(event.target.value)}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Mənbə enliyi</span>
+                <input
+                  className={inputClass}
+                  inputMode="decimal"
+                  placeholder="Latitude"
+                  value={sourceLatitudeFilter}
+                  onChange={(event) => setSourceLatitudeFilter(event.target.value)}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Mənbə uzunluğu</span>
+                <input
+                  className={inputClass}
+                  inputMode="decimal"
+                  placeholder="Longitude"
+                  value={sourceLongitudeFilter}
+                  onChange={(event) => setSourceLongitudeFilter(event.target.value)}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Hədəf enliyi</span>
+                <input
+                  className={inputClass}
+                  inputMode="decimal"
+                  placeholder="Latitude"
+                  value={targetLatitudeFilter}
+                  onChange={(event) => setTargetLatitudeFilter(event.target.value)}
+                />
+              </label>
+
+              <label className="space-y-1.5 text-sm font-medium">
+                <span className={mutedText}>Hədəf uzunluğu</span>
+                <input
+                  className={inputClass}
+                  inputMode="decimal"
+                  placeholder="Longitude"
+                  value={targetLongitudeFilter}
+                  onChange={(event) => setTargetLongitudeFilter(event.target.value)}
+                />
+              </label>
+            </div>
+          </section>
+
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Ümumi qeyd" value={formatNumber(data?.totalCount)} />
             <StatCard label="Ümumi məbləğ" value={formatShortAmount(totalAmount)} />

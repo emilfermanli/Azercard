@@ -23,13 +23,19 @@ export function isCurrentUserApiResponse(value: unknown): value is CurrentUserAp
 export function mapCurrentUserApiToUser(r: CurrentUserApiResponse): User {
   const firstRole = r.roleName[0] ?? 'User';
   const roleKey = firstRole.toLowerCase().replace(/\s+/g, '_');
+  const firstName = r.firstName?.trim() || '';
+  const lastName = r.lastName?.trim() || '';
+  const fullName = [firstName, lastName].filter(Boolean).join(' ');
   return {
     id: r.id,
     username: r.userName,
-    name: r.userName,
-    surname: '',
+    firstName,
+    lastName,
+    name: fullName || r.userName,
+    surname: lastName,
     email: r.email,
     contactNumber: '',
+    position: r.positionName?.trim() || r.position?.trim() || '',
     role: {
       id: stablePositiveIntFromString(roleKey),
       name: firstRole,

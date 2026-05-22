@@ -15,6 +15,7 @@ import {
   MapPinned,
   RadioTower,
   RotateCcw,
+  X,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
@@ -163,11 +164,26 @@ const AzmapPage: React.FC = () => {
   const [baseMapStyle, setBaseMapStyle] = useState<BaseMapStyle>(
     isDark ? 'dark' : 'light'
   );
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [bankName, setBankName] = useState('');
   const [sourceCity, setSourceCity] = useState('');
   const [sourceCityClean, setSourceCityClean] = useState('');
   const [reportMonth, setReportMonth] = useState('');
   const [page, setPage] = useState(1);
+  const [draftBankName, setDraftBankName] = useState('');
+  const [draftSourceCity, setDraftSourceCity] = useState('');
+  const [draftSourceCityClean, setDraftSourceCityClean] = useState('');
+  const [draftReportMonth, setDraftReportMonth] = useState('');
+
+  useEffect(() => {
+    if (filterDrawerOpen) {
+      setDraftBankName(bankName);
+      setDraftSourceCity(sourceCity);
+      setDraftSourceCityClean(sourceCityClean);
+      setDraftReportMonth(reportMonth);
+    }
+  }, [filterDrawerOpen, bankName, sourceCity, sourceCityClean, reportMonth]);
+
   const [viewState, setViewState] = useState<MapViewState>(INITIAL_VIEW_STATE);
   const { data: banks = [], isLoading: banksLoading } = useGetAzmapBanksQuery();
   const { data: cities = [], isLoading: citiesLoading } = useGetAzmapCitiesQuery();
@@ -385,10 +401,12 @@ const AzmapPage: React.FC = () => {
     () => regions.filter(Boolean).map((item) => ({ label: item, value: item })),
     [regions]
   );
-  const selectedBank = bankOptions.find((item) => item.value === bankName) ?? null;
-  const selectedCity = cityOptions.find((item) => item.value === sourceCity) ?? null;
-  const selectedRegion =
-    regionOptions.find((item) => item.value === sourceCityClean) ?? null;
+
+
+  const selectedDraftBank = bankOptions.find((item) => item.value === draftBankName) ?? null;
+  const selectedDraftCity = cityOptions.find((item) => item.value === draftSourceCity) ?? null;
+  const selectedDraftRegion = regionOptions.find((item) => item.value === draftSourceCityClean) ?? null;
+
   const hasActiveFilters = Boolean(
     bankName || sourceCity || sourceCityClean || reportMonth
   );
@@ -641,7 +659,21 @@ const AzmapPage: React.FC = () => {
     setSourceCity('');
     setSourceCityClean('');
     setReportMonth('');
+    setDraftBankName('');
+    setDraftSourceCity('');
+    setDraftSourceCityClean('');
+    setDraftReportMonth('');
     setPage(1);
+    setFilterDrawerOpen(false);
+  };
+
+  const applyFilters = () => {
+    setBankName(draftBankName);
+    setSourceCity(draftSourceCity);
+    setSourceCityClean(draftSourceCityClean);
+    setReportMonth(draftReportMonth);
+    setPage(1);
+    setFilterDrawerOpen(false);
   };
 
   const openDatePicker = () => {
@@ -661,98 +693,179 @@ const AzmapPage: React.FC = () => {
       {isError && <PageError />}
       {!isLoading && !isError && (
         <>
-          <section className={['rounded-xl border p-4 shadow-lg', panelClass].join(' ')}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-500">
-                  <Filter className="h-5 w-5" />
-                </span>
-                <div>
-                  <h2 className="font-semibold">Filterlər</h2>
-                  <p className={['text-sm', mutedText].join(' ')}>
-                    Bank, şəhər, region, kateqoriya və ay üzrə xəritə məlumatlarını süzün.
-                  </p>
+          <button
+            aria-expanded={filterDrawerOpen}
+            aria-label="Filter panelini aç"
+            className={[
+              'fixed bottom-6 right-6 z-[90] flex h-11 items-center gap-2 rounded-lg border px-3 text-sm font-semibold shadow-xl transition hover:translate-y-[-2px]',
+              isDark
+                ? 'border-emerald-400/30 bg-slate-950/95 text-emerald-100 shadow-black/30 hover:bg-slate-900'
+                : 'border-emerald-200 bg-white/95 text-emerald-700 shadow-slate-200/80 hover:bg-emerald-50',
+            ].join(' ')}
+            onClick={() => setFilterDrawerOpen(true)}
+            type="button"
+          >
+            <Filter className="h-4 w-4" />
+            <span className="hidden sm:inline">Filterlər</span>
+            {hasActiveFilters && (
+              <span className="h-2 w-2 rounded-full bg-emerald-500" aria-hidden="true" />
+            )}
+          </button>
+
+          <div
+            aria-hidden={!filterDrawerOpen}
+            className={[
+              'fixed inset-0 z-[110] h-dvh transition',
+              filterDrawerOpen ? 'pointer-events-auto' : 'pointer-events-none',
+            ].join(' ')}
+          >
+            <button
+              aria-label="Filter panelini bağla"
+              className={[
+                'absolute inset-0 bg-slate-950/40 transition-opacity',
+                filterDrawerOpen ? 'opacity-100' : 'opacity-0',
+              ].join(' ')}
+              onClick={() => setFilterDrawerOpen(false)}
+              type="button"
+            />
+            <aside
+              aria-label="Filterlər"
+              className={[
+                'fixed bottom-0 right-0 top-0 flex h-dvh min-h-dvh w-full max-w-[420px] flex-col border-l shadow-2xl transition-transform duration-300 ease-out',
+                filterDrawerOpen ? 'translate-x-0' : 'translate-x-full',
+                isDark
+                  ? 'border-slate-800 bg-slate-950 text-slate-100'
+                  : 'border-slate-200 bg-white text-slate-950',
+              ].join(' ')}
+            >
+              <div
+                className={[
+                  'flex items-start justify-between gap-3 border-b p-4',
+                  isDark ? 'border-slate-800' : 'border-slate-200',
+                ].join(' ')}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-500">
+                    <Filter className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h2 className="font-semibold">Filterlər</h2>
+                    <p className={['text-sm', mutedText].join(' ')}>
+                      Bank, şəhər, region və ay üzrə süzün.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  aria-label="Filter panelini bağla"
+                  className={[
+                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition',
+                    isDark
+                      ? 'border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+                  ].join(' ')}
+                  onClick={() => setFilterDrawerOpen(false)}
+                  type="button"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                <div className="grid gap-3">
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={mutedText}>Bank</span>
+                    <Select
+                      inputId="azmap-filter-bank"
+                      isClearable
+                      isLoading={banksLoading}
+                      noOptionsMessage={() => 'Bank tapılmadı'}
+                      onChange={(option: SingleValue<SelectOption>) =>
+                        setDraftBankName(option?.value ?? '')
+                      }
+                      options={bankOptions}
+                      placeholder="Bütün banklar"
+                      styles={selectStyles}
+                      value={selectedDraftBank}
+                    />
+                  </label>
+
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={mutedText}>Şəhər</span>
+                    <Select
+                      inputId="azmap-filter-city"
+                      isClearable
+                      isLoading={citiesLoading}
+                      noOptionsMessage={() => 'Şəhər tapılmadı'}
+                      onChange={(option: SingleValue<SelectOption>) =>
+                        setDraftSourceCity(option?.value ?? '')
+                      }
+                      options={cityOptions}
+                      placeholder="Bütün şəhərlər"
+                      styles={selectStyles}
+                      value={selectedDraftCity}
+                    />
+                  </label>
+
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={mutedText}>Region</span>
+                    <Select
+                      inputId="azmap-filter-region"
+                      isClearable
+                      isLoading={regionsLoading}
+                      noOptionsMessage={() => 'Region tapılmadı'}
+                      onChange={(option: SingleValue<SelectOption>) =>
+                        setDraftSourceCityClean(option?.value ?? '')
+                      }
+                      options={regionOptions}
+                      placeholder="Bütün regionlar"
+                      styles={selectStyles}
+                      value={selectedDraftRegion}
+                    />
+                  </label>
+
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={mutedText}>Ay</span>
+                    <input
+                      ref={reportMonthInputRef}
+                      className={inputClass}
+                      type="date"
+                      value={draftReportMonth}
+                      onChange={(event) => setDraftReportMonth(event.target.value)}
+                      onClick={openDatePicker}
+                      onFocus={openDatePicker}
+                    />
+                  </label>
                 </div>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={outlineButtonClass}
-                disabled={!hasActiveFilters || isFetching}
-                onClick={resetFilters}
+
+              <div
+                className={[
+                  'flex items-center justify-between gap-3 border-t p-4',
+                  isDark ? 'border-slate-800' : 'border-slate-200',
+                ].join(' ')}
               >
-                <RotateCcw className="h-4 w-4" />
-                Təmizlə
-              </Button>
-            </div>
-
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={mutedText}>Bank</span>
-                <Select
-                  inputId="azmap-filter-bank"
-                  isClearable
-                  isLoading={banksLoading}
-                  noOptionsMessage={() => 'Bank tapılmadı'}
-                  onChange={(option: SingleValue<SelectOption>) =>
-                    setBankName(option?.value ?? '')
-                  }
-                  options={bankOptions}
-                  placeholder="Bütün banklar"
-                  styles={selectStyles}
-                  value={selectedBank}
-                />
-              </label>
-
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={mutedText}>Şəhər</span>
-                <Select
-                  inputId="azmap-filter-city"
-                  isClearable
-                  isLoading={citiesLoading}
-                  noOptionsMessage={() => 'Şəhər tapılmadı'}
-                  onChange={(option: SingleValue<SelectOption>) =>
-                    setSourceCity(option?.value ?? '')
-                  }
-                  options={cityOptions}
-                  placeholder="Bütün şəhərlər"
-                  styles={selectStyles}
-                  value={selectedCity}
-                />
-              </label>
-
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={mutedText}>Region</span>
-                <Select
-                  inputId="azmap-filter-region"
-                  isClearable
-                  isLoading={regionsLoading}
-                  noOptionsMessage={() => 'Region tapılmadı'}
-                  onChange={(option: SingleValue<SelectOption>) =>
-                    setSourceCityClean(option?.value ?? '')
-                  }
-                  options={regionOptions}
-                  placeholder="Bütün regionlar"
-                  styles={selectStyles}
-                  value={selectedRegion}
-                />
-              </label>
-
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={mutedText}>Ay</span>
-                <input
-                  ref={reportMonthInputRef}
-                  className={inputClass}
-                  type="date"
-                  value={reportMonth}
-                  onChange={(event) => setReportMonth(event.target.value)}
-                  onClick={openDatePicker}
-                  onFocus={openDatePicker}
-                />
-              </label>
-            </div>
-          </section>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={outlineButtonClass}
+                  disabled={!hasActiveFilters && !draftBankName && !draftSourceCity && !draftSourceCityClean && !draftReportMonth}
+                  onClick={resetFilters}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Təmizlə
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-emerald-600 text-white hover:bg-emerald-700"
+                  onClick={applyFilters}
+                >
+                  Təsdiq et
+                </Button>
+              </div>
+            </aside>
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Ümumi qeyd" value={formatNumber(data?.totalCount)} />

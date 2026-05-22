@@ -1,14 +1,16 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
   Activity,
   BarChart3,
   BrainCircuit,
+  Filter,
   LineChart as LineChartIcon,
   Play,
   RefreshCw,
   RotateCcw,
   TrendingUp,
+  X,
 } from 'lucide-react';
 import {
   Bar,
@@ -344,10 +346,23 @@ function ModelQualityChart({ data }: { data: ModelPoint[] }) {
 
 const ForecastingPage: React.FC = () => {
   const isDark = useShellTheme();
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [horizon, setHorizon] = useState(DEFAULT_HORIZON);
   const [selectedBank, setSelectedBank] = useState<SelectOption | null>(null);
   const [selectedMcc, setSelectedMcc] = useState<SelectOption | null>(null);
+
+  const [draftBank, setDraftBank] = useState<SelectOption | null>(null);
+  const [draftMcc, setDraftMcc] = useState<SelectOption | null>(null);
+  const [draftHorizon, setDraftHorizon] = useState(DEFAULT_HORIZON);
+
+  useEffect(() => {
+    if (filterDrawerOpen) {
+      setDraftBank(selectedBank);
+      setDraftMcc(selectedMcc);
+      setDraftHorizon(horizon);
+    }
+  }, [filterDrawerOpen, selectedBank, selectedMcc, horizon]);
   const { data: banks = [], isLoading: banksLoading } = useGetGeneralBanksQuery();
   const { data: mccGroups = [], isLoading: mccGroupsLoading } =
     useGetGeneralMccGroupsQuery();
@@ -525,8 +540,8 @@ const ForecastingPage: React.FC = () => {
   const avgAccuracy = average(results.map((item) => item.accuracy));
   const avgConfidence = average(results.map((item) => item.confidenceLevel));
   const trainBusy = trainGlobalState.isLoading || trainAllState.isLoading;
-  const selectedHorizon =
-    HORIZON_SELECT_OPTIONS.find((option) => option.value === horizon) ?? null;
+  const selectedDraftHorizon =
+    HORIZON_SELECT_OPTIONS.find((option) => option.value === draftHorizon) ?? null;
   const hasActiveFilters = Boolean(
     selectedBank || selectedMcc || horizon !== DEFAULT_HORIZON
   );
@@ -539,6 +554,18 @@ const ForecastingPage: React.FC = () => {
     setSelectedBank(null);
     setSelectedMcc(null);
     setHorizon(DEFAULT_HORIZON);
+    setDraftBank(null);
+    setDraftMcc(null);
+    setDraftHorizon(DEFAULT_HORIZON);
+    setFilterDrawerOpen(false);
+  };
+
+  const applyFilters = () => {
+    setSelectedBank(draftBank);
+    setSelectedMcc(draftMcc);
+    setHorizon(draftHorizon);
+    setSelectedIndex(0);
+    setFilterDrawerOpen(false);
   };
 
   return (
@@ -561,87 +588,162 @@ const ForecastingPage: React.FC = () => {
             <StatCard label="Orta dəqiqlik" value={formatPercent(avgAccuracy)} />
           </div>
 
-          <section
+          <button
+            aria-expanded={filterDrawerOpen}
+            aria-label="Filter panelini aç"
             className={[
-              'rounded-xl border p-4 shadow-lg',
+              'fixed bottom-6 right-6 z-[90] flex h-11 items-center gap-2 rounded-lg border px-3 text-sm font-semibold shadow-xl transition hover:translate-y-[-2px]',
               isDark
-                ? 'border-slate-800 bg-slate-900/70 text-slate-100 shadow-black/20'
-                : 'border-slate-200 bg-white text-slate-950 shadow-slate-200/70',
+                ? 'border-blue-400/30 bg-slate-950/95 text-blue-100 shadow-black/30 hover:bg-slate-900'
+                : 'border-blue-200 bg-white/95 text-blue-700 shadow-slate-200/80 hover:bg-blue-50',
+            ].join(' ')}
+            onClick={() => setFilterDrawerOpen(true)}
+            type="button"
+          >
+            <Filter className="h-4 w-4" />
+            <span className="hidden sm:inline">Filterlər</span>
+            {hasActiveFilters && (
+              <span className="h-2 w-2 rounded-full bg-blue-500" aria-hidden="true" />
+            )}
+          </button>
+
+          <div
+            aria-hidden={!filterDrawerOpen}
+            className={[
+              'fixed inset-0 z-[110] h-dvh transition',
+              filterDrawerOpen ? 'pointer-events-auto' : 'pointer-events-none',
             ].join(' ')}
           >
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="font-semibold">Proqnoz filterləri</h2>
-                  <p className={['mt-1 text-sm', isDark ? 'text-slate-300' : 'text-slate-500'].join(' ')}>
-                    Bank, MCC qrupu və gələcək neçə ay üçün proqnoz gətiriləcəyini seçin.
-                  </p>
+            <button
+              aria-label="Filter panelini bağla"
+              className={[
+                'absolute inset-0 bg-slate-950/40 transition-opacity',
+                filterDrawerOpen ? 'opacity-100' : 'opacity-0',
+              ].join(' ')}
+              onClick={() => setFilterDrawerOpen(false)}
+              type="button"
+            />
+            <aside
+              aria-label="Filterlər"
+              className={[
+                'fixed bottom-0 right-0 top-0 flex h-dvh min-h-dvh w-full max-w-[420px] flex-col border-l shadow-2xl transition-transform duration-300 ease-out',
+                filterDrawerOpen ? 'translate-x-0' : 'translate-x-full',
+                isDark
+                  ? 'border-slate-800 bg-slate-950 text-slate-100'
+                  : 'border-slate-200 bg-white text-slate-950',
+              ].join(' ')}
+            >
+              <div
+                className={[
+                  'flex items-start justify-between gap-3 border-b p-4',
+                  isDark ? 'border-slate-800' : 'border-slate-200',
+                ].join(' ')}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/15 text-blue-500">
+                    <Filter className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h2 className="font-semibold">Proqnoz filterləri</h2>
+                    <p className={['text-sm', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
+                      Bank, MCC qrupu və gələcək aylar üzrə süzün.
+                    </p>
+                  </div>
                 </div>
-                <div className="flex justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className={outlineButtonClass}
-                    disabled={!hasActiveFilters || isFetching}
-                    onClick={resetFilters}
-                  >
-                    <RotateCcw className="h-4 w-4" />
-                    Təmizlə
-                  </Button>
+                <button
+                  aria-label="Filter panelini bağla"
+                  className={[
+                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition',
+                    isDark
+                      ? 'border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+                  ].join(' ')}
+                  onClick={() => setFilterDrawerOpen(false)}
+                  type="button"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                <div className="grid gap-3">
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>Bank</span>
+                    <Select
+                      isClearable
+                      isLoading={banksLoading}
+                      noOptionsMessage={() => 'Bank tapılmadı'}
+                      onChange={(option: SingleValue<SelectOption>) => {
+                        setDraftBank(option);
+                      }}
+                      options={bankOptions}
+                      placeholder="Bank axtar"
+                      styles={selectStyles}
+                      value={draftBank}
+                    />
+                  </label>
+
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>MCC</span>
+                    <Select
+                      isClearable
+                      isLoading={mccGroupsLoading}
+                      noOptionsMessage={() => 'MCC qrupu tapılmadı'}
+                      onChange={(option: SingleValue<SelectOption>) => {
+                        setDraftMcc(option);
+                      }}
+                      options={mccOptions}
+                      placeholder="MCC axtar"
+                      styles={selectStyles}
+                      value={draftMcc}
+                    />
+                  </label>
+
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>Üfüq</span>
+                    <Select
+                      inputId="forecasting-filter-horizon"
+                      isSearchable={false}
+                      onChange={(option: SingleValue<HorizonOption>) => {
+                        setDraftHorizon(option?.value ?? DEFAULT_HORIZON);
+                      }}
+                      options={HORIZON_SELECT_OPTIONS}
+                      placeholder="Üfüq"
+                      styles={horizonSelectStyles}
+                      value={selectedDraftHorizon}
+                    />
+                  </label>
                 </div>
               </div>
-              <div className="grid w-full gap-3 grid-cols-[minmax(0,1fr)_minmax(0,1fr)_160px]">
-                <label className="space-y-1.5 text-sm font-medium">
-                  <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>Bank</span>
-                  <Select
-                    isClearable
-                    isLoading={banksLoading}
-                    noOptionsMessage={() => 'Bank tapılmadı'}
-                    onChange={(option: SingleValue<SelectOption>) => {
-                      setSelectedIndex(0);
-                      setSelectedBank(option);
-                    }}
-                    options={bankOptions}
-                    placeholder="Bank axtar"
-                    styles={selectStyles}
-                    value={selectedBank}
-                  />
-                </label>
-                <label className="space-y-1.5 text-sm font-medium">
-                  <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>MCC</span>
-                  <Select
-                    isClearable
-                    isLoading={mccGroupsLoading}
-                    noOptionsMessage={() => 'MCC qrupu tapılmadı'}
-                    onChange={(option: SingleValue<SelectOption>) => {
-                      setSelectedIndex(0);
-                      setSelectedMcc(option);
-                    }}
-                    options={mccOptions}
-                    placeholder="MCC axtar"
-                    styles={selectStyles}
-                    value={selectedMcc}
-                  />
-                </label>
-                <label className="space-y-1.5 text-sm font-medium">
-                  <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>Üfüq</span>
-                  <Select
-                    inputId="forecasting-filter-horizon"
-                    isSearchable={false}
-                    onChange={(option: SingleValue<HorizonOption>) => {
-                      setSelectedIndex(0);
-                      setHorizon(option?.value ?? DEFAULT_HORIZON);
-                    }}
-                    options={HORIZON_SELECT_OPTIONS}
-                    placeholder="Üfüq"
-                    styles={horizonSelectStyles}
-                    value={selectedHorizon}
-                  />
-                </label>
+
+              <div
+                className={[
+                  'flex items-center justify-between gap-3 border-t p-4',
+                  isDark ? 'border-slate-800' : 'border-slate-200',
+                ].join(' ')}
+              >
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={outlineButtonClass}
+                  disabled={!hasActiveFilters && !draftBank && !draftMcc && draftHorizon === DEFAULT_HORIZON}
+                  onClick={resetFilters}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Təmizlə
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-blue-600 text-white hover:bg-blue-700"
+                  onClick={applyFilters}
+                >
+                  Təsdiq et
+                </Button>
               </div>
-            </div>
-          </section>
+            </aside>
+          </div>
 
           <section
             className={[

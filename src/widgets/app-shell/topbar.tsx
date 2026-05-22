@@ -28,8 +28,6 @@ export function Topbar({ isDark, onToggleTheme }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  console.log(user, 'alksdmalksdm');
-
   const fullName = [user?.firstName?.trim(), user?.lastName?.trim()]
     .filter(Boolean)
     .join(' ');

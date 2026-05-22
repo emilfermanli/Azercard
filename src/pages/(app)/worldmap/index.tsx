@@ -9,6 +9,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import {
   ArrowRightLeft,
   BadgeDollarSign,
+  X,
   Filter,
   Globe2,
   Landmark,
@@ -21,16 +22,13 @@ import {
 } from 'lucide-react';
 import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
-import { Button, DataPagination, DataTable } from '@/components';
+import { Button, DataPagination, DataTable, LoadingSpinner } from '@/components';
 import { useGetGeneralBanksQuery } from '@/services/general.service';
 import {
   useGetWorldmapFilterQuery,
   useGetWorldmapHeatmapQuery,
 } from '@/services/worldmap.service';
-import type {
-  WorldmapHeatmapResponse,
-  WorldmapItem,
-} from '@/types/worldmap.type';
+import type { WorldmapHeatmapResponse, WorldmapItem } from '@/types/worldmap.type';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 
 import {
@@ -209,16 +207,15 @@ function toUniqueOptions(
 
   values.forEach((value) => {
     const cleanValue = cleanOptionValue(value);
-    if (cleanValue) map.set(cleanValue, { label: getLabel(cleanValue), value: cleanValue });
+    if (cleanValue)
+      map.set(cleanValue, { label: getLabel(cleanValue), value: cleanValue });
   });
 
   if (selectedValue && !map.has(selectedValue)) {
     map.set(selectedValue, { label: getLabel(selectedValue), value: selectedValue });
   }
 
-  return Array.from(map.values()).sort((a, b) =>
-    a.label.localeCompare(b.label, 'az')
-  );
+  return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label, 'az'));
 }
 
 function mergeSelectOptions(current: SelectOption[], incoming: SelectOption[]) {
@@ -227,9 +224,7 @@ function mergeSelectOptions(current: SelectOption[], incoming: SelectOption[]) {
   current.forEach((option) => map.set(option.value, option));
   incoming.forEach((option) => map.set(option.value, option));
 
-  return Array.from(map.values()).sort((a, b) =>
-    a.label.localeCompare(b.label, 'az')
-  );
+  return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label, 'az'));
 }
 
 function ensureSelectedOption(
@@ -320,6 +315,7 @@ const WorldmapPage: React.FC = () => {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const reportMonthInputRef = useRef<HTMLInputElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [mapMode, setMapMode] = useState<MapMode>('flow');
   const [baseMapStyle, setBaseMapStyle] = useState<BaseMapStyle>(
     isDark ? 'dark' : 'light'
@@ -339,16 +335,37 @@ const WorldmapPage: React.FC = () => {
   const [targetLatitudeFilter, setTargetLatitudeFilter] = useState('');
   const [targetLongitudeFilter, setTargetLongitudeFilter] = useState('');
   const [reportMonth, setReportMonth] = useState('');
+  const [draftBankId, setDraftBankId] = useState('');
+  const [draftSourceCountry, setDraftSourceCountry] = useState('');
+  const [draftSourceCountryCategory, setDraftSourceCountryCategory] = useState('');
+  const [draftTargetCountry, setDraftTargetCountry] = useState('');
+  const [draftTargetCountryCategory, setDraftTargetCountryCategory] = useState('');
+  const [draftPaymentSystem, setDraftPaymentSystem] = useState('');
+  const [draftIsIssuing, setDraftIsIssuing] = useState<boolean | null>(null);
+  const [draftIsAcquiring, setDraftIsAcquiring] = useState<boolean | null>(null);
+  const [draftTotalAmountFilter, setDraftTotalAmountFilter] = useState('');
+  const [draftTotalCountFilter, setDraftTotalCountFilter] = useState('');
+  const [draftSourceLatitudeFilter, setDraftSourceLatitudeFilter] = useState('');
+  const [draftSourceLongitudeFilter, setDraftSourceLongitudeFilter] = useState('');
+  const [draftTargetLatitudeFilter, setDraftTargetLatitudeFilter] = useState('');
+  const [draftTargetLongitudeFilter, setDraftTargetLongitudeFilter] = useState('');
+  const [draftReportMonth, setDraftReportMonth] = useState('');
+  const [isApplyingFilters, setIsApplyingFilters] = useState(false);
+  const [hasStartedApplyFetch, setHasStartedApplyFetch] = useState(false);
   const [page, setPage] = useState(1);
-  const [sourceCountryOptionCache, setSourceCountryOptionCache] = useState<SelectOption[]>([]);
-  const [sourceCountryCategoryOptionCache, setSourceCountryCategoryOptionCache] = useState<
+  const [sourceCountryOptionCache, setSourceCountryOptionCache] = useState<
     SelectOption[]
   >([]);
-  const [targetCountryOptionCache, setTargetCountryOptionCache] = useState<SelectOption[]>([]);
-  const [targetCountryCategoryOptionCache, setTargetCountryCategoryOptionCache] = useState<
+  const [sourceCountryCategoryOptionCache, setSourceCountryCategoryOptionCache] =
+    useState<SelectOption[]>([]);
+  const [targetCountryOptionCache, setTargetCountryOptionCache] = useState<
     SelectOption[]
   >([]);
-  const [paymentSystemOptionCache, setPaymentSystemOptionCache] = useState<SelectOption[]>([]);
+  const [targetCountryCategoryOptionCache, setTargetCountryCategoryOptionCache] =
+    useState<SelectOption[]>([]);
+  const [paymentSystemOptionCache, setPaymentSystemOptionCache] = useState<
+    SelectOption[]
+  >([]);
   const [viewState, setViewState] = useState<WorldMapViewState>(INITIAL_VIEW_STATE);
   const totalAmountNumber = parseNumberFilter(totalAmountFilter);
   const totalCountNumber = parseNumberFilter(totalCountFilter);
@@ -417,6 +434,66 @@ const WorldmapPage: React.FC = () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, []);
+
+  useEffect(() => {
+    if (!filterDrawerOpen) return;
+
+    setDraftBankId(bankId);
+    setDraftSourceCountry(sourceCountry);
+    setDraftSourceCountryCategory(sourceCountryCategory);
+    setDraftTargetCountry(targetCountry);
+    setDraftTargetCountryCategory(targetCountryCategory);
+    setDraftPaymentSystem(paymentSystem);
+    setDraftIsIssuing(isIssuing);
+    setDraftIsAcquiring(isAcquiring);
+    setDraftTotalAmountFilter(totalAmountFilter);
+    setDraftTotalCountFilter(totalCountFilter);
+    setDraftSourceLatitudeFilter(sourceLatitudeFilter);
+    setDraftSourceLongitudeFilter(sourceLongitudeFilter);
+    setDraftTargetLatitudeFilter(targetLatitudeFilter);
+    setDraftTargetLongitudeFilter(targetLongitudeFilter);
+    setDraftReportMonth(reportMonth);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setFilterDrawerOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [
+    bankId,
+    filterDrawerOpen,
+    isAcquiring,
+    isIssuing,
+    paymentSystem,
+    reportMonth,
+    sourceCountry,
+    sourceCountryCategory,
+    sourceLatitudeFilter,
+    sourceLongitudeFilter,
+    targetCountry,
+    targetCountryCategory,
+    targetLatitudeFilter,
+    targetLongitudeFilter,
+    totalAmountFilter,
+    totalCountFilter,
+  ]);
+
+  useEffect(() => {
+    if (!isApplyingFilters) return;
+
+    if (isFetching && !hasStartedApplyFetch) {
+      setHasStartedApplyFetch(true);
+      return;
+    }
+
+    if (hasStartedApplyFetch && !isFetching) {
+      setIsApplyingFilters(false);
+      setHasStartedApplyFetch(false);
+    }
+  }, [hasStartedApplyFetch, isApplyingFilters, isFetching]);
 
   useEffect(() => {
     setSourceCountryOptionCache((current) =>
@@ -498,12 +575,14 @@ const WorldmapPage: React.FC = () => {
       {
         accessorKey: 'isIssuing',
         header: 'Emitent',
-        cell: ({ getValue }) => (toBool(getValue() as boolean | number) ? 'Bəli' : 'Xeyr'),
+        cell: ({ getValue }) =>
+          toBool(getValue() as boolean | number) ? 'Bəli' : 'Xeyr',
       },
       {
         accessorKey: 'isAcquiring',
         header: 'Ekvayrinq',
-        cell: ({ getValue }) => (toBool(getValue() as boolean | number) ? 'Bəli' : 'Xeyr'),
+        cell: ({ getValue }) =>
+          toBool(getValue() as boolean | number) ? 'Bəli' : 'Xeyr',
       },
       {
         accessorKey: 'totalAmount',
@@ -658,18 +737,16 @@ const WorldmapPage: React.FC = () => {
       for (const cluster of result) {
         const dist = Math.sqrt(
           Math.pow(point.position[0] - cluster.position[0], 2) +
-          Math.pow(point.position[1] - cluster.position[1], 2)
+            Math.pow(point.position[1] - cluster.position[1], 2)
         );
         if (dist < threshold) {
           const totalWt = cluster.weight + point.weight;
           if (totalWt > 0) {
             cluster.position[0] =
-              (cluster.position[0] * cluster.weight +
-                point.position[0] * point.weight) /
+              (cluster.position[0] * cluster.weight + point.position[0] * point.weight) /
               totalWt;
             cluster.position[1] =
-              (cluster.position[1] * cluster.weight +
-                point.position[1] * point.weight) /
+              (cluster.position[1] * cluster.weight + point.position[1] * point.weight) /
               totalWt;
           } else {
             cluster.position[0] = (cluster.position[0] + point.position[0]) / 2;
@@ -703,71 +780,72 @@ const WorldmapPage: React.FC = () => {
     () => Math.max(...heatmapPoints.map((point) => point.weight), 1),
     [heatmapPoints]
   );
-  const bankOptions = useMemo(
-    () => {
-      const options = banks
-        .filter((bank) => bank.id && bank.bankName)
-        .map((bank) => ({
-          label: bank.bankName,
-          value: bank.id,
-        }))
-        .sort((a, b) => a.label.localeCompare(b.label, 'az'));
+  const bankOptions = useMemo(() => {
+    const options = banks
+      .filter((bank) => bank.id && bank.bankName)
+      .map((bank) => ({
+        label: bank.bankName,
+        value: bank.id,
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'az'));
 
-      if (bankId && !options.some((option) => option.value === bankId)) {
-        options.push({ label: bankId, value: bankId });
-      }
+    const fallbackBankId = draftBankId || bankId;
 
-      return options;
-    },
-    [bankId, banks]
-  );
+    if (fallbackBankId && !options.some((option) => option.value === fallbackBankId)) {
+      options.push({ label: fallbackBankId, value: fallbackBankId });
+    }
+
+    return options;
+  }, [bankId, banks, draftBankId]);
   const sourceCountryOptions = useMemo(
-    () => ensureSelectedOption(sourceCountryOptionCache, sourceCountry),
-    [sourceCountry, sourceCountryOptionCache]
+    () => ensureSelectedOption(sourceCountryOptionCache, draftSourceCountry),
+    [draftSourceCountry, sourceCountryOptionCache]
   );
   const sourceCountryCategoryOptions = useMemo(
     () =>
       ensureSelectedOption(
         sourceCountryCategoryOptionCache,
-        sourceCountryCategory,
+        draftSourceCountryCategory,
         translateCategory
       ),
-    [sourceCountryCategory, sourceCountryCategoryOptionCache]
+    [draftSourceCountryCategory, sourceCountryCategoryOptionCache]
   );
   const targetCountryOptions = useMemo(
-    () => ensureSelectedOption(targetCountryOptionCache, targetCountry),
-    [targetCountry, targetCountryOptionCache]
+    () => ensureSelectedOption(targetCountryOptionCache, draftTargetCountry),
+    [draftTargetCountry, targetCountryOptionCache]
   );
   const targetCountryCategoryOptions = useMemo(
     () =>
       ensureSelectedOption(
         targetCountryCategoryOptionCache,
-        targetCountryCategory,
+        draftTargetCountryCategory,
         translateCategory
       ),
-    [targetCountryCategory, targetCountryCategoryOptionCache]
+    [draftTargetCountryCategory, targetCountryCategoryOptionCache]
   );
   const paymentSystemOptions = useMemo(
-    () => ensureSelectedOption(paymentSystemOptionCache, paymentSystem),
-    [paymentSystem, paymentSystemOptionCache]
+    () => ensureSelectedOption(paymentSystemOptionCache, draftPaymentSystem),
+    [draftPaymentSystem, paymentSystemOptionCache]
   );
-  const selectedBank = bankOptions.find((item) => item.value === bankId) ?? null;
+  const selectedBank = bankOptions.find((item) => item.value === draftBankId) ?? null;
   const selectedSourceCountry =
-    sourceCountryOptions.find((item) => item.value === sourceCountry) ?? null;
+    sourceCountryOptions.find((item) => item.value === draftSourceCountry) ?? null;
   const selectedSourceCountryCategory =
-    sourceCountryCategoryOptions.find((item) => item.value === sourceCountryCategory) ??
-    null;
+    sourceCountryCategoryOptions.find(
+      (item) => item.value === draftSourceCountryCategory
+    ) ?? null;
   const selectedTargetCountry =
-    targetCountryOptions.find((item) => item.value === targetCountry) ?? null;
+    targetCountryOptions.find((item) => item.value === draftTargetCountry) ?? null;
   const selectedTargetCountryCategory =
-    targetCountryCategoryOptions.find((item) => item.value === targetCountryCategory) ??
-    null;
+    targetCountryCategoryOptions.find(
+      (item) => item.value === draftTargetCountryCategory
+    ) ?? null;
   const selectedPaymentSystem =
-    paymentSystemOptions.find((item) => item.value === paymentSystem) ?? null;
+    paymentSystemOptions.find((item) => item.value === draftPaymentSystem) ?? null;
   const selectedIsIssuing =
-    FLAG_OPTIONS.find((item) => item.value === isIssuing) ?? null;
+    FLAG_OPTIONS.find((item) => item.value === draftIsIssuing) ?? null;
   const selectedIsAcquiring =
-    FLAG_OPTIONS.find((item) => item.value === isAcquiring) ?? null;
+    FLAG_OPTIONS.find((item) => item.value === draftIsAcquiring) ?? null;
 
   const deckLayers = useMemo(() => {
     const arcColor: [number, number, number, number] = isDark
@@ -798,13 +876,14 @@ const WorldmapPage: React.FC = () => {
             west: number;
           };
 
-          return WORLD_TILE_LONGITUDE_OFFSETS.map((offset) => (
-            new BitmapLayer({
-              bounds: [west + offset, south, east + offset, north],
-              id: `${props.id}-bitmap-${offset}`,
-              image: props.data,
-            })
-          ));
+          return WORLD_TILE_LONGITUDE_OFFSETS.map(
+            (offset) =>
+              new BitmapLayer({
+                bounds: [west + offset, south, east + offset, north],
+                id: `${props.id}-bitmap-${offset}`,
+                image: props.data,
+              })
+          );
         },
         tileSize: 256,
       }),
@@ -848,8 +927,10 @@ const WorldmapPage: React.FC = () => {
             point.isCluster
               ? 110_000 + point.pointCount * 15_000
               : 55_000 + (point.weight / maxHeatmapWeight) * 260_000,
-          getFillColor: (point) => (point.isCluster ? [255, 255, 255, 110] : [255, 255, 255, 60]),
-          getLineColor: (point) => (point.isCluster ? [255, 255, 255, 255] : [255, 255, 255, 210]),
+          getFillColor: (point) =>
+            point.isCluster ? [255, 255, 255, 110] : [255, 255, 255, 60],
+          getLineColor: (point) =>
+            point.isCluster ? [255, 255, 255, 255] : [255, 255, 255, 210],
           radiusMinPixels: 12,
           radiusMaxPixels: 50,
           lineWidthMinPixels: 1.5,
@@ -1002,7 +1083,10 @@ const WorldmapPage: React.FC = () => {
     }),
     [isDark]
   );
-  const booleanSelectStyles = selectStyles as unknown as StylesConfig<BooleanOption, false>;
+  const booleanSelectStyles = selectStyles as unknown as StylesConfig<
+    BooleanOption,
+    false
+  >;
   const hasActiveFilters = Boolean(
     bankId ||
       sourceCountry ||
@@ -1019,6 +1103,23 @@ const WorldmapPage: React.FC = () => {
       targetLatitudeFilter ||
       targetLongitudeFilter ||
       reportMonth
+  );
+  const hasDraftFilters = Boolean(
+    draftBankId ||
+      draftSourceCountry ||
+      draftSourceCountryCategory ||
+      draftTargetCountry ||
+      draftTargetCountryCategory ||
+      draftPaymentSystem ||
+      draftIsIssuing != null ||
+      draftIsAcquiring != null ||
+      draftTotalAmountFilter ||
+      draftTotalCountFilter ||
+      draftSourceLatitudeFilter ||
+      draftSourceLongitudeFilter ||
+      draftTargetLatitudeFilter ||
+      draftTargetLongitudeFilter ||
+      draftReportMonth
   );
   const mapButtonClass = [
     'flex h-10 w-10 items-center justify-center rounded-lg border shadow-lg transition hover:scale-[1.03]',
@@ -1043,7 +1144,66 @@ const WorldmapPage: React.FC = () => {
     setTargetLatitudeFilter('');
     setTargetLongitudeFilter('');
     setReportMonth('');
+    setDraftBankId('');
+    setDraftSourceCountry('');
+    setDraftSourceCountryCategory('');
+    setDraftTargetCountry('');
+    setDraftTargetCountryCategory('');
+    setDraftPaymentSystem('');
+    setDraftIsIssuing(null);
+    setDraftIsAcquiring(null);
+    setDraftTotalAmountFilter('');
+    setDraftTotalCountFilter('');
+    setDraftSourceLatitudeFilter('');
+    setDraftSourceLongitudeFilter('');
+    setDraftTargetLatitudeFilter('');
+    setDraftTargetLongitudeFilter('');
+    setDraftReportMonth('');
     setPage(1);
+  };
+
+  const applyDraftFilters = () => {
+    const hasChanges =
+      draftBankId !== bankId ||
+      draftSourceCountry !== sourceCountry ||
+      draftSourceCountryCategory !== sourceCountryCategory ||
+      draftTargetCountry !== targetCountry ||
+      draftTargetCountryCategory !== targetCountryCategory ||
+      draftPaymentSystem !== paymentSystem ||
+      draftIsIssuing !== isIssuing ||
+      draftIsAcquiring !== isAcquiring ||
+      draftTotalAmountFilter !== totalAmountFilter ||
+      draftTotalCountFilter !== totalCountFilter ||
+      draftSourceLatitudeFilter !== sourceLatitudeFilter ||
+      draftSourceLongitudeFilter !== sourceLongitudeFilter ||
+      draftTargetLatitudeFilter !== targetLatitudeFilter ||
+      draftTargetLongitudeFilter !== targetLongitudeFilter ||
+      draftReportMonth !== reportMonth;
+
+    if (!hasChanges) {
+      setFilterDrawerOpen(false);
+      return;
+    }
+
+    setIsApplyingFilters(true);
+    setHasStartedApplyFetch(false);
+    setBankId(draftBankId);
+    setSourceCountry(draftSourceCountry);
+    setSourceCountryCategory(draftSourceCountryCategory);
+    setTargetCountry(draftTargetCountry);
+    setTargetCountryCategory(draftTargetCountryCategory);
+    setPaymentSystem(draftPaymentSystem);
+    setIsIssuing(draftIsIssuing);
+    setIsAcquiring(draftIsAcquiring);
+    setTotalAmountFilter(draftTotalAmountFilter);
+    setTotalCountFilter(draftTotalCountFilter);
+    setSourceLatitudeFilter(draftSourceLatitudeFilter);
+    setSourceLongitudeFilter(draftSourceLongitudeFilter);
+    setTargetLatitudeFilter(draftTargetLatitudeFilter);
+    setTargetLongitudeFilter(draftTargetLongitudeFilter);
+    setReportMonth(draftReportMonth);
+    setPage(1);
+    setFilterDrawerOpen(false);
   };
 
   const openDatePicker = () => {
@@ -1063,240 +1223,359 @@ const WorldmapPage: React.FC = () => {
       {isError && <PageError />}
       {!isLoading && !isError && (
         <>
-          <section className={['rounded-xl border p-4 shadow-lg', panelClass].join(' ')}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-500/15 text-cyan-500">
-                  <Filter className="h-5 w-5" />
-                </span>
-                <div>
-                  <h2 className="font-semibold">Filterlər</h2>
-                  <p className={['text-sm', mutedText].join(' ')}>
-                    Bank, ölkələr, ödəniş sistemi, istiqamət və ay üzrə dünya xəritəsi məlumatlarını süzün.
-                  </p>
+          {isApplyingFilters && (
+            <div className="fixed inset-0 z-[105] flex items-center justify-center bg-slate-950/18 backdrop-blur-[1px]">
+              <div
+                className={[
+                  'flex items-center gap-3 rounded-xl border px-4 py-3 shadow-xl',
+                  isDark
+                    ? 'border-slate-700 bg-slate-950/95 text-slate-100'
+                    : 'border-slate-200 bg-white/95 text-slate-900',
+                ].join(' ')}
+              >
+                <LoadingSpinner
+                  size="md"
+                  className={isDark ? 'text-cyan-300' : 'text-cyan-600'}
+                />
+                <span className="text-sm font-medium">Filterlər tətbiq olunur...</span>
+              </div>
+            </div>
+          )}
+
+          <button
+            aria-expanded={filterDrawerOpen}
+            aria-label="Filter panelini aç"
+            className={[
+              'fixed bottom-6 right-6 z-[90] flex h-11 items-center gap-2 rounded-lg border px-3 text-sm font-semibold shadow-xl transition hover:translate-y-[-2px]',
+              isDark
+                ? 'border-cyan-400/30 bg-slate-950/95 text-cyan-100 shadow-black/30 hover:bg-slate-900'
+                : 'border-cyan-200 bg-white/95 text-cyan-700 shadow-slate-200/80 hover:bg-cyan-50',
+            ].join(' ')}
+            onClick={() => setFilterDrawerOpen(true)}
+            type="button"
+          >
+            <Filter className="h-4 w-4" />
+            <span className="hidden sm:inline">Filterlər</span>
+            {hasActiveFilters && (
+              <span className="h-2 w-2 rounded-full bg-cyan-500" aria-hidden="true" />
+            )}
+          </button>
+
+          <div
+            aria-hidden={!filterDrawerOpen}
+            className={[
+              'fixed inset-0 z-[110] h-dvh transition',
+              filterDrawerOpen ? 'pointer-events-auto' : 'pointer-events-none',
+            ].join(' ')}
+          >
+            <button
+              aria-label="Filter panelini bağla"
+              className={[
+                'absolute inset-0 bg-slate-950/40 transition-opacity',
+                filterDrawerOpen ? 'opacity-100' : 'opacity-0',
+              ].join(' ')}
+              onClick={() => setFilterDrawerOpen(false)}
+              type="button"
+            />
+            <aside
+              aria-label="Filterlər"
+              className={[
+                'fixed bottom-0 right-0 top-0 flex h-dvh min-h-dvh w-full max-w-[420px] flex-col border-l shadow-2xl transition-transform duration-300 ease-out',
+                filterDrawerOpen ? 'translate-x-0' : 'translate-x-full',
+                isDark
+                  ? 'border-slate-800 bg-slate-950 text-slate-100'
+                  : 'border-slate-200 bg-white text-slate-950',
+              ].join(' ')}
+            >
+              <div
+                className={[
+                  'flex items-start justify-between gap-3 border-b p-4',
+                  isDark ? 'border-slate-800' : 'border-slate-200',
+                ].join(' ')}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-cyan-500/15 text-cyan-500">
+                    <Filter className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h2 className="font-semibold">Filterlər</h2>
+                    <p className={['text-sm', mutedText].join(' ')}>
+                      Dünya xəritəsi məlumatlarını süzün.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  aria-label="Filter panelini bağla"
+                  className={[
+                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition',
+                    isDark
+                      ? 'border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+                  ].join(' ')}
+                  onClick={() => setFilterDrawerOpen(false)}
+                  type="button"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                <div className="grid gap-3">
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={mutedText}>Bank</span>
+                    <Select
+                      inputId="worldmap-filter-bank"
+                      isClearable
+                      isLoading={banksLoading}
+                      noOptionsMessage={() => 'Bank tapılmadı'}
+                      onChange={(option: SingleValue<SelectOption>) =>
+                        setDraftBankId(option?.value ?? '')
+                      }
+                      options={bankOptions}
+                      placeholder="Bütün banklar"
+                      styles={selectStyles}
+                      value={selectedBank}
+                    />
+                  </label>
+
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={mutedText}>Mənbə ölkə</span>
+                    <Select
+                      inputId="worldmap-filter-source-country"
+                      isClearable
+                      noOptionsMessage={() => 'Ölkə tapılmadı'}
+                      onChange={(option: SingleValue<SelectOption>) =>
+                        setDraftSourceCountry(option?.value ?? '')
+                      }
+                      options={sourceCountryOptions}
+                      placeholder="Bütün mənbələr"
+                      styles={selectStyles}
+                      value={selectedSourceCountry}
+                    />
+                  </label>
+
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={mutedText}>Hədəf ölkə</span>
+                    <Select
+                      inputId="worldmap-filter-target-country"
+                      isClearable
+                      noOptionsMessage={() => 'Ölkə tapılmadı'}
+                      onChange={(option: SingleValue<SelectOption>) =>
+                        setDraftTargetCountry(option?.value ?? '')
+                      }
+                      options={targetCountryOptions}
+                      placeholder="Bütün hədəflər"
+                      styles={selectStyles}
+                      value={selectedTargetCountry}
+                    />
+                  </label>
+
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={mutedText}>Ödəniş sistemi</span>
+                    <Select
+                      inputId="worldmap-filter-payment-system"
+                      isClearable
+                      noOptionsMessage={() => 'Sistem tapılmadı'}
+                      onChange={(option: SingleValue<SelectOption>) =>
+                        setDraftPaymentSystem(option?.value ?? '')
+                      }
+                      options={paymentSystemOptions}
+                      placeholder="Bütün sistemlər"
+                      styles={selectStyles}
+                      value={selectedPaymentSystem}
+                    />
+                  </label>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="space-y-1.5 text-sm font-medium">
+                      <span className={mutedText}>Emitent</span>
+                      <Select
+                        inputId="worldmap-filter-issuing"
+                        isClearable
+                        onChange={(option: SingleValue<BooleanOption>) =>
+                          setDraftIsIssuing(option?.value ?? null)
+                        }
+                        options={FLAG_OPTIONS}
+                        placeholder="Hamısı"
+                        styles={booleanSelectStyles}
+                        value={selectedIsIssuing}
+                      />
+                    </label>
+
+                    <label className="space-y-1.5 text-sm font-medium">
+                      <span className={mutedText}>Ekvayrinq</span>
+                      <Select
+                        inputId="worldmap-filter-acquiring"
+                        isClearable
+                        onChange={(option: SingleValue<BooleanOption>) =>
+                          setDraftIsAcquiring(option?.value ?? null)
+                        }
+                        options={FLAG_OPTIONS}
+                        placeholder="Hamısı"
+                        styles={booleanSelectStyles}
+                        value={selectedIsAcquiring}
+                      />
+                    </label>
+                  </div>
+
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={mutedText}>Ay</span>
+                    <input
+                      ref={reportMonthInputRef}
+                      className={inputClass}
+                      type="date"
+                      value={draftReportMonth}
+                      onChange={(event) => setDraftReportMonth(event.target.value)}
+                      onClick={openDatePicker}
+                      onFocus={openDatePicker}
+                    />
+                  </label>
+
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={mutedText}>Mənbə kateqoriyası</span>
+                    <Select
+                      inputId="worldmap-filter-source-category"
+                      isClearable
+                      noOptionsMessage={() => 'Kateqoriya tapılmadı'}
+                      onChange={(option: SingleValue<SelectOption>) =>
+                        setDraftSourceCountryCategory(option?.value ?? '')
+                      }
+                      options={sourceCountryCategoryOptions}
+                      placeholder="Bütün kateqoriyalar"
+                      styles={selectStyles}
+                      value={selectedSourceCountryCategory}
+                    />
+                  </label>
+
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={mutedText}>Hədəf kateqoriyası</span>
+                    <Select
+                      inputId="worldmap-filter-target-category"
+                      isClearable
+                      noOptionsMessage={() => 'Kateqoriya tapılmadı'}
+                      onChange={(option: SingleValue<SelectOption>) =>
+                        setDraftTargetCountryCategory(option?.value ?? '')
+                      }
+                      options={targetCountryCategoryOptions}
+                      placeholder="Bütün kateqoriyalar"
+                      styles={selectStyles}
+                      value={selectedTargetCountryCategory}
+                    />
+                  </label>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="space-y-1.5 text-sm font-medium">
+                      <span className={mutedText}>Məbləğ</span>
+                      <input
+                        className={inputClass}
+                        inputMode="decimal"
+                        placeholder="Məs: 1000"
+                        value={draftTotalAmountFilter}
+                        onChange={(event) =>
+                          setDraftTotalAmountFilter(event.target.value)
+                        }
+                      />
+                    </label>
+
+                    <label className="space-y-1.5 text-sm font-medium">
+                      <span className={mutedText}>Say</span>
+                      <input
+                        className={inputClass}
+                        inputMode="numeric"
+                        placeholder="Məs: 25"
+                        value={draftTotalCountFilter}
+                        onChange={(event) => setDraftTotalCountFilter(event.target.value)}
+                      />
+                    </label>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="space-y-1.5 text-sm font-medium">
+                      <span className={mutedText}>Mənbə enliyi</span>
+                      <input
+                        className={inputClass}
+                        inputMode="decimal"
+                        placeholder="Latitude"
+                        value={draftSourceLatitudeFilter}
+                        onChange={(event) =>
+                          setDraftSourceLatitudeFilter(event.target.value)
+                        }
+                      />
+                    </label>
+
+                    <label className="space-y-1.5 text-sm font-medium">
+                      <span className={mutedText}>Mənbə uzunluğu</span>
+                      <input
+                        className={inputClass}
+                        inputMode="decimal"
+                        placeholder="Longitude"
+                        value={draftSourceLongitudeFilter}
+                        onChange={(event) =>
+                          setDraftSourceLongitudeFilter(event.target.value)
+                        }
+                      />
+                    </label>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="space-y-1.5 text-sm font-medium">
+                      <span className={mutedText}>Hədəf enliyi</span>
+                      <input
+                        className={inputClass}
+                        inputMode="decimal"
+                        placeholder="Latitude"
+                        value={draftTargetLatitudeFilter}
+                        onChange={(event) =>
+                          setDraftTargetLatitudeFilter(event.target.value)
+                        }
+                      />
+                    </label>
+
+                    <label className="space-y-1.5 text-sm font-medium">
+                      <span className={mutedText}>Hədəf uzunluğu</span>
+                      <input
+                        className={inputClass}
+                        inputMode="decimal"
+                        placeholder="Longitude"
+                        value={draftTargetLongitudeFilter}
+                        onChange={(event) =>
+                          setDraftTargetLongitudeFilter(event.target.value)
+                        }
+                      />
+                    </label>
+                  </div>
                 </div>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={outlineButtonClass}
-                disabled={!hasActiveFilters || isFetching}
-                onClick={resetFilters}
+
+              <div
+                className={[
+                  'flex items-center justify-between gap-3 border-t p-4',
+                  isDark ? 'border-slate-800' : 'border-slate-200',
+                ].join(' ')}
               >
-                <RotateCcw className="h-4 w-4" />
-                Təmizlə
-              </Button>
-            </div>
-
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={mutedText}>Bank</span>
-                <Select
-                  inputId="worldmap-filter-bank"
-                  isClearable
-                  isLoading={banksLoading}
-                  noOptionsMessage={() => 'Bank tapılmadı'}
-                  onChange={(option: SingleValue<SelectOption>) =>
-                    setBankId(option?.value ?? '')
-                  }
-                  options={bankOptions}
-                  placeholder="Bütün banklar"
-                  styles={selectStyles}
-                  value={selectedBank}
-                />
-              </label>
-
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={mutedText}>Mənbə ölkə</span>
-                <Select
-                  inputId="worldmap-filter-source-country"
-                  isClearable
-                  noOptionsMessage={() => 'Ölkə tapılmadı'}
-                  onChange={(option: SingleValue<SelectOption>) =>
-                    setSourceCountry(option?.value ?? '')
-                  }
-                  options={sourceCountryOptions}
-                  placeholder="Bütün mənbələr"
-                  styles={selectStyles}
-                  value={selectedSourceCountry}
-                />
-              </label>
-
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={mutedText}>Hədəf ölkə</span>
-                <Select
-                  inputId="worldmap-filter-target-country"
-                  isClearable
-                  noOptionsMessage={() => 'Ölkə tapılmadı'}
-                  onChange={(option: SingleValue<SelectOption>) =>
-                    setTargetCountry(option?.value ?? '')
-                  }
-                  options={targetCountryOptions}
-                  placeholder="Bütün hədəflər"
-                  styles={selectStyles}
-                  value={selectedTargetCountry}
-                />
-              </label>
-
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={mutedText}>Ödəniş sistemi</span>
-                <Select
-                  inputId="worldmap-filter-payment-system"
-                  isClearable
-                  noOptionsMessage={() => 'Sistem tapılmadı'}
-                  onChange={(option: SingleValue<SelectOption>) =>
-                    setPaymentSystem(option?.value ?? '')
-                  }
-                  options={paymentSystemOptions}
-                  placeholder="Bütün sistemlər"
-                  styles={selectStyles}
-                  value={selectedPaymentSystem}
-                />
-              </label>
-
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={mutedText}>Mənbə kateqoriyası</span>
-                <Select
-                  inputId="worldmap-filter-source-category"
-                  isClearable
-                  noOptionsMessage={() => 'Kateqoriya tapılmadı'}
-                  onChange={(option: SingleValue<SelectOption>) =>
-                    setSourceCountryCategory(option?.value ?? '')
-                  }
-                  options={sourceCountryCategoryOptions}
-                  placeholder="Bütün kateqoriyalar"
-                  styles={selectStyles}
-                  value={selectedSourceCountryCategory}
-                />
-              </label>
-
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={mutedText}>Hədəf kateqoriyası</span>
-                <Select
-                  inputId="worldmap-filter-target-category"
-                  isClearable
-                  noOptionsMessage={() => 'Kateqoriya tapılmadı'}
-                  onChange={(option: SingleValue<SelectOption>) =>
-                    setTargetCountryCategory(option?.value ?? '')
-                  }
-                  options={targetCountryCategoryOptions}
-                  placeholder="Bütün kateqoriyalar"
-                  styles={selectStyles}
-                  value={selectedTargetCountryCategory}
-                />
-              </label>
-
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={mutedText}>Emitent</span>
-                <Select
-                  inputId="worldmap-filter-issuing"
-                  isClearable
-                  onChange={(option: SingleValue<BooleanOption>) =>
-                    setIsIssuing(option?.value ?? null)
-                  }
-                  options={FLAG_OPTIONS}
-                  placeholder="Hamısı"
-                  styles={booleanSelectStyles}
-                  value={selectedIsIssuing}
-                />
-              </label>
-
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={mutedText}>Ekvayrinq</span>
-                <Select
-                  inputId="worldmap-filter-acquiring"
-                  isClearable
-                  onChange={(option: SingleValue<BooleanOption>) =>
-                    setIsAcquiring(option?.value ?? null)
-                  }
-                  options={FLAG_OPTIONS}
-                  placeholder="Hamısı"
-                  styles={booleanSelectStyles}
-                  value={selectedIsAcquiring}
-                />
-              </label>
-
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={mutedText}>Ay</span>
-                <input
-                  ref={reportMonthInputRef}
-                  className={inputClass}
-                  type="date"
-                  value={reportMonth}
-                  onChange={(event) => setReportMonth(event.target.value)}
-                  onClick={openDatePicker}
-                  onFocus={openDatePicker}
-                />
-              </label>
-
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={mutedText}>Məbləğ</span>
-                <input
-                  className={inputClass}
-                  inputMode="decimal"
-                  placeholder="Məs: 1000"
-                  value={totalAmountFilter}
-                  onChange={(event) => setTotalAmountFilter(event.target.value)}
-                />
-              </label>
-
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={mutedText}>Say</span>
-                <input
-                  className={inputClass}
-                  inputMode="numeric"
-                  placeholder="Məs: 25"
-                  value={totalCountFilter}
-                  onChange={(event) => setTotalCountFilter(event.target.value)}
-                />
-              </label>
-
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={mutedText}>Mənbə enliyi</span>
-                <input
-                  className={inputClass}
-                  inputMode="decimal"
-                  placeholder="Latitude"
-                  value={sourceLatitudeFilter}
-                  onChange={(event) => setSourceLatitudeFilter(event.target.value)}
-                />
-              </label>
-
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={mutedText}>Mənbə uzunluğu</span>
-                <input
-                  className={inputClass}
-                  inputMode="decimal"
-                  placeholder="Longitude"
-                  value={sourceLongitudeFilter}
-                  onChange={(event) => setSourceLongitudeFilter(event.target.value)}
-                />
-              </label>
-
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={mutedText}>Hədəf enliyi</span>
-                <input
-                  className={inputClass}
-                  inputMode="decimal"
-                  placeholder="Latitude"
-                  value={targetLatitudeFilter}
-                  onChange={(event) => setTargetLatitudeFilter(event.target.value)}
-                />
-              </label>
-
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={mutedText}>Hədəf uzunluğu</span>
-                <input
-                  className={inputClass}
-                  inputMode="decimal"
-                  placeholder="Longitude"
-                  value={targetLongitudeFilter}
-                  onChange={(event) => setTargetLongitudeFilter(event.target.value)}
-                />
-              </label>
-            </div>
-          </section>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={outlineButtonClass}
+                  disabled={(!hasDraftFilters && !hasActiveFilters) || isFetching}
+                  onClick={resetFilters}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Təmizlə
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-cyan-600 text-white hover:bg-cyan-700"
+                  onClick={applyDraftFilters}
+                  disabled={isFetching}
+                >
+                  Təsdiq et
+                </Button>
+              </div>
+            </aside>
+          </div>
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Ümumi qeyd" value={formatNumber(data?.totalCount)} />
@@ -1309,9 +1588,7 @@ const WorldmapPage: React.FC = () => {
             <div
               className={[
                 'overflow-hidden rounded-xl border shadow-lg',
-                isDark
-                  ? 'border-slate-800 bg-slate-950'
-                  : 'border-slate-200 bg-slate-50',
+                isDark ? 'border-slate-800 bg-slate-950' : 'border-slate-200 bg-slate-50',
               ].join(' ')}
             >
               <div className="space-y-3 border-b border-white/10 px-4 py-3">
@@ -1367,7 +1644,9 @@ const WorldmapPage: React.FC = () => {
                 ref={mapContainerRef}
                 className={[
                   'relative',
-                  isFullscreen ? 'h-screen min-h-screen w-screen' : 'h-[520px] min-h-[420px]',
+                  isFullscreen
+                    ? 'h-screen min-h-screen w-screen'
+                    : 'h-[520px] min-h-[420px]',
                   isDark
                     ? 'bg-[radial-gradient(circle_at_50%_40%,rgba(8,145,178,0.18),rgba(2,6,23,0.98)_58%)]'
                     : 'bg-[radial-gradient(circle_at_50%_40%,rgba(186,230,253,0.7),rgba(248,250,252,1)_62%)]',
@@ -1455,7 +1734,9 @@ const WorldmapPage: React.FC = () => {
                           : 'border-slate-200 bg-white/95 text-slate-700',
                     ].join(' ')}
                   >
-                    {isHeatmapError ? 'İstilik xəritəsi yüklənmədi' : 'İstilik xəritəsi yüklənir...'}
+                    {isHeatmapError
+                      ? 'İstilik xəritəsi yüklənmədi'
+                      : 'İstilik xəritəsi yüklənir...'}
                   </div>
                 )}
                 <div

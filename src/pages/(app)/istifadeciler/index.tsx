@@ -9,6 +9,7 @@ import {
   ShieldPlus,
   Trash2,
   Users,
+  X,
 } from 'lucide-react';
 import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
@@ -20,7 +21,7 @@ import {
   useGetDepartmentsQuery,
   useGetPositionsQuery,
 } from '@/services/organization.service';
-import { useDebouncedValue } from '@/hooks';
+
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import { cn } from '@/utils';
 import { dataTableActionButtonClass } from '@/utils/data-table-action-button';
@@ -40,27 +41,34 @@ type SelectOption = {
 
 const IstifadecilerPage: React.FC = () => {
   const isDark = useShellTheme();
+  const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [queryPageNumber, setQueryPageNumber] = useState(1);
   const [querySearch, setQuerySearch] = useState('');
   const [search, setSearch] = useState('');
   const [role, setRole] = useState('');
   const [departmentId, setDepartmentId] = useState('');
   const [positionId, setPositionId] = useState('');
+  const [draftRole, setDraftRole] = useState('');
+  const [draftDepartmentId, setDraftDepartmentId] = useState('');
+  const [draftPositionId, setDraftPositionId] = useState('');
   const [viewUser, setViewUser] = useState<UserListRow | null>(null);
   const [assignUser, setAssignUser] = useState<UserListRow | null>(null);
   const [editUser, setEditUser] = useState<UserListRow | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<UserListRow | null>(null);
-  const debouncedSearch = useDebouncedValue(search.trim(), 450);
   const { data: roles = [], isLoading: rolesLoading } = useGetAllRolesQuery();
   const { data: departments = [], isLoading: departmentsLoading } =
     useGetDepartmentsQuery();
   const { data: positions = [], isLoading: positionsLoading } = useGetPositionsQuery();
 
   useEffect(() => {
-    setQuerySearch(debouncedSearch);
-    setQueryPageNumber(1);
-  }, [debouncedSearch]);
+    if (filterDrawerOpen) {
+      setSearch(querySearch);
+      setDraftRole(role);
+      setDraftDepartmentId(departmentId);
+      setDraftPositionId(positionId);
+    }
+  }, [filterDrawerOpen, querySearch, role, departmentId, positionId]);
 
   const { data, isLoading, isError, isFetching } = useGetAllUsersQuery({
     pageNumber: queryPageNumber,
@@ -232,16 +240,13 @@ const IstifadecilerPage: React.FC = () => {
   const tableClass = isDark
     ? 'border-slate-800 bg-slate-900/70'
     : 'border-slate-200 bg-white';
-  const filterPanel = isDark
-    ? 'border-slate-800 bg-slate-900/70 text-slate-100 shadow-black/20'
-    : 'border-slate-200 bg-white text-slate-950 shadow-slate-200/70';
   const inputClass = [
     'h-10 w-full rounded-lg border px-3 text-sm outline-none ring-blue-500/40 transition focus:ring-2',
     isDark
       ? 'border-slate-700 bg-slate-950 text-slate-100 placeholder:text-slate-500'
       : 'border-slate-200 bg-white text-slate-900 placeholder:text-slate-400',
   ].join(' ');
-  const hasActiveFilters = Boolean(search || role || departmentId || positionId);
+  const hasActiveFilters = Boolean(querySearch || role || departmentId || positionId);
   const selectOptions = useMemo(
     () => ({
       roles: roles.map((item) => ({ label: item.name, value: item.name })),
@@ -298,11 +303,13 @@ const IstifadecilerPage: React.FC = () => {
     }),
     [isDark]
   );
-  const selectedRole = selectOptions.roles.find((item) => item.value === role) ?? null;
-  const selectedDepartment =
-    selectOptions.departments.find((item) => item.value === departmentId) ?? null;
-  const selectedPosition =
-    selectOptions.positions.find((item) => item.value === positionId) ?? null;
+
+
+  const selectedDraftRole = selectOptions.roles.find((item) => item.value === draftRole) ?? null;
+  const selectedDraftDepartment =
+    selectOptions.departments.find((item) => item.value === draftDepartmentId) ?? null;
+  const selectedDraftPosition =
+    selectOptions.positions.find((item) => item.value === draftPositionId) ?? null;
 
   const resetFilters = () => {
     setSearch('');
@@ -310,7 +317,20 @@ const IstifadecilerPage: React.FC = () => {
     setRole('');
     setDepartmentId('');
     setPositionId('');
+    setDraftRole('');
+    setDraftDepartmentId('');
+    setDraftPositionId('');
     setQueryPageNumber(1);
+    setFilterDrawerOpen(false);
+  };
+
+  const applyFilters = () => {
+    setQuerySearch(search);
+    setRole(draftRole);
+    setDepartmentId(draftDepartmentId);
+    setPositionId(draftPositionId);
+    setQueryPageNumber(1);
+    setFilterDrawerOpen(false);
   };
 
   return (
@@ -395,100 +415,178 @@ const IstifadecilerPage: React.FC = () => {
 
       {data && (
         <>
-          <section className={['rounded-xl border p-4 shadow-lg', filterPanel].join(' ')}>
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/15 text-blue-500">
-                  <Filter className="h-5 w-5" />
-                </span>
-                <div>
-                  <h2 className="font-semibold">Filterlər</h2>
-                  <p className={['text-sm', muted].join(' ')}>
-                    İstifadəçiləri rol, departament, pozisiya və axtarış üzrə süzün.
-                  </p>
+          <button
+            aria-expanded={filterDrawerOpen}
+            aria-label="Filter panelini aç"
+            className={[
+              'fixed bottom-6 right-6 z-[90] flex h-11 items-center gap-2 rounded-lg border px-3 text-sm font-semibold shadow-xl transition hover:translate-y-[-2px]',
+              isDark
+                ? 'border-blue-400/30 bg-slate-950/95 text-blue-100 shadow-black/30 hover:bg-slate-900'
+                : 'border-blue-200 bg-white/95 text-blue-700 shadow-slate-200/80 hover:bg-blue-50',
+            ].join(' ')}
+            onClick={() => setFilterDrawerOpen(true)}
+            type="button"
+          >
+            <Filter className="h-4 w-4" />
+            <span className="hidden sm:inline">Filterlər</span>
+            {hasActiveFilters && (
+              <span className="h-2 w-2 rounded-full bg-blue-500" aria-hidden="true" />
+            )}
+          </button>
+
+          <div
+            aria-hidden={!filterDrawerOpen}
+            className={[
+              'fixed inset-0 z-[110] h-dvh transition',
+              filterDrawerOpen ? 'pointer-events-auto' : 'pointer-events-none',
+            ].join(' ')}
+          >
+            <button
+              aria-label="Filter panelini bağla"
+              className={[
+                'absolute inset-0 bg-slate-950/40 transition-opacity',
+                filterDrawerOpen ? 'opacity-100' : 'opacity-0',
+              ].join(' ')}
+              onClick={() => setFilterDrawerOpen(false)}
+              type="button"
+            />
+            <aside
+              aria-label="Filterlər"
+              className={[
+                'fixed bottom-0 right-0 top-0 flex h-dvh min-h-dvh w-full max-w-[420px] flex-col border-l shadow-2xl transition-transform duration-300 ease-out',
+                filterDrawerOpen ? 'translate-x-0' : 'translate-x-full',
+                isDark
+                  ? 'border-slate-800 bg-slate-950 text-slate-100'
+                  : 'border-slate-200 bg-white text-slate-950',
+              ].join(' ')}
+            >
+              <div
+                className={[
+                  'flex items-start justify-between gap-3 border-b p-4',
+                  isDark ? 'border-slate-800' : 'border-slate-200',
+                ].join(' ')}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/15 text-blue-500">
+                    <Filter className="h-5 w-5" />
+                  </span>
+                  <div>
+                    <h2 className="font-semibold">Filterlər</h2>
+                    <p className={['text-sm', muted].join(' ')}>
+                      İstifadəçiləri rol, departament, pozisiya və axtarış üzrə süzün.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  aria-label="Filter panelini bağla"
+                  className={[
+                    'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition',
+                    isDark
+                      ? 'border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800'
+                      : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50',
+                  ].join(' ')}
+                  onClick={() => setFilterDrawerOpen(false)}
+                  type="button"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="min-h-0 flex-1 overflow-y-auto p-4">
+                <div className="grid gap-3">
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={muted}>Axtarış</span>
+                    <input
+                      className={inputClass}
+                      placeholder="Ad və ya e-poçt"
+                      value={search}
+                      onChange={(event) => {
+                        setSearch(event.target.value);
+                      }}
+                    />
+                  </label>
+
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={muted}>Rol</span>
+                    <Select
+                      inputId="users-filter-role"
+                      isClearable
+                      isLoading={rolesLoading}
+                      noOptionsMessage={() => 'Rol tapılmadı'}
+                      onChange={(option: SingleValue<SelectOption>) => {
+                        setDraftRole(option?.value ?? '');
+                      }}
+                      options={selectOptions.roles}
+                      placeholder="Bütün rollar"
+                      styles={selectStyles}
+                      value={selectedDraftRole}
+                    />
+                  </label>
+
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={muted}>Departament</span>
+                    <Select
+                      inputId="users-filter-department"
+                      isClearable
+                      isLoading={departmentsLoading}
+                      noOptionsMessage={() => 'Departament tapılmadı'}
+                      onChange={(option: SingleValue<SelectOption>) => {
+                        setDraftDepartmentId(option?.value ?? '');
+                      }}
+                      options={selectOptions.departments}
+                      placeholder="Bütün departamentlər"
+                      styles={selectStyles}
+                      value={selectedDraftDepartment}
+                    />
+                  </label>
+
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={muted}>Pozisiya</span>
+                    <Select
+                      inputId="users-filter-position"
+                      isClearable
+                      isLoading={positionsLoading}
+                      noOptionsMessage={() => 'Pozisiya tapılmadı'}
+                      onChange={(option: SingleValue<SelectOption>) => {
+                        setDraftPositionId(option?.value ?? '');
+                      }}
+                      options={selectOptions.positions}
+                      placeholder="Bütün pozisiyalar"
+                      styles={selectStyles}
+                      value={selectedDraftPosition}
+                    />
+                  </label>
                 </div>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className={outlineButtonClass}
-                disabled={!hasActiveFilters || isFetching}
-                onClick={resetFilters}
+
+              <div
+                className={[
+                  'flex items-center justify-between gap-3 border-t p-4',
+                  isDark ? 'border-slate-800' : 'border-slate-200',
+                ].join(' ')}
               >
-                <RotateCcw className="h-4 w-4" />
-                Təmizlə
-              </Button>
-            </div>
-
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={muted}>Axtarış</span>
-                <input
-                  className={inputClass}
-                  placeholder="Ad və ya e-poçt"
-                  value={search}
-                  onChange={(event) => {
-                    setSearch(event.target.value);
-                  }}
-                />
-              </label>
-
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={muted}>Rol</span>
-                <Select
-                  inputId="users-filter-role"
-                  isClearable
-                  isLoading={rolesLoading}
-                  noOptionsMessage={() => 'Rol tapılmadı'}
-                  onChange={(option: SingleValue<SelectOption>) => {
-                    setRole(option?.value ?? '');
-                    setQueryPageNumber(1);
-                  }}
-                  options={selectOptions.roles}
-                  placeholder="Bütün rollar"
-                  styles={selectStyles}
-                  value={selectedRole}
-                />
-              </label>
-
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={muted}>Departament</span>
-                <Select
-                  inputId="users-filter-department"
-                  isClearable
-                  isLoading={departmentsLoading}
-                  noOptionsMessage={() => 'Departament tapılmadı'}
-                  onChange={(option: SingleValue<SelectOption>) => {
-                    setDepartmentId(option?.value ?? '');
-                    setQueryPageNumber(1);
-                  }}
-                  options={selectOptions.departments}
-                  placeholder="Bütün departamentlər"
-                  styles={selectStyles}
-                  value={selectedDepartment}
-                />
-              </label>
-
-              <label className="space-y-1.5 text-sm font-medium">
-                <span className={muted}>Pozisiya</span>
-                <Select
-                  inputId="users-filter-position"
-                  isClearable
-                  isLoading={positionsLoading}
-                  noOptionsMessage={() => 'Pozisiya tapılmadı'}
-                  onChange={(option: SingleValue<SelectOption>) => {
-                    setPositionId(option?.value ?? '');
-                    setQueryPageNumber(1);
-                  }}
-                  options={selectOptions.positions}
-                  placeholder="Bütün pozisiyalar"
-                  styles={selectStyles}
-                  value={selectedPosition}
-                />
-              </label>
-            </div>
-          </section>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={outlineButtonClass}
+                  disabled={!hasActiveFilters && !search && !draftRole && !draftDepartmentId && !draftPositionId}
+                  onClick={resetFilters}
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Təmizlə
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="bg-blue-600 text-white hover:bg-blue-700"
+                  onClick={applyFilters}
+                >
+                  Təsdiq et
+                </Button>
+              </div>
+            </aside>
+          </div>
 
           <div className="grid grid-cols-12 gap-4">
             <div

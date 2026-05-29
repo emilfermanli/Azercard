@@ -10,6 +10,7 @@ export type Path =
   | `/departamentler`
   | `/forecasting`
   | `/istifadeciler`
+  | `/kart-aktivliyi`
   | `/login`
   | `/marketbenchmark`
   | `/pozisiyalar`

@@ -3,6 +3,7 @@ import {
   BarChart3,
   Briefcase,
   Building2,
+  CreditCard,
   Globe2,
   MapPinned,
   Shield,
@@ -57,6 +58,11 @@ export const navLinks: NavLinkItem[] = [
     path: '/sectorspend',
     label: 'Sektor xərcləri',
     icon: WalletCards,
+  },
+  {
+    path: '/kart-aktivliyi',
+    label: 'Kart aktivliyi',
+    icon: CreditCard,
   },
   {
     path: '/forecasting',

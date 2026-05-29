@@ -55,7 +55,7 @@ const RollarPage: React.FC = () => {
     : 'border-slate-200 bg-white';
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pt-2 pb-2 pl-2 pr-4 sm:pt-3 sm:pb-3 sm:pl-3 sm:pr-6">
       <div className={['rounded-xl border p-4 shadow-lg sm:p-5', headerPanel].join(' ')}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-4">

@@ -86,7 +86,7 @@ export function AnalysisSection({
       <div>
         <h1 className="text-2xl font-bold">Terminal aktivliyi</h1>
         <p className={['mt-1 text-sm', muted].join(' ')}>
-          Kart brendləri və istiqamətlər üzrə əməliyyat göstəriciləri
+          Terminal brendləri və istiqamətlər üzrə əməliyyat göstəriciləri
         </p>
       </div>
 

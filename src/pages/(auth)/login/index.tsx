@@ -17,7 +17,6 @@ import {
 
 import { Button, Input, LoadingSpinner } from '@/components';
 
-
 import { login } from '@/store/features/auth.slice';
 import { useLoginMutation } from '@/services/auth.service';
 import { useState } from 'react';
@@ -47,7 +46,6 @@ const featureItems = [
 ];
 
 const LoginPage: React.FC = () => {
-
   const navigate = useNavigate();
   const dispatch = useDispatch<AppDispatch>();
   const [loginRequest, { isLoading }] = useLoginMutation();
@@ -93,13 +91,15 @@ const LoginPage: React.FC = () => {
                   <h1 className="text-4xl font-semibold tracking-tight text-slate-950">
                     İdarəetmə Paneli
                   </h1>
-                  <p className="mt-1 text-sm font-medium text-slate-500">İdarəetmə Sistemi</p>
+                  <p className="mt-1 text-sm font-medium text-slate-500">
+                    İdarəetmə Sistemi
+                  </p>
                 </div>
               </div>
 
               <p className="mt-6 max-w-lg text-base leading-7 text-slate-600">
-                Daxili əməliyyatlar, istifadəçi rolları və analitika modulları üçün sürətli,
-                fokuslanmış və təhlükəsiz giriş nöqtəsi.
+                Daxili əməliyyatlar, istifadəçi rolları və analitika modulları üçün
+                sürətli, fokuslanmış və təhlükəsiz giriş nöqtəsi.
               </p>
             </div>
 
@@ -113,7 +113,9 @@ const LoginPage: React.FC = () => {
                     <Icon className="h-5 w-5" />
                   </span>
                   <span>
-                    <span className="block text-sm font-semibold text-slate-900">{title}</span>
+                    <span className="block text-sm font-semibold text-slate-900">
+                      {title}
+                    </span>
                     <span className="mt-1 block text-sm leading-5 text-slate-500">
                       {description}
                     </span>
@@ -121,7 +123,6 @@ const LoginPage: React.FC = () => {
                 </div>
               ))}
             </div>
-
           </div>
         </section>
 
@@ -150,7 +151,10 @@ const LoginPage: React.FC = () => {
 
               <form onSubmit={onSubmit} className="mt-8 flex flex-col gap-5">
                 <div className="flex flex-col gap-2">
-                  <label htmlFor="login-email" className="text-sm font-medium text-slate-700">
+                  <label
+                    htmlFor="login-email"
+                    className="text-sm font-medium text-slate-700"
+                  >
                     E-poçt
                   </label>
                   <div className="relative">
@@ -167,7 +171,10 @@ const LoginPage: React.FC = () => {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <label htmlFor="login-password" className="text-sm font-medium text-slate-700">
+                  <label
+                    htmlFor="login-password"
+                    className="text-sm font-medium text-slate-700"
+                  >
                     Şifrə
                   </label>
                   <div className="relative">

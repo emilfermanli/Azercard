@@ -42,7 +42,10 @@ function generate() {
       .map((file) => `export * from './${path.basename(file)}';`)
       .join('\n');
 
-    if (fs.existsSync(indexFilePath) && fs.readFileSync(indexFilePath, 'utf8') === imports) {
+    if (
+      fs.existsSync(indexFilePath) &&
+      fs.readFileSync(indexFilePath, 'utf8') === imports
+    ) {
       return;
     }
 

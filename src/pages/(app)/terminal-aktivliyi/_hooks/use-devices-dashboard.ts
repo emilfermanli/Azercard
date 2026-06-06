@@ -7,7 +7,13 @@ import {
 } from '@/services/devices.service';
 import type { DeviceBaseFilters, DeviceDimension } from '@/types/devices.type';
 import { CARD_TONES, MONTHS_AZ, PIE_COLORS, TREND_MONTH_COUNT } from '../_constants';
-import type { DisplayRow, PieDatum, RightPanelMode, SummaryCard, TrendDatum } from '../_types';
+import type {
+  DisplayRow,
+  PieDatum,
+  RightPanelMode,
+  SummaryCard,
+  TrendDatum,
+} from '../_types';
 import { formatCount, shiftMonth, trendOf } from '../_utils';
 
 type DashboardArgs = {
@@ -78,7 +84,10 @@ export function useDevicesDashboard({
   // Kateqoriya cəmiləri — cari + keçən ay /total cavablarından birləşdirilir.
   const categoryTotals = useMemo(() => {
     const prevByCategory = new Map(
-      (prevTotalData?.categories ?? []).map((item) => [item.retailCategory, item.totalDevices])
+      (prevTotalData?.categories ?? []).map((item) => [
+        item.retailCategory,
+        item.totalDevices,
+      ])
     );
     return (totalData?.categories ?? []).map((item) => ({
       category: item.retailCategory,

@@ -16,7 +16,10 @@ export type LoadingSpinnerProps = {
 export function LoadingSpinner({ className, size = 'md' }: LoadingSpinnerProps) {
   return (
     <span
-      className={cn('inline-flex shrink-0 items-center justify-center text-current', className)}
+      className={cn(
+        'inline-flex shrink-0 items-center justify-center text-current',
+        className
+      )}
       role="status"
       aria-busy="true"
     >

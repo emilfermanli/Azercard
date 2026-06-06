@@ -114,7 +114,9 @@ export function PositionCreateModal({ open, onClose }: Props) {
             onClick={onClose}
             className={cn(
               'rounded-lg p-1 transition-colors',
-              isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-500 hover:bg-slate-100'
+              isDark
+                ? 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                : 'text-slate-500 hover:bg-slate-100'
             )}
             aria-label="Bağla"
           >

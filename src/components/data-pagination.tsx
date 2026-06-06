@@ -39,15 +39,7 @@ function getPaginationItems(page: number, totalPages: number): PaginationItem[] 
     ];
   }
 
-  return [
-    1,
-    'left-ellipsis',
-    page - 1,
-    page,
-    page + 1,
-    'right-ellipsis',
-    totalPages,
-  ];
+  return [1, 'left-ellipsis', page - 1, page, page + 1, 'right-ellipsis', totalPages];
 }
 
 export function DataPagination({

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Filter, RotateCcw, X } from 'lucide-react';
 import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
-import { Button } from '@/components';
+import { Button, DateInput } from '@/components';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import type { DeviceFiltersController } from '../_hooks/use-device-filters';
 import type { SelectOption } from '../_types';
@@ -29,9 +29,6 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
     apply,
     reset,
   } = filters;
-
-  const showDatePicker = (event: React.MouseEvent<HTMLInputElement> | React.FocusEvent<HTMLInputElement>) =>
-    event.currentTarget.showPicker?.();
 
   const inputClass = [
     'h-10 w-full rounded-lg border px-3 text-sm outline-none ring-blue-500/40 transition focus:ring-2',
@@ -62,7 +59,9 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
         zIndex: 80,
         border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
         backgroundColor: isDark ? '#020617' : '#ffffff',
-        boxShadow: isDark ? '0 18px 40px rgb(0 0 0 / 0.35)' : '0 18px 40px rgb(15 23 42 / 0.12)',
+        boxShadow: isDark
+          ? '0 18px 40px rgb(0 0 0 / 0.35)'
+          : '0 18px 40px rgb(15 23 42 / 0.12)',
       }),
       option: (base, state) => ({
         ...base,
@@ -100,7 +99,9 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
         className={[
           'fixed bottom-0 right-0 top-0 flex h-dvh min-h-dvh w-full max-w-[420px] flex-col border-l shadow-2xl transition-transform duration-300 ease-out pointer-events-auto',
           isOpen ? 'translate-x-0' : 'translate-x-full',
-          isDark ? 'border-slate-800 bg-slate-950 text-slate-100' : 'border-slate-200 bg-white text-slate-950',
+          isDark
+            ? 'border-slate-800 bg-slate-950 text-slate-100'
+            : 'border-slate-200 bg-white text-slate-950',
         ].join(' ')}
       >
         <button
@@ -124,7 +125,10 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
           <span>Filterlər</span>
           <Filter className="h-3 w-3 text-blue-500" />
           {hasActiveFilters && (
-            <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" aria-hidden="true" />
+            <span
+              className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse"
+              aria-hidden="true"
+            />
           )}
         </button>
 
@@ -141,7 +145,8 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
             <div>
               <h2 className="font-semibold">Filterlər</h2>
               <p className={['text-sm', muted].join(' ')}>
-                Terminal aktivliyini bank, region, MCC, kateqoriya və tarix aralığı üzrə süzün.
+                Terminal aktivliyini bank, region, MCC, kateqoriya və tarix aralığı üzrə
+                süzün.
               </p>
             </div>
           </div>
@@ -168,7 +173,9 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
                 inputId="devices-filter-bank"
                 isClearable
                 noOptionsMessage={() => 'Bank tapılmadı'}
-                onChange={(option: SingleValue<SelectOption>) => setDraftBankName(option?.value ?? '')}
+                onChange={(option: SingleValue<SelectOption>) =>
+                  setDraftBankName(option?.value ?? '')
+                }
                 options={options.banks}
                 placeholder="Bütün banklar"
                 styles={selectStyles}
@@ -182,7 +189,9 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
                 inputId="devices-filter-region"
                 isClearable
                 noOptionsMessage={() => 'Region tapılmadı'}
-                onChange={(option: SingleValue<SelectOption>) => setDraftRegionName(option?.value ?? '')}
+                onChange={(option: SingleValue<SelectOption>) =>
+                  setDraftRegionName(option?.value ?? '')
+                }
                 options={options.regions}
                 placeholder="Bütün regionlar"
                 styles={selectStyles}
@@ -196,7 +205,9 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
                 inputId="devices-filter-mcc"
                 isClearable
                 noOptionsMessage={() => 'MCC tapılmadı'}
-                onChange={(option: SingleValue<SelectOption>) => setDraftMccName(option?.value ?? '')}
+                onChange={(option: SingleValue<SelectOption>) =>
+                  setDraftMccName(option?.value ?? '')
+                }
                 options={options.mccs}
                 placeholder="Bütün MCC-lər"
                 styles={selectStyles}
@@ -220,30 +231,24 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
               />
             </label>
 
-                <label className="space-y-1.5 text-sm font-medium">
-                  <span className={muted}>Başlanğıc tarix</span>
-                  <input
-                    className={inputClass}
-                    type="date"
-                    value={draftDateFromInput}
-                    max={draftDateToInput || undefined}
-                    onChange={(event) => setDraftDateFromInput(event.target.value)}
-                    onClick={showDatePicker}
-                    onFocus={showDatePicker}
-                  />
-                </label>
-                <label className="space-y-1.5 text-sm font-medium">
-                  <span className={muted}>Son tarix</span>
-                  <input
-                    className={inputClass}
-                    type="date"
-                    value={draftDateToInput}
-                    min={draftDateFromInput || undefined}
-                    onChange={(event) => setDraftDateToInput(event.target.value)}
-                    onClick={showDatePicker}
-                    onFocus={showDatePicker}
-                  />
-                </label>
+            <label className="space-y-1.5 text-sm font-medium">
+              <span className={muted}>Başlanğıc tarix</span>
+              <DateInput
+                className={inputClass}
+                value={draftDateFromInput}
+                max={draftDateToInput || undefined}
+                onChange={setDraftDateFromInput}
+              />
+            </label>
+            <label className="space-y-1.5 text-sm font-medium">
+              <span className={muted}>Son tarix</span>
+              <DateInput
+                className={inputClass}
+                value={draftDateToInput}
+                min={draftDateFromInput || undefined}
+                onChange={setDraftDateToInput}
+              />
+            </label>
           </div>
         </div>
 

@@ -29,8 +29,18 @@ export const RIGHT_PANEL_MODES: Array<{ value: RightPanelMode; label: string }> 
 // Trend qrafiki üçün ay sayı və ay adları.
 export const TREND_MONTH_COUNT = 6;
 export const MONTHS_AZ = [
-  'Yan', 'Fev', 'Mar', 'Apr', 'May', 'İyn',
-  'İyl', 'Avq', 'Sen', 'Okt', 'Noy', 'Dek',
+  'Yan',
+  'Fev',
+  'Mar',
+  'Apr',
+  'May',
+  'İyn',
+  'İyl',
+  'Avq',
+  'Sen',
+  'Okt',
+  'Noy',
+  'Dek',
 ];
 
 // xy-analysis default ölçüləri.

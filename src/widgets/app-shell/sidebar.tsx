@@ -45,9 +45,7 @@ export function Sidebar({ collapsed, onToggleCollapse }: Props) {
         className={[
           'flex shrink-0 border-b px-3',
           shell.headerBorder,
-          collapsed
-            ? 'flex-col items-center gap-2 py-3'
-            : 'h-14 items-center gap-2',
+          collapsed ? 'flex-col items-center gap-2 py-3' : 'h-14 items-center gap-2',
         ].join(' ')}
       >
         <button
@@ -67,7 +65,9 @@ export function Sidebar({ collapsed, onToggleCollapse }: Props) {
               PM
             </span>
             <div className="min-w-0">
-              <p className={`truncate text-sm font-semibold ${shell.title}`}>İdarəetmə Paneli</p>
+              <p className={`truncate text-sm font-semibold ${shell.title}`}>
+                İdarəetmə Paneli
+              </p>
               <p className={`truncate text-xs ${shell.subtitle}`}>İdarəetmə Sistemi</p>
             </div>
           </div>

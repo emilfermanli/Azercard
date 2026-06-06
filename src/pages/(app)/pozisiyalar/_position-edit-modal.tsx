@@ -27,7 +27,9 @@ type Props = {
 export function PositionEditModal({ open, positionId, onClose }: Props) {
   const isDark = useShellTheme();
   const skip = !open || !positionId;
-  const { data, isLoading, isError } = useGetPositionByIdQuery(positionId ?? '', { skip });
+  const { data, isLoading, isError } = useGetPositionByIdQuery(positionId ?? '', {
+    skip,
+  });
   const [updatePosition, { isLoading: isSaving }] = useUpdatePositionMutation();
   const { register, handleSubmit, reset, control } = useForm<FormValues>({
     defaultValues: {
@@ -133,7 +135,9 @@ export function PositionEditModal({ open, positionId, onClose }: Props) {
             onClick={onClose}
             className={cn(
               'rounded-lg p-1 transition-colors',
-              isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-500 hover:bg-slate-100'
+              isDark
+                ? 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                : 'text-slate-500 hover:bg-slate-100'
             )}
             aria-label="Bağla"
           >
@@ -158,7 +162,9 @@ export function PositionEditModal({ open, positionId, onClose }: Props) {
               <Input
                 id="pos-edit-name"
                 autoComplete="off"
-                className={isDark ? 'border-slate-600 bg-slate-950/50 text-slate-100' : ''}
+                className={
+                  isDark ? 'border-slate-600 bg-slate-950/50 text-slate-100' : ''
+                }
                 {...register('name', { required: true })}
               />
             </div>
@@ -169,7 +175,9 @@ export function PositionEditModal({ open, positionId, onClose }: Props) {
               <Input
                 id="pos-edit-desc"
                 autoComplete="off"
-                className={isDark ? 'border-slate-600 bg-slate-950/50 text-slate-100' : ''}
+                className={
+                  isDark ? 'border-slate-600 bg-slate-950/50 text-slate-100' : ''
+                }
                 {...register('description', { required: true })}
               />
             </div>

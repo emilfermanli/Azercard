@@ -56,7 +56,12 @@ export function UserViewModal({ open, user, onClose }: Props) {
         aria-label="Bağla"
         onClick={onClose}
       />
-      <div className={cn('relative z-10 my-auto w-full max-w-lg rounded-xl border p-6', panel)}>
+      <div
+        className={cn(
+          'relative z-10 my-auto w-full max-w-lg rounded-xl border p-6',
+          panel
+        )}
+      >
         <div className="mb-4 flex items-start justify-between gap-3">
           <h2 id="user-view-title" className="text-lg font-semibold">
             İstifadəçi
@@ -112,7 +117,10 @@ export function UserViewModal({ open, user, onClose }: Props) {
                 {user.roleNames.map((role) => (
                   <span
                     key={role}
-                    className={cn('rounded-md px-2 py-1 text-xs font-semibold', badgeClass)}
+                    className={cn(
+                      'rounded-md px-2 py-1 text-xs font-semibold',
+                      badgeClass
+                    )}
                   >
                     {role}
                   </span>

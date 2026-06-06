@@ -15,7 +15,9 @@ type Props = {
 export function PositionViewModal({ open, positionId, onClose }: Props) {
   const isDark = useShellTheme();
   const skip = !open || !positionId;
-  const { data, isLoading, isError } = useGetPositionByIdQuery(positionId ?? '', { skip });
+  const { data, isLoading, isError } = useGetPositionByIdQuery(positionId ?? '', {
+    skip,
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -71,7 +73,9 @@ export function PositionViewModal({ open, positionId, onClose }: Props) {
             onClick={onClose}
             className={cn(
               'rounded-lg p-1 transition-colors',
-              isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-500 hover:bg-slate-100'
+              isDark
+                ? 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                : 'text-slate-500 hover:bg-slate-100'
             )}
             aria-label="Bağla"
           >
@@ -90,15 +94,23 @@ export function PositionViewModal({ open, positionId, onClose }: Props) {
         {data && !isLoading && (
           <div className="flex flex-col gap-4">
             <div>
-              <p className={cn('text-xs font-medium uppercase tracking-wide', muted)}>Ad</p>
+              <p className={cn('text-xs font-medium uppercase tracking-wide', muted)}>
+                Ad
+              </p>
               <p className="mt-1 text-sm font-medium">{data.name}</p>
             </div>
             <div>
-              <p className={cn('text-xs font-medium uppercase tracking-wide', muted)}>Təsvir</p>
-              <p className="mt-1 whitespace-pre-wrap text-sm">{data.description || '—'}</p>
+              <p className={cn('text-xs font-medium uppercase tracking-wide', muted)}>
+                Təsvir
+              </p>
+              <p className="mt-1 whitespace-pre-wrap text-sm">
+                {data.description || '—'}
+              </p>
             </div>
             <div>
-              <p className={cn('text-xs font-medium uppercase tracking-wide', muted)}>Aktiv</p>
+              <p className={cn('text-xs font-medium uppercase tracking-wide', muted)}>
+                Aktiv
+              </p>
               <p className="mt-1 text-sm">{data.isActive ? 'Bəli' : 'Xeyr'}</p>
             </div>
             <div className="mt-2 flex justify-end">

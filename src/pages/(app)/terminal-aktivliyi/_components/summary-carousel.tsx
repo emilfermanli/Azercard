@@ -29,9 +29,10 @@ function CarouselCard({ card }: { card: SummaryCard }) {
           </span>
         </div>
         <div
-          className={['mt-12 flex items-center gap-1 text-lg font-bold', trendClasses(card.trend)].join(
-            ' '
-          )}
+          className={[
+            'mt-12 flex items-center gap-1 text-lg font-bold',
+            trendClasses(card.trend),
+          ].join(' ')}
         >
           <TrendIcon trend={card.trend} />
           <span className="text-white">{card.share}</span>
@@ -46,7 +47,12 @@ function CarouselCard({ card }: { card: SummaryCard }) {
   );
 }
 
-export function SummaryCarousel({ cards, emblaRef, onPrev, onNext }: SummaryCarouselProps) {
+export function SummaryCarousel({
+  cards,
+  emblaRef,
+  onPrev,
+  onNext,
+}: SummaryCarouselProps) {
   const isDark = useShellTheme();
   const navButtonClass = [
     'flex h-9 w-9 items-center justify-center rounded-full border transition',
@@ -71,10 +77,20 @@ export function SummaryCarousel({ cards, emblaRef, onPrev, onNext }: SummaryCaro
       </div>
 
       <div className="flex items-center justify-center gap-2">
-        <button type="button" onClick={onPrev} className={navButtonClass} aria-label="Əvvəlki kart">
+        <button
+          type="button"
+          onClick={onPrev}
+          className={navButtonClass}
+          aria-label="Əvvəlki kart"
+        >
           <ChevronLeft className="h-4 w-4" />
         </button>
-        <button type="button" onClick={onNext} className={navButtonClass} aria-label="Növbəti kart">
+        <button
+          type="button"
+          onClick={onNext}
+          className={navButtonClass}
+          aria-label="Növbəti kart"
+        >
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>

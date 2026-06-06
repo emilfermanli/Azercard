@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
   Activity,
@@ -30,8 +30,11 @@ import {
 } from 'recharts';
 import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
-import { Button, DataPagination, DataTable } from '@/components';
-import { useGetGeneralBanksQuery, useGetGeneralMccGroupsQuery } from '@/services/general.service';
+import { Button, DataPagination, DataTable, DateInput } from '@/components';
+import {
+  useGetGeneralBanksQuery,
+  useGetGeneralMccGroupsQuery,
+} from '@/services/general.service';
 import { useGetSectorSpendFilterQuery } from '@/services/sectorspend.service';
 import type {
   SectorSpendItem,
@@ -143,16 +146,15 @@ function toUniqueOptions(
 
   values.forEach((value) => {
     const cleanValue = cleanOptionValue(value);
-    if (cleanValue) map.set(cleanValue, { label: getLabel(cleanValue), value: cleanValue });
+    if (cleanValue)
+      map.set(cleanValue, { label: getLabel(cleanValue), value: cleanValue });
   });
 
   if (selectedValue && !map.has(selectedValue)) {
     map.set(selectedValue, { label: getLabel(selectedValue), value: selectedValue });
   }
 
-  return Array.from(map.values()).sort((a, b) =>
-    a.label.localeCompare(b.label, 'az')
-  );
+  return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label, 'az'));
 }
 
 function mergeSelectOptions(current: SelectOption[], incoming: SelectOption[]) {
@@ -161,9 +163,7 @@ function mergeSelectOptions(current: SelectOption[], incoming: SelectOption[]) {
   current.forEach((option) => map.set(option.value, option));
   incoming.forEach((option) => map.set(option.value, option));
 
-  return Array.from(map.values()).sort((a, b) =>
-    a.label.localeCompare(b.label, 'az')
-  );
+  return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label, 'az'));
 }
 
 function ensureSelectedOption(
@@ -190,11 +190,11 @@ function getTotalCount(data: SectorSpendResponse | undefined, rows: SectorSpendI
   return data.totalCount;
 }
 
-function groupRows(
-  rows: SectorSpendItem[],
-  getLabel: (row: SectorSpendItem) => string
-) {
-  const map = new Map<string, SummaryItem & { avgTicketValues: number[]; ratios: number[]; shares: number[] }>();
+function groupRows(rows: SectorSpendItem[], getLabel: (row: SectorSpendItem) => string) {
+  const map = new Map<
+    string,
+    SummaryItem & { avgTicketValues: number[]; ratios: number[]; shares: number[] }
+  >();
 
   rows.forEach((row) => {
     const label = getLabel(row);
@@ -270,7 +270,11 @@ function Panel({
         </span>
         <div>
           <h2 className="font-semibold">{title}</h2>
-          <p className={['text-sm', isDark ? 'text-slate-300' : 'text-slate-500'].join(' ')}>
+          <p
+            className={['text-sm', isDark ? 'text-slate-300' : 'text-slate-500'].join(
+              ' '
+            )}
+          >
             {subtitle}
           </p>
         </div>
@@ -352,7 +356,10 @@ function DonutChart({ data }: { data: ChartItem[] }) {
       </div>
       <div className="space-y-3 self-center">
         {chartData.map((item, index) => (
-          <div key={item.name} className="flex items-center justify-between gap-3 text-sm">
+          <div
+            key={item.name}
+            className="flex items-center justify-between gap-3 text-sm"
+          >
             <span className="flex min-w-0 items-center gap-2">
               <span
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -360,7 +367,12 @@ function DonutChart({ data }: { data: ChartItem[] }) {
               />
               <span className="truncate">{item.name}</span>
             </span>
-            <span className={['shrink-0 tabular-nums', isDark ? 'text-slate-300' : 'text-slate-600'].join(' ')}>
+            <span
+              className={[
+                'shrink-0 tabular-nums',
+                isDark ? 'text-slate-300' : 'text-slate-600',
+              ].join(' ')}
+            >
               {formatShortAmount(item.amount)}
             </span>
           </div>
@@ -370,13 +382,7 @@ function DonutChart({ data }: { data: ChartItem[] }) {
   );
 }
 
-function HorizontalChart({
-  data,
-  color,
-}: {
-  data: ChartItem[];
-  color: string;
-}) {
+function HorizontalChart({ data, color }: { data: ChartItem[]; color: string }) {
   const isDark = useShellTheme();
   const chartData = data.slice(0, 8);
 
@@ -403,7 +409,10 @@ function HorizontalChart({
             type="category"
             width={92}
           />
-          <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(148, 163, 184, 0.08)' }} />
+          <Tooltip
+            content={<ChartTooltip />}
+            cursor={{ fill: 'rgba(148, 163, 184, 0.08)' }}
+          />
           <Bar dataKey="value" fill={color} radius={[0, 6, 6, 0]} />
         </BarChart>
       </ResponsiveContainer>
@@ -418,10 +427,7 @@ function LocalRatioScatter({ data }: { data: ScatterPoint[] }) {
     <div className="h-80">
       <ResponsiveContainer width="100%" height="100%">
         <ScatterChart margin={{ bottom: 12, left: 4, right: 16, top: 12 }}>
-          <CartesianGrid
-            stroke={isDark ? '#1e293b' : '#e2e8f0'}
-            strokeDasharray="3 3"
-          />
+          <CartesianGrid stroke={isDark ? '#1e293b' : '#e2e8f0'} strokeDasharray="3 3" />
           <XAxis
             dataKey="localRatio"
             name="Yerli pay"
@@ -449,7 +455,6 @@ function LocalRatioScatter({ data }: { data: ScatterPoint[] }) {
 
 const SectorSpendPage: React.FC = () => {
   const isDark = useShellTheme();
-  const reportMonthInputRef = useRef<HTMLInputElement>(null);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [bankName, setBankName] = useState('');
   const [mccGroup, setMccGroup] = useState('');
@@ -497,14 +502,17 @@ const SectorSpendPage: React.FC = () => {
   ]);
 
   const [mccGroupOptionCache, setMccGroupOptionCache] = useState<SelectOption[]>([]);
-  const [sourceChannelOptionCache, setSourceChannelOptionCache] = useState<SelectOption[]>([]);
-  const [operationTypeOptionCache, setOperationTypeOptionCache] = useState<SelectOption[]>([]);
+  const [sourceChannelOptionCache, setSourceChannelOptionCache] = useState<
+    SelectOption[]
+  >([]);
+  const [operationTypeOptionCache, setOperationTypeOptionCache] = useState<
+    SelectOption[]
+  >([]);
   const [sourceCityCategoryOptionCache, setSourceCityCategoryOptionCache] = useState<
     SelectOption[]
   >([]);
-  const [sourceCountryCategoryOptionCache, setSourceCountryCategoryOptionCache] = useState<
-    SelectOption[]
-  >([]);
+  const [sourceCountryCategoryOptionCache, setSourceCountryCategoryOptionCache] =
+    useState<SelectOption[]>([]);
   const { data: banks = [], isLoading: banksLoading } = useGetGeneralBanksQuery();
   const { data: mccGroups = [], isLoading: mccGroupsLoading } =
     useGetGeneralMccGroupsQuery();
@@ -555,9 +563,10 @@ const SectorSpendPage: React.FC = () => {
     setMccGroupOptionCache((current) =>
       mergeSelectOptions(
         current,
-        toUniqueOptions(
-          [...lookupMccOptions.map((item) => item.value), ...rows.map((row) => row.mccGroup)]
-        ).map((option) => ({
+        toUniqueOptions([
+          ...lookupMccOptions.map((item) => item.value),
+          ...rows.map((row) => row.mccGroup),
+        ]).map((option) => ({
           ...option,
           id: lookupMccOptions.find((item) => item.value === option.value)?.id,
         }))
@@ -566,25 +575,41 @@ const SectorSpendPage: React.FC = () => {
     setSourceChannelOptionCache((current) =>
       mergeSelectOptions(
         current,
-        toUniqueOptions(rows.map((row) => row.sourceChannel), '', translateCategory)
+        toUniqueOptions(
+          rows.map((row) => row.sourceChannel),
+          '',
+          translateCategory
+        )
       )
     );
     setOperationTypeOptionCache((current) =>
       mergeSelectOptions(
         current,
-        toUniqueOptions(rows.map((row) => row.operationType), '', translateCategory)
+        toUniqueOptions(
+          rows.map((row) => row.operationType),
+          '',
+          translateCategory
+        )
       )
     );
     setSourceCityCategoryOptionCache((current) =>
       mergeSelectOptions(
         current,
-        toUniqueOptions(rows.map((row) => row.sourceCityCategory), '', translateCategory)
+        toUniqueOptions(
+          rows.map((row) => row.sourceCityCategory),
+          '',
+          translateCategory
+        )
       )
     );
     setSourceCountryCategoryOptionCache((current) =>
       mergeSelectOptions(
         current,
-        toUniqueOptions(rows.map((row) => row.sourceCountryCategory), '', translateCategory)
+        toUniqueOptions(
+          rows.map((row) => row.sourceCountryCategory),
+          '',
+          translateCategory
+        )
       )
     );
   }, [mccGroups, rows]);
@@ -649,7 +674,8 @@ const SectorSpendPage: React.FC = () => {
     [rows]
   );
   const operationMix = useMemo(
-    () => groupRows(rows, (row) => translateCategory(row.operationType, 'Naməlum əməliyyat')),
+    () =>
+      groupRows(rows, (row) => translateCategory(row.operationType, 'Naməlum əməliyyat')),
     [rows]
   );
   const scatterData = useMemo<ScatterPoint[]>(
@@ -681,20 +707,12 @@ const SectorSpendPage: React.FC = () => {
   );
   const sourceChannelOptions = useMemo(
     () =>
-      ensureSelectedOption(
-        sourceChannelOptionCache,
-        sourceChannel,
-        translateCategory
-      ),
+      ensureSelectedOption(sourceChannelOptionCache, sourceChannel, translateCategory),
     [sourceChannel, sourceChannelOptionCache]
   );
   const operationTypeOptions = useMemo(
     () =>
-      ensureSelectedOption(
-        operationTypeOptionCache,
-        operationType,
-        translateCategory
-      ),
+      ensureSelectedOption(operationTypeOptionCache, operationType, translateCategory),
     [operationType, operationTypeOptionCache]
   );
   const sourceCityCategoryOptions = useMemo(
@@ -716,15 +734,25 @@ const SectorSpendPage: React.FC = () => {
     [sourceCountryCategory, sourceCountryCategoryOptionCache]
   );
 
-
-  const selectedDraftBank = bankOptions.find((item) => item.value === draftBankName) ?? null;
-  const selectedDraftMccGroup = mccGroupOptions.find((item) => item.value === draftMccGroup) ?? null;
-  const selectedDraftSourceChannel = sourceChannelOptions.find((item) => item.value === draftSourceChannel) ?? null;
-  const selectedDraftOperationType = operationTypeOptions.find((item) => item.value === draftOperationType) ?? null;
-  const selectedDraftSourceCityCategory = sourceCityCategoryOptions.find((item) => item.value === draftSourceCityCategory) ?? null;
-  const selectedDraftSourceCountryCategory = sourceCountryCategoryOptions.find((item) => item.value === draftSourceCountryCategory) ?? null;
-  const selectedDraftIsAcquiring = FLAG_OPTIONS.find((item) => item.value === draftIsAcquiring) ?? null;
-  const selectedDraftIsIssuing = FLAG_OPTIONS.find((item) => item.value === draftIsIssuing) ?? null;
+  const selectedDraftBank =
+    bankOptions.find((item) => item.value === draftBankName) ?? null;
+  const selectedDraftMccGroup =
+    mccGroupOptions.find((item) => item.value === draftMccGroup) ?? null;
+  const selectedDraftSourceChannel =
+    sourceChannelOptions.find((item) => item.value === draftSourceChannel) ?? null;
+  const selectedDraftOperationType =
+    operationTypeOptions.find((item) => item.value === draftOperationType) ?? null;
+  const selectedDraftSourceCityCategory =
+    sourceCityCategoryOptions.find((item) => item.value === draftSourceCityCategory) ??
+    null;
+  const selectedDraftSourceCountryCategory =
+    sourceCountryCategoryOptions.find(
+      (item) => item.value === draftSourceCountryCategory
+    ) ?? null;
+  const selectedDraftIsAcquiring =
+    FLAG_OPTIONS.find((item) => item.value === draftIsAcquiring) ?? null;
+  const selectedDraftIsIssuing =
+    FLAG_OPTIONS.find((item) => item.value === draftIsIssuing) ?? null;
 
   const hasActiveFilters = Boolean(
     bankName ||
@@ -842,10 +870,6 @@ const SectorSpendPage: React.FC = () => {
     setFilterDrawerOpen(false);
   };
 
-  const openDatePicker = () => {
-    reportMonthInputRef.current?.showPicker?.();
-  };
-
   return (
     <div className="space-y-5 pt-2 pb-2 pl-2 pr-4 sm:pt-3 sm:pb-3 sm:pl-3 sm:pr-6">
       <DataPageHeader
@@ -867,7 +891,9 @@ const SectorSpendPage: React.FC = () => {
               aria-label="Filter panelini bağla"
               className={[
                 'absolute inset-0 bg-slate-950/40 transition-opacity',
-                filterDrawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+                filterDrawerOpen
+                  ? 'opacity-100 pointer-events-auto'
+                  : 'opacity-0 pointer-events-none',
               ].join(' ')}
               onClick={() => setFilterDrawerOpen(false)}
               type="button"
@@ -884,10 +910,14 @@ const SectorSpendPage: React.FC = () => {
             >
               <button
                 aria-expanded={filterDrawerOpen}
-                aria-label={filterDrawerOpen ? 'Filter panelini bağla' : 'Filter panelini aç'}
+                aria-label={
+                  filterDrawerOpen ? 'Filter panelini bağla' : 'Filter panelini aç'
+                }
                 className={[
                   'absolute right-full bottom-32 z-[90] -rotate-90 origin-center flex h-8 items-center gap-1.5 rounded-t-md border-x border-t px-3.5 text-[10px] font-bold uppercase tracking-wider shadow-2xl transition-all duration-300 pointer-events-auto',
-                  filterDrawerOpen ? 'translate-x-[calc(50%-16px)]' : 'translate-x-[calc(50%-28px)]',
+                  filterDrawerOpen
+                    ? 'translate-x-[calc(50%-16px)]'
+                    : 'translate-x-[calc(50%-28px)]',
                   isDark
                     ? 'border-amber-500/30 bg-slate-950/95 text-amber-400 hover:text-amber-300 hover:bg-slate-900'
                     : 'border-amber-200 bg-white/95 text-amber-600 hover:text-amber-700 hover:bg-cyan-50',
@@ -903,7 +933,10 @@ const SectorSpendPage: React.FC = () => {
                 <span>Filterlər</span>
                 <Filter className="h-3 w-3 text-amber-500" />
                 {hasActiveFilters && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" aria-hidden="true" />
+                  <span
+                    className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse"
+                    aria-hidden="true"
+                  />
                 )}
               </button>
               <div
@@ -1076,14 +1109,10 @@ const SectorSpendPage: React.FC = () => {
 
                   <label className="space-y-1.5 text-sm font-medium">
                     <span className={mutedText}>Ay</span>
-                    <input
-                      ref={reportMonthInputRef}
+                    <DateInput
                       className={inputClass}
-                      type="date"
                       value={draftReportMonth}
-                      onChange={(event) => setDraftReportMonth(event.target.value)}
-                      onClick={openDatePicker}
-                      onFocus={openDatePicker}
+                      onChange={setDraftReportMonth}
                     />
                   </label>
                 </div>
@@ -1154,7 +1183,9 @@ const SectorSpendPage: React.FC = () => {
                 <div
                   className={[
                     'rounded-lg border p-4',
-                    isDark ? 'border-slate-800 bg-slate-950/40' : 'border-slate-100 bg-slate-50',
+                    isDark
+                      ? 'border-slate-800 bg-slate-950/40'
+                      : 'border-slate-100 bg-slate-50',
                   ].join(' ')}
                 >
                   <p className="text-sm font-semibold">{topSector.label}</p>
@@ -1163,19 +1194,29 @@ const SectorSpendPage: React.FC = () => {
                   </p>
                   <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>Sektor payı</p>
-                      <p className="font-semibold">{formatPercent(topSector.marketShare)}</p>
+                      <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+                        Sektor payı
+                      </p>
+                      <p className="font-semibold">
+                        {formatPercent(topSector.marketShare)}
+                      </p>
                     </div>
                     <div>
-                      <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>Yerli pay</p>
+                      <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+                        Yerli pay
+                      </p>
                       <p className="font-semibold">{formatPercent(avgLocalRatio)}</p>
                     </div>
                     <div>
-                      <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>Əməliyyat</p>
+                      <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+                        Əməliyyat
+                      </p>
                       <p className="font-semibold">{formatNumber(topSector.count)}</p>
                     </div>
                     <div>
-                      <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>Orta çek</p>
+                      <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+                        Orta çek
+                      </p>
                       <p className="font-semibold">{formatAmount(topSector.avgTicket)}</p>
                     </div>
                   </div>
@@ -1211,11 +1252,7 @@ const SectorSpendPage: React.FC = () => {
               <HorizontalChart color="#f59e0b" data={sectorMix} />
             </Panel>
 
-            <Panel
-              icon={Globe2}
-              title="Şəhərlər"
-              subtitle="Mənbə şəhəri üzrə xərcləmə"
-            >
+            <Panel icon={Globe2} title="Şəhərlər" subtitle="Mənbə şəhəri üzrə xərcləmə">
               <HorizontalChart color="#06b6d4" data={cityMix} />
             </Panel>
 

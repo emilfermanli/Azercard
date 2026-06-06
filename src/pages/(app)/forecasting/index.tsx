@@ -37,7 +37,10 @@ import {
   useTrainAllForecastingMutation,
   useTrainGlobalForecastingMutation,
 } from '@/services/forecasting.service';
-import { useGetGeneralBanksQuery, useGetGeneralMccGroupsQuery } from '@/services/general.service';
+import {
+  useGetGeneralBanksQuery,
+  useGetGeneralMccGroupsQuery,
+} from '@/services/general.service';
 import type { ForecastResult, MonthlyForecast } from '@/types/forecasting.type';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 
@@ -211,7 +214,11 @@ function Panel({
         </span>
         <div>
           <h2 className="font-semibold">{title}</h2>
-          <p className={['text-sm', isDark ? 'text-slate-300' : 'text-slate-500'].join(' ')}>
+          <p
+            className={['text-sm', isDark ? 'text-slate-300' : 'text-slate-500'].join(
+              ' '
+            )}
+          >
             {subtitle}
           </p>
         </div>
@@ -228,10 +235,7 @@ function ForecastLineChart({ data }: { data: ForecastPoint[] }) {
     <div className="h-80">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data} margin={{ bottom: 8, left: 4, right: 18, top: 12 }}>
-          <CartesianGrid
-            stroke={isDark ? '#1e293b' : '#e2e8f0'}
-            strokeDasharray="3 3"
-          />
+          <CartesianGrid stroke={isDark ? '#1e293b' : '#e2e8f0'} strokeDasharray="3 3" />
           <XAxis
             dataKey="monthLabel"
             tick={{ fill: chartAxisColor(isDark), fontSize: 11 }}
@@ -317,10 +321,7 @@ function ModelQualityChart({ data }: { data: ModelPoint[] }) {
     <div className="h-80">
       <ResponsiveContainer width="100%" height="100%">
         <ScatterChart margin={{ bottom: 12, left: 4, right: 18, top: 12 }}>
-          <CartesianGrid
-            stroke={isDark ? '#1e293b' : '#e2e8f0'}
-            strokeDasharray="3 3"
-          />
+          <CartesianGrid stroke={isDark ? '#1e293b' : '#e2e8f0'} strokeDasharray="3 3" />
           <XAxis
             dataKey="accuracy"
             name="Dəqiqlik"
@@ -409,19 +410,11 @@ const ForecastingPage: React.FC = () => {
         ...base,
         minHeight: 40,
         borderRadius: 8,
-        borderColor: state.isFocused
-          ? '#3b82f6'
-          : isDark
-            ? '#334155'
-            : '#e2e8f0',
+        borderColor: state.isFocused ? '#3b82f6' : isDark ? '#334155' : '#e2e8f0',
         backgroundColor: isDark ? '#020617' : '#ffffff',
         boxShadow: state.isFocused ? '0 0 0 2px rgb(59 130 246 / 0.4)' : 'none',
         ':hover': {
-          borderColor: state.isFocused
-            ? '#3b82f6'
-            : isDark
-              ? '#475569'
-              : '#cbd5e1',
+          borderColor: state.isFocused ? '#3b82f6' : isDark ? '#475569' : '#cbd5e1',
         },
       }),
       input: (base) => ({
@@ -459,10 +452,16 @@ const ForecastingPage: React.FC = () => {
     }),
     [isDark]
   );
-  const horizonSelectStyles = selectStyles as unknown as StylesConfig<HorizonOption, false>;
+  const horizonSelectStyles = selectStyles as unknown as StylesConfig<
+    HorizonOption,
+    false
+  >;
   const results = useMemo(() => normalizeForecastResults(data), [data]);
   const selectedForecast = results[selectedIndex] ?? results[0];
-  const forecastPoints = useMemo(() => getForecasts(selectedForecast), [selectedForecast]);
+  const forecastPoints = useMemo(
+    () => getForecasts(selectedForecast),
+    [selectedForecast]
+  );
 
   const modelPoints = useMemo<ModelPoint[]>(
     () =>
@@ -478,7 +477,10 @@ const ForecastingPage: React.FC = () => {
   );
 
   const modelSummary = useMemo<ModelSummary[]>(() => {
-    const map = new Map<string, ModelSummary & { accuracies: number[]; confidences: number[] }>();
+    const map = new Map<
+      string,
+      ModelSummary & { accuracies: number[]; confidences: number[] }
+    >();
 
     results.forEach((item) => {
       const label = item.modelUsed ?? 'Naməlum alqoritm';
@@ -585,7 +587,10 @@ const ForecastingPage: React.FC = () => {
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Alqoritm nəticəsi" value={formatNumber(results.length)} />
-            <StatCard label="Proqnoz məbləği" value={formatShortAmount(totalPredictedAmount)} />
+            <StatCard
+              label="Proqnoz məbləği"
+              value={formatShortAmount(totalPredictedAmount)}
+            />
             <StatCard label="Proqnoz sayı" value={formatNumber(totalPredictedCount)} />
             <StatCard label="Orta dəqiqlik" value={formatPercent(avgAccuracy)} />
           </div>
@@ -598,7 +603,9 @@ const ForecastingPage: React.FC = () => {
               aria-label="Filter panelini bağla"
               className={[
                 'absolute inset-0 bg-slate-950/40 transition-opacity',
-                filterDrawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+                filterDrawerOpen
+                  ? 'opacity-100 pointer-events-auto'
+                  : 'opacity-0 pointer-events-none',
               ].join(' ')}
               onClick={() => setFilterDrawerOpen(false)}
               type="button"
@@ -615,10 +622,14 @@ const ForecastingPage: React.FC = () => {
             >
               <button
                 aria-expanded={filterDrawerOpen}
-                aria-label={filterDrawerOpen ? 'Filter panelini bağla' : 'Filter panelini aç'}
+                aria-label={
+                  filterDrawerOpen ? 'Filter panelini bağla' : 'Filter panelini aç'
+                }
                 className={[
                   'absolute right-full bottom-32 z-[90] -rotate-90 origin-center flex h-8 items-center gap-1.5 rounded-t-md border-x border-t px-3.5 text-[10px] font-bold uppercase tracking-wider shadow-2xl transition-all duration-300 pointer-events-auto',
-                  filterDrawerOpen ? 'translate-x-[calc(50%-16px)]' : 'translate-x-[calc(50%-28px)]',
+                  filterDrawerOpen
+                    ? 'translate-x-[calc(50%-16px)]'
+                    : 'translate-x-[calc(50%-28px)]',
                   isDark
                     ? 'border-blue-500/30 bg-slate-950/95 text-blue-400 hover:text-blue-300 hover:bg-slate-900'
                     : 'border-blue-200 bg-white/95 text-blue-600 hover:text-blue-700 hover:bg-blue-50',
@@ -634,7 +645,10 @@ const ForecastingPage: React.FC = () => {
                 <span>Filterlər</span>
                 <Filter className="h-3 w-3 text-blue-500" />
                 {hasActiveFilters && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" aria-hidden="true" />
+                  <span
+                    className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse"
+                    aria-hidden="true"
+                  />
                 )}
               </button>
               <div
@@ -649,7 +663,12 @@ const ForecastingPage: React.FC = () => {
                   </span>
                   <div>
                     <h2 className="font-semibold">Proqnoz filterləri</h2>
-                    <p className={['text-sm', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
+                    <p
+                      className={[
+                        'text-sm',
+                        isDark ? 'text-slate-400' : 'text-slate-500',
+                      ].join(' ')}
+                    >
                       Bank, MCC qrupu və gələcək aylar üzrə süzün.
                     </p>
                   </div>
@@ -672,7 +691,9 @@ const ForecastingPage: React.FC = () => {
               <div className="min-h-0 flex-1 overflow-y-auto p-4">
                 <div className="grid gap-3">
                   <label className="space-y-1.5 text-sm font-medium">
-                    <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>Bank</span>
+                    <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>
+                      Bank
+                    </span>
                     <Select
                       isClearable
                       isLoading={banksLoading}
@@ -688,7 +709,9 @@ const ForecastingPage: React.FC = () => {
                   </label>
 
                   <label className="space-y-1.5 text-sm font-medium">
-                    <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>MCC</span>
+                    <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>
+                      MCC
+                    </span>
                     <Select
                       isClearable
                       isLoading={mccGroupsLoading}
@@ -704,7 +727,9 @@ const ForecastingPage: React.FC = () => {
                   </label>
 
                   <label className="space-y-1.5 text-sm font-medium">
-                    <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>Üfüq</span>
+                    <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>
+                      Üfüq
+                    </span>
                     <Select
                       inputId="forecasting-filter-horizon"
                       isSearchable={false}
@@ -731,7 +756,12 @@ const ForecastingPage: React.FC = () => {
                   variant="outline"
                   size="sm"
                   className={outlineButtonClass}
-                  disabled={!hasActiveFilters && !draftBank && !draftMcc && draftHorizon === DEFAULT_HORIZON}
+                  disabled={
+                    !hasActiveFilters &&
+                    !draftBank &&
+                    !draftMcc &&
+                    draftHorizon === DEFAULT_HORIZON
+                  }
                   onClick={resetFilters}
                 >
                   <RotateCcw className="h-4 w-4" />
@@ -764,7 +794,12 @@ const ForecastingPage: React.FC = () => {
                 </span>
                 <div>
                   <h2 className="font-semibold">Proqnoz alqoritminin idarəetməsi</h2>
-                  <p className={['text-sm', isDark ? 'text-slate-300' : 'text-slate-500'].join(' ')}>
+                  <p
+                    className={[
+                      'text-sm',
+                      isDark ? 'text-slate-300' : 'text-slate-500',
+                    ].join(' ')}
+                  >
                     Alqoritm hazırlama və ümumi proqnoz nəticələrini yeniləmə
                   </p>
                 </div>
@@ -828,7 +863,12 @@ const ForecastingPage: React.FC = () => {
                     <span className="block truncate font-semibold">
                       {item.bankName ?? 'Naməlum bank'}
                     </span>
-                    <span className={['mt-1 block truncate text-xs', isDark ? 'text-slate-400' : 'text-slate-500'].join(' ')}>
+                    <span
+                      className={[
+                        'mt-1 block truncate text-xs',
+                        isDark ? 'text-slate-400' : 'text-slate-500',
+                      ].join(' ')}
+                    >
                       {item.mccGroup ?? 'Naməlum MCC'} • {item.modelUsed ?? 'Alqoritm'}
                     </span>
                   </button>
@@ -875,10 +915,14 @@ const ForecastingPage: React.FC = () => {
                   <div
                     className={[
                       'rounded-lg border p-3',
-                      isDark ? 'border-slate-800 bg-slate-950/40' : 'border-slate-100 bg-slate-50',
+                      isDark
+                        ? 'border-slate-800 bg-slate-950/40'
+                        : 'border-slate-100 bg-slate-50',
                     ].join(' ')}
                   >
-                    <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>Dəqiqlik</p>
+                    <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+                      Dəqiqlik
+                    </p>
                     <p className="mt-1 text-2xl font-semibold text-blue-500">
                       {formatPercent(model.accuracy)}
                     </p>
@@ -886,7 +930,9 @@ const ForecastingPage: React.FC = () => {
                   <div
                     className={[
                       'rounded-lg border p-3',
-                      isDark ? 'border-slate-800 bg-slate-950/40' : 'border-slate-100 bg-slate-50',
+                      isDark
+                        ? 'border-slate-800 bg-slate-950/40'
+                        : 'border-slate-100 bg-slate-50',
                     ].join(' ')}
                   >
                     <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>

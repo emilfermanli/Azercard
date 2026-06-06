@@ -54,15 +54,20 @@ export const devicesApi = createApi({
       }),
     }),
     // Yuxarı rəngli kartlar (granular sətirlər — səhifələnmiş, PageSize ≤ 100).
-    getDevicesSummary: builder.query<DevicePaginated<DeviceSummaryItem>, DevicePagedArgs>({
-      query: (args) => ({
-        url: 'devices/summary',
-        method: 'GET',
-        params: cleanParams(args),
-      }),
-    }),
+    getDevicesSummary: builder.query<DevicePaginated<DeviceSummaryItem>, DevicePagedArgs>(
+      {
+        query: (args) => ({
+          url: 'devices/summary',
+          method: 'GET',
+          params: cleanParams(args),
+        }),
+      }
+    ),
     // Kartlardakı ox işarələri (keçən ayla müqayisə).
-    getDevicesMomComparison: builder.query<DevicePaginated<DeviceMomItem>, DevicePagedArgs>({
+    getDevicesMomComparison: builder.query<
+      DevicePaginated<DeviceMomItem>,
+      DevicePagedArgs
+    >({
       query: (args) => ({
         url: 'devices/mom-comparison',
         method: 'GET',

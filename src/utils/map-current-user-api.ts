@@ -8,7 +8,9 @@ function stablePositiveIntFromString(s: string): number {
   return Math.abs(h) || 1;
 }
 
-export function isCurrentUserApiResponse(value: unknown): value is CurrentUserApiResponse {
+export function isCurrentUserApiResponse(
+  value: unknown
+): value is CurrentUserApiResponse {
   if (!value || typeof value !== 'object') return false;
   const v = value as CurrentUserApiResponse;
   return (

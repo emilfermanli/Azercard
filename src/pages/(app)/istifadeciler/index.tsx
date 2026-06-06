@@ -306,8 +306,8 @@ const IstifadecilerPage: React.FC = () => {
     [isDark]
   );
 
-
-  const selectedDraftRole = selectOptions.roles.find((item) => item.value === draftRole) ?? null;
+  const selectedDraftRole =
+    selectOptions.roles.find((item) => item.value === draftRole) ?? null;
   const selectedDraftDepartment =
     selectOptions.departments.find((item) => item.value === draftDepartmentId) ?? null;
   const selectedDraftPosition =
@@ -425,7 +425,9 @@ const IstifadecilerPage: React.FC = () => {
               aria-label="Filter panelini bağla"
               className={[
                 'absolute inset-0 bg-slate-950/40 transition-opacity',
-                filterDrawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+                filterDrawerOpen
+                  ? 'opacity-100 pointer-events-auto'
+                  : 'opacity-0 pointer-events-none',
               ].join(' ')}
               onClick={() => setFilterDrawerOpen(false)}
               type="button"
@@ -442,10 +444,14 @@ const IstifadecilerPage: React.FC = () => {
             >
               <button
                 aria-expanded={filterDrawerOpen}
-                aria-label={filterDrawerOpen ? 'Filter panelini bağla' : 'Filter panelini aç'}
+                aria-label={
+                  filterDrawerOpen ? 'Filter panelini bağla' : 'Filter panelini aç'
+                }
                 className={[
                   'absolute right-full bottom-32 z-[90] -rotate-90 origin-center flex h-8 items-center gap-1.5 rounded-t-md border-x border-t px-3.5 text-[10px] font-bold uppercase tracking-wider shadow-2xl transition-all duration-300 pointer-events-auto',
-                  filterDrawerOpen ? 'translate-x-[calc(50%-16px)]' : 'translate-x-[calc(50%-28px)]',
+                  filterDrawerOpen
+                    ? 'translate-x-[calc(50%-16px)]'
+                    : 'translate-x-[calc(50%-28px)]',
                   isDark
                     ? 'border-blue-500/30 bg-slate-950/95 text-blue-400 hover:text-blue-300 hover:bg-slate-900'
                     : 'border-blue-200 bg-white/95 text-blue-600 hover:text-blue-700 hover:bg-blue-50',
@@ -461,7 +467,10 @@ const IstifadecilerPage: React.FC = () => {
                 <span>Filterlər</span>
                 <Filter className="h-3 w-3 text-blue-500" />
                 {hasActiveFilters && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" aria-hidden="true" />
+                  <span
+                    className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse"
+                    aria-hidden="true"
+                  />
                 )}
               </button>
               <div
@@ -574,7 +583,13 @@ const IstifadecilerPage: React.FC = () => {
                   variant="outline"
                   size="sm"
                   className={outlineButtonClass}
-                  disabled={!hasActiveFilters && !search && !draftRole && !draftDepartmentId && !draftPositionId}
+                  disabled={
+                    !hasActiveFilters &&
+                    !search &&
+                    !draftRole &&
+                    !draftDepartmentId &&
+                    !draftPositionId
+                  }
                   onClick={resetFilters}
                 >
                   <RotateCcw className="h-4 w-4" />

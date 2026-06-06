@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
   BarChart3,
@@ -29,7 +29,7 @@ import {
 } from 'recharts';
 import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
-import { Button, DataPagination, DataTable } from '@/components';
+import { Button, DataPagination, DataTable, DateInput } from '@/components';
 import { useGetGeneralBanksQuery } from '@/services/general.service';
 import { useGetMarketbenchmarkFilterQuery } from '@/services/marketbenchmark.service';
 import type { MarketBenchmarkItem } from '@/types/marketbenchmark.type';
@@ -110,9 +110,7 @@ function toUniqueOptions(values: Array<string | null | undefined>, selectedValue
     map.set(selectedValue, { label: selectedValue, value: selectedValue });
   }
 
-  return Array.from(map.values()).sort((a, b) =>
-    a.label.localeCompare(b.label, 'az')
-  );
+  return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label, 'az'));
 }
 
 function mergeSelectOptions(current: SelectOption[], incoming: SelectOption[]) {
@@ -121,9 +119,7 @@ function mergeSelectOptions(current: SelectOption[], incoming: SelectOption[]) {
   current.forEach((option) => map.set(option.value, option));
   incoming.forEach((option) => map.set(option.value, option));
 
-  return Array.from(map.values()).sort((a, b) =>
-    a.label.localeCompare(b.label, 'az')
-  );
+  return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label, 'az'));
 }
 
 function ensureSelectedOption(options: SelectOption[], selectedValue: string) {
@@ -249,7 +245,11 @@ function BenchmarkPanel({
         </span>
         <div>
           <h2 className="font-semibold">{title}</h2>
-          <p className={['text-sm', isDark ? 'text-slate-300' : 'text-slate-500'].join(' ')}>
+          <p
+            className={['text-sm', isDark ? 'text-slate-300' : 'text-slate-500'].join(
+              ' '
+            )}
+          >
             {subtitle}
           </p>
         </div>
@@ -288,7 +288,10 @@ function DonutChart({ data }: { data: ChartItem[] }) {
       </div>
       <div className="space-y-3 self-center">
         {chartData.map((item, index) => (
-          <div key={item.name} className="flex items-center justify-between gap-3 text-sm">
+          <div
+            key={item.name}
+            className="flex items-center justify-between gap-3 text-sm"
+          >
             <span className="flex min-w-0 items-center gap-2">
               <span
                 className="h-2.5 w-2.5 shrink-0 rounded-full"
@@ -296,7 +299,12 @@ function DonutChart({ data }: { data: ChartItem[] }) {
               />
               <span className="truncate">{item.name}</span>
             </span>
-            <span className={['shrink-0 tabular-nums', isDark ? 'text-slate-300' : 'text-slate-600'].join(' ')}>
+            <span
+              className={[
+                'shrink-0 tabular-nums',
+                isDark ? 'text-slate-300' : 'text-slate-600',
+              ].join(' ')}
+            >
               {formatShortAmount(item.amount)}
             </span>
           </div>
@@ -306,13 +314,7 @@ function DonutChart({ data }: { data: ChartItem[] }) {
   );
 }
 
-function HorizontalAmountChart({
-  data,
-  color,
-}: {
-  data: ChartItem[];
-  color: string;
-}) {
+function HorizontalAmountChart({ data, color }: { data: ChartItem[]; color: string }) {
   const isDark = useShellTheme();
   const chartData = data.slice(0, 7);
 
@@ -339,7 +341,10 @@ function HorizontalAmountChart({
             type="category"
             width={92}
           />
-          <Tooltip content={<ChartTooltip />} cursor={{ fill: 'rgba(148, 163, 184, 0.08)' }} />
+          <Tooltip
+            content={<ChartTooltip />}
+            cursor={{ fill: 'rgba(148, 163, 184, 0.08)' }}
+          />
           <Bar dataKey="value" fill={color} radius={[0, 6, 6, 0]} />
         </BarChart>
       </ResponsiveContainer>
@@ -354,10 +359,7 @@ function ShareScatterChart({ data }: { data: BenchmarkScatterPoint[] }) {
     <div className="h-80">
       <ResponsiveContainer width="100%" height="100%">
         <ScatterChart margin={{ bottom: 12, left: 4, right: 16, top: 12 }}>
-          <CartesianGrid
-            stroke={isDark ? '#1e293b' : '#e2e8f0'}
-            strokeDasharray="3 3"
-          />
+          <CartesianGrid stroke={isDark ? '#1e293b' : '#e2e8f0'} strokeDasharray="3 3" />
           <XAxis
             dataKey="marketShare"
             name="Bazar payı"
@@ -385,7 +387,6 @@ function ShareScatterChart({ data }: { data: BenchmarkScatterPoint[] }) {
 
 const MarketBenchmarkPage: React.FC = () => {
   const isDark = useShellTheme();
-  const reportMonthInputRef = useRef<HTMLInputElement>(null);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [bankName, setBankName] = useState('');
   const [regionNameClean, setRegionNameClean] = useState('');
@@ -542,11 +543,14 @@ const MarketBenchmarkPage: React.FC = () => {
     [productOptionCache, productType]
   );
 
-
-  const selectedDraftBank = bankOptions.find((item) => item.value === draftBankName) ?? null;
-  const selectedDraftRegion = regionOptions.find((item) => item.value === draftRegionNameClean) ?? null;
-  const selectedDraftBrand = brandOptions.find((item) => item.value === draftCardBrandName) ?? null;
-  const selectedDraftProduct = productOptions.find((item) => item.value === draftProductType) ?? null;
+  const selectedDraftBank =
+    bankOptions.find((item) => item.value === draftBankName) ?? null;
+  const selectedDraftRegion =
+    regionOptions.find((item) => item.value === draftRegionNameClean) ?? null;
+  const selectedDraftBrand =
+    brandOptions.find((item) => item.value === draftCardBrandName) ?? null;
+  const selectedDraftProduct =
+    productOptions.find((item) => item.value === draftProductType) ?? null;
 
   const hasActiveFilters = Boolean(
     bankName || regionNameClean || cardBrandName || productType || reportMonth
@@ -643,10 +647,6 @@ const MarketBenchmarkPage: React.FC = () => {
     setFilterDrawerOpen(false);
   };
 
-  const openDatePicker = () => {
-    reportMonthInputRef.current?.showPicker?.();
-  };
-
   return (
     <div className="space-y-5 pt-2 pb-2 pl-2 pr-4 sm:pt-3 sm:pb-3 sm:pl-3 sm:pr-6">
       <DataPageHeader
@@ -668,7 +668,9 @@ const MarketBenchmarkPage: React.FC = () => {
               aria-label="Filter panelini bağla"
               className={[
                 'absolute inset-0 bg-slate-950/40 transition-opacity',
-                filterDrawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+                filterDrawerOpen
+                  ? 'opacity-100 pointer-events-auto'
+                  : 'opacity-0 pointer-events-none',
               ].join(' ')}
               onClick={() => setFilterDrawerOpen(false)}
               type="button"
@@ -685,10 +687,14 @@ const MarketBenchmarkPage: React.FC = () => {
             >
               <button
                 aria-expanded={filterDrawerOpen}
-                aria-label={filterDrawerOpen ? 'Filter panelini bağla' : 'Filter panelini aç'}
+                aria-label={
+                  filterDrawerOpen ? 'Filter panelini bağla' : 'Filter panelini aç'
+                }
                 className={[
                   'absolute right-full bottom-32 z-[90] -rotate-90 origin-center flex h-8 items-center gap-1.5 rounded-t-md border-x border-t px-3.5 text-[10px] font-bold uppercase tracking-wider shadow-2xl transition-all duration-300 pointer-events-auto',
-                  filterDrawerOpen ? 'translate-x-[calc(50%-16px)]' : 'translate-x-[calc(50%-28px)]',
+                  filterDrawerOpen
+                    ? 'translate-x-[calc(50%-16px)]'
+                    : 'translate-x-[calc(50%-28px)]',
                   isDark
                     ? 'border-blue-500/30 bg-slate-950/95 text-blue-400 hover:text-blue-300 hover:bg-slate-900'
                     : 'border-blue-200 bg-white/95 text-blue-600 hover:text-blue-700 hover:bg-blue-50',
@@ -704,7 +710,10 @@ const MarketBenchmarkPage: React.FC = () => {
                 <span>Filterlər</span>
                 <Filter className="h-3 w-3 text-blue-500" />
                 {hasActiveFilters && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" aria-hidden="true" />
+                  <span
+                    className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse"
+                    aria-hidden="true"
+                  />
                 )}
               </button>
               <div
@@ -808,14 +817,10 @@ const MarketBenchmarkPage: React.FC = () => {
 
                   <label className="space-y-1.5 text-sm font-medium">
                     <span className={mutedText}>Ay</span>
-                    <input
-                      ref={reportMonthInputRef}
+                    <DateInput
                       className={inputClass}
-                      type="date"
                       value={draftReportMonth}
-                      onChange={(event) => setDraftReportMonth(event.target.value)}
-                      onClick={openDatePicker}
-                      onFocus={openDatePicker}
+                      onChange={setDraftReportMonth}
                     />
                   </label>
                 </div>
@@ -832,7 +837,14 @@ const MarketBenchmarkPage: React.FC = () => {
                   variant="outline"
                   size="sm"
                   className={outlineButtonClass}
-                  disabled={!hasActiveFilters && !draftBankName && !draftRegionNameClean && !draftCardBrandName && !draftProductType && !draftReportMonth}
+                  disabled={
+                    !hasActiveFilters &&
+                    !draftBankName &&
+                    !draftRegionNameClean &&
+                    !draftCardBrandName &&
+                    !draftProductType &&
+                    !draftReportMonth
+                  }
                   onClick={resetFilters}
                 >
                   <RotateCcw className="h-4 w-4" />
@@ -875,24 +887,41 @@ const MarketBenchmarkPage: React.FC = () => {
                 <div
                   className={[
                     'rounded-lg border p-4',
-                    isDark ? 'border-slate-800 bg-slate-950/40' : 'border-slate-100 bg-slate-50',
+                    isDark
+                      ? 'border-slate-800 bg-slate-950/40'
+                      : 'border-slate-100 bg-slate-50',
                   ].join(' ')}
                 >
-                  <p className="text-sm font-semibold">{bestRow.regionNameClean ?? '-'}</p>
+                  <p className="text-sm font-semibold">
+                    {bestRow.regionNameClean ?? '-'}
+                  </p>
                   <p className="mt-2 text-4xl font-semibold tabular-nums text-blue-500">
                     {formatPercent(bestRow.marketSharePct)}
                   </p>
-                  <p className={['mt-2 text-sm', isDark ? 'text-slate-300' : 'text-slate-500'].join(' ')}>
+                  <p
+                    className={[
+                      'mt-2 text-sm',
+                      isDark ? 'text-slate-300' : 'text-slate-500',
+                    ].join(' ')}
+                  >
                     {cleanBrand(bestRow.cardBrandName)} • {bestRow.productType ?? '-'}
                   </p>
                   <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>Kart payı</p>
-                      <p className="font-semibold">{formatPercent(bestRow.cardSharePct)}</p>
+                      <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+                        Kart payı
+                      </p>
+                      <p className="font-semibold">
+                        {formatPercent(bestRow.cardSharePct)}
+                      </p>
                     </div>
                     <div>
-                      <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>Kart sayı</p>
-                      <p className="font-semibold">{formatNumber(bestRow.bankCardCount)}</p>
+                      <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>
+                        Kart sayı
+                      </p>
+                      <p className="font-semibold">
+                        {formatNumber(bestRow.bankCardCount)}
+                      </p>
                     </div>
                   </div>
                 </div>

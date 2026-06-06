@@ -113,7 +113,10 @@ const CardActivityPage: React.FC = () => {
             aria-label="Cədvəl və qrafik ölçüsünü dəyiş"
           >
             <span
-              className={['h-12 w-1 rounded-full', isDark ? 'bg-slate-500' : 'bg-slate-300'].join(' ')}
+              className={[
+                'h-12 w-1 rounded-full',
+                isDark ? 'bg-slate-500' : 'bg-slate-300',
+              ].join(' ')}
             />
           </button>
         )}
@@ -127,7 +130,9 @@ const CardActivityPage: React.FC = () => {
             onClose={chart.closeChart}
             pieData={dashboard.pieData}
             trendChartData={dashboard.trendChartData}
-            style={{ flex: chart.chartStacked ? '1 1 100%' : `0 0 ${chart.chartWidth}px` }}
+            style={{
+              flex: chart.chartStacked ? '1 1 100%' : `0 0 ${chart.chartWidth}px`,
+            }}
           />
         )}
       </div>

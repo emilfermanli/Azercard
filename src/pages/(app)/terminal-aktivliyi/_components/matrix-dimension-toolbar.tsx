@@ -76,7 +76,12 @@ function DimensionPicker({
   return (
     <div className="@container min-w-0 flex-1">
       <div className="mb-2 flex items-center gap-1.5">
-        <span className={['flex items-center gap-1 text-xs font-semibold uppercase tracking-wide', muted].join(' ')}>
+        <span
+          className={[
+            'flex items-center gap-1 text-xs font-semibold uppercase tracking-wide',
+            muted,
+          ].join(' ')}
+        >
           {axisIcon}
           {label}
         </span>
@@ -120,7 +125,11 @@ function DimensionPicker({
               aria-selected={isActive}
               disabled={isExcluded}
               onClick={() => onPick(tab.value)}
-              title={isExcluded ? `Bu ölçü artıq ${excludedHint.toLowerCase()} istifadə olunur` : tab.label}
+              title={
+                isExcluded
+                  ? `Bu ölçü artıq ${excludedHint.toLowerCase()} istifadə olunur`
+                  : tab.label
+              }
               className={[
                 'relative z-10 flex h-9 min-w-0 items-center justify-center gap-1 rounded-md px-1.5 text-xs font-semibold transition-colors',
                 isActive ? 'text-white' : isDark ? 'text-slate-300' : 'text-slate-600',
@@ -165,7 +174,10 @@ export function MatrixDimensionToolbar({
 
   return (
     <div
-      className={['@container mt-5 rounded-xl border p-3 sm:p-4', subtlePanelClass(isDark)].join(' ')}
+      className={[
+        '@container mt-5 rounded-xl border p-3 sm:p-4',
+        subtlePanelClass(isDark),
+      ].join(' ')}
     >
       <div className="flex flex-col items-stretch gap-4 @[42rem]:flex-row @[42rem]:items-end">
         <DimensionPicker

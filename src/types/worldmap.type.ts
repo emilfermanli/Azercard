@@ -62,6 +62,4 @@ export interface WorldmapHeatmapPoint {
   value?: number | null;
 }
 
-export type WorldmapHeatmapResponse =
-  | Record<string, number>
-  | WorldmapHeatmapPoint[];
+export type WorldmapHeatmapResponse = Record<string, number> | WorldmapHeatmapPoint[];

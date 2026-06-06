@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
-import { Button, DataPagination, DataTable } from '@/components';
+import { Button, DataPagination, DataTable, DateInput } from '@/components';
 import {
   useGetAzmapBanksQuery,
   useGetAzmapCitiesQuery,
@@ -160,7 +160,6 @@ function buildCityPoints(items: AzmapItem[]) {
 const AzmapPage: React.FC = () => {
   const isDark = useShellTheme();
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const reportMonthInputRef = useRef<HTMLInputElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [mapMode, setMapMode] = useState<MapMode>('points');
   const [baseMapStyle, setBaseMapStyle] = useState<BaseMapStyle>(
@@ -268,7 +267,7 @@ const AzmapPage: React.FC = () => {
       for (const cluster of result) {
         const dist = Math.sqrt(
           Math.pow(point.position[0] - cluster.position[0], 2) +
-          Math.pow(point.position[1] - cluster.position[1], 2)
+            Math.pow(point.position[1] - cluster.position[1], 2)
         );
         if (dist < threshold) {
           const totalAmt = cluster.totalAmount + point.totalAmount;
@@ -330,7 +329,7 @@ const AzmapPage: React.FC = () => {
       for (const cluster of result) {
         const dist = Math.sqrt(
           Math.pow(point.position[0] - cluster.position[0], 2) +
-          Math.pow(point.position[1] - cluster.position[1], 2)
+            Math.pow(point.position[1] - cluster.position[1], 2)
         );
         if (dist < threshold) {
           const totalAmt = cluster.totalAmount + point.totalAmount;
@@ -404,10 +403,12 @@ const AzmapPage: React.FC = () => {
     [regions]
   );
 
-
-  const selectedDraftBank = bankOptions.find((item) => item.value === draftBankName) ?? null;
-  const selectedDraftCity = cityOptions.find((item) => item.value === draftSourceCity) ?? null;
-  const selectedDraftRegion = regionOptions.find((item) => item.value === draftSourceCityClean) ?? null;
+  const selectedDraftBank =
+    bankOptions.find((item) => item.value === draftBankName) ?? null;
+  const selectedDraftCity =
+    cityOptions.find((item) => item.value === draftSourceCity) ?? null;
+  const selectedDraftRegion =
+    regionOptions.find((item) => item.value === draftSourceCityClean) ?? null;
 
   const hasActiveFilters = Boolean(
     bankName || sourceCity || sourceCityClean || reportMonth
@@ -499,8 +500,10 @@ const AzmapPage: React.FC = () => {
             point.isCluster
               ? 8_000 + point.pointCount * 1_000
               : 2_500 + (point.totalAmount / maxHeatmapAmount) * 18_000,
-          getFillColor: (point) => (point.isCluster ? [255, 255, 255, 110] : [255, 255, 255, 70]),
-          getLineColor: (point) => (point.isCluster ? [255, 255, 255, 255] : [255, 255, 255, 230]),
+          getFillColor: (point) =>
+            point.isCluster ? [255, 255, 255, 110] : [255, 255, 255, 70],
+          getLineColor: (point) =>
+            point.isCluster ? [255, 255, 255, 255] : [255, 255, 255, 230],
           radiusMinPixels: 12,
           radiusMaxPixels: 50,
           lineWidthMinPixels: 1.5,
@@ -545,7 +548,8 @@ const AzmapPage: React.FC = () => {
             : point.category === 'REGION'
               ? [16, 185, 129, 205]
               : [34, 211, 238, 210],
-        getLineColor: (point) => (point.isCluster ? [79, 70, 229, 255] : [255, 255, 255, 230]),
+        getLineColor: (point) =>
+          point.isCluster ? [79, 70, 229, 255] : [255, 255, 255, 230],
         radiusMinPixels: 14,
         radiusMaxPixels: 60,
         lineWidthMinPixels: 1.5,
@@ -678,10 +682,6 @@ const AzmapPage: React.FC = () => {
     setFilterDrawerOpen(false);
   };
 
-  const openDatePicker = () => {
-    reportMonthInputRef.current?.showPicker?.();
-  };
-
   return (
     <div className="space-y-5 pt-2 pb-2 pl-2 pr-4 sm:pt-3 sm:pb-3 sm:pl-3 sm:pr-6">
       <DataPageHeader
@@ -703,7 +703,9 @@ const AzmapPage: React.FC = () => {
               aria-label="Filter panelini bağla"
               className={[
                 'absolute inset-0 bg-slate-950/40 transition-opacity',
-                filterDrawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+                filterDrawerOpen
+                  ? 'opacity-100 pointer-events-auto'
+                  : 'opacity-0 pointer-events-none',
               ].join(' ')}
               onClick={() => setFilterDrawerOpen(false)}
               type="button"
@@ -720,10 +722,14 @@ const AzmapPage: React.FC = () => {
             >
               <button
                 aria-expanded={filterDrawerOpen}
-                aria-label={filterDrawerOpen ? 'Filter panelini bağla' : 'Filter panelini aç'}
+                aria-label={
+                  filterDrawerOpen ? 'Filter panelini bağla' : 'Filter panelini aç'
+                }
                 className={[
                   'absolute right-full bottom-32 z-[90] -rotate-90 origin-center flex h-8 items-center gap-1.5 rounded-t-md border-x border-t px-3.5 text-[10px] font-bold uppercase tracking-wider shadow-2xl transition-all duration-300 pointer-events-auto',
-                  filterDrawerOpen ? 'translate-x-[calc(50%-16px)]' : 'translate-x-[calc(50%-28px)]',
+                  filterDrawerOpen
+                    ? 'translate-x-[calc(50%-16px)]'
+                    : 'translate-x-[calc(50%-28px)]',
                   isDark
                     ? 'border-emerald-500/30 bg-slate-950/95 text-emerald-400 hover:text-emerald-300 hover:bg-slate-900'
                     : 'border-emerald-200 bg-white/95 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50',
@@ -739,7 +745,10 @@ const AzmapPage: React.FC = () => {
                 <span>Filterlər</span>
                 <Filter className="h-3 w-3 text-emerald-500" />
                 {hasActiveFilters && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" aria-hidden="true" />
+                  <span
+                    className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"
+                    aria-hidden="true"
+                  />
                 )}
               </button>
               <div
@@ -829,14 +838,10 @@ const AzmapPage: React.FC = () => {
 
                   <label className="space-y-1.5 text-sm font-medium">
                     <span className={mutedText}>Ay</span>
-                    <input
-                      ref={reportMonthInputRef}
+                    <DateInput
                       className={inputClass}
-                      type="date"
                       value={draftReportMonth}
-                      onChange={(event) => setDraftReportMonth(event.target.value)}
-                      onClick={openDatePicker}
-                      onFocus={openDatePicker}
+                      onChange={setDraftReportMonth}
                     />
                   </label>
                 </div>
@@ -853,7 +858,13 @@ const AzmapPage: React.FC = () => {
                   variant="outline"
                   size="sm"
                   className={outlineButtonClass}
-                  disabled={!hasActiveFilters && !draftBankName && !draftSourceCity && !draftSourceCityClean && !draftReportMonth}
+                  disabled={
+                    !hasActiveFilters &&
+                    !draftBankName &&
+                    !draftSourceCity &&
+                    !draftSourceCityClean &&
+                    !draftReportMonth
+                  }
                   onClick={resetFilters}
                 >
                   <RotateCcw className="h-4 w-4" />
@@ -1028,7 +1039,9 @@ const AzmapPage: React.FC = () => {
                           : 'border-slate-200 bg-white/95 text-slate-700',
                     ].join(' ')}
                   >
-                    {isHeatmapError ? 'İstilik xəritəsi yüklənmədi' : 'İstilik xəritəsi yüklənir...'}
+                    {isHeatmapError
+                      ? 'İstilik xəritəsi yüklənmədi'
+                      : 'İstilik xəritəsi yüklənir...'}
                   </div>
                 )}
                 <div

@@ -2,7 +2,10 @@ import { cn } from '@/utils';
 
 export type DataTableActionKind = 'view' | 'edit' | 'delete' | 'assignRole';
 
-export function dataTableActionButtonClass(isDark: boolean, kind: DataTableActionKind): string {
+export function dataTableActionButtonClass(
+  isDark: boolean,
+  kind: DataTableActionKind
+): string {
   const cursor = 'cursor-pointer';
   switch (kind) {
     case 'view':

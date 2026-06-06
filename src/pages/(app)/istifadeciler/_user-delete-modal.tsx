@@ -73,7 +73,12 @@ export function UserDeleteModal({ open, user, onClose }: Props) {
         aria-label="Bağla"
         onClick={onClose}
       />
-      <div className={cn('relative z-10 my-auto w-full max-w-md rounded-xl border p-6', panel)}>
+      <div
+        className={cn(
+          'relative z-10 my-auto w-full max-w-md rounded-xl border p-6',
+          panel
+        )}
+      >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <span
@@ -107,7 +112,8 @@ export function UserDeleteModal({ open, user, onClose }: Props) {
           <strong className={isDark ? 'text-slate-100' : 'text-slate-900'}>
             &quot;{displayName}&quot;
           </strong>{' '}
-          istifadəçisini silmək istədiyinizə əminsiniz? Bu əməliyyat geri qaytarıla bilməz.
+          istifadəçisini silmək istədiyinizə əminsiniz? Bu əməliyyat geri qaytarıla
+          bilməz.
         </p>
 
         <div className="mt-6 flex justify-end gap-2">

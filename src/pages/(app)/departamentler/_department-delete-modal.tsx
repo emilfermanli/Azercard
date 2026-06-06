@@ -65,12 +65,7 @@ export function DepartmentDeleteModal({ open, department, onClose }: Props) {
         aria-label="Bağla"
         onClick={onClose}
       />
-      <div
-        className={cn(
-          'relative z-10 w-full max-w-md rounded-xl border p-6',
-          panel
-        )}
-      >
+      <div className={cn('relative z-10 w-full max-w-md rounded-xl border p-6', panel)}>
         <div className="mb-4 flex items-start justify-between gap-3">
           <h2 id="dept-del-title" className="text-lg font-semibold">
             Departamenti sil
@@ -80,7 +75,9 @@ export function DepartmentDeleteModal({ open, department, onClose }: Props) {
             onClick={onClose}
             className={cn(
               'rounded-lg p-1 transition-colors',
-              isDark ? 'text-slate-400 hover:bg-slate-800 hover:text-white' : 'text-slate-500 hover:bg-slate-100'
+              isDark
+                ? 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                : 'text-slate-500 hover:bg-slate-100'
             )}
             aria-label="Bağla"
           >
@@ -89,11 +86,16 @@ export function DepartmentDeleteModal({ open, department, onClose }: Props) {
         </div>
 
         <p className="text-sm">
-          <span className={isDark ? 'font-semibold text-white' : 'font-semibold text-slate-900'}>
+          <span
+            className={
+              isDark ? 'font-semibold text-white' : 'font-semibold text-slate-900'
+            }
+          >
             {department.name}
           </span>{' '}
           <span className={muted}>
-            departamentini silmək istədiyinizə əminsiniz? Bu əməliyyat geri qaytarıla bilməz.
+            departamentini silmək istədiyinizə əminsiniz? Bu əməliyyat geri qaytarıla
+            bilməz.
           </span>
         </p>
 

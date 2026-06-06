@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
-import { Button, DataPagination, DataTable, LoadingSpinner } from '@/components';
+import { Button, DataPagination, DataTable, DateInput, LoadingSpinner } from '@/components';
 import { useGetGeneralBanksQuery } from '@/services/general.service';
 import {
   useGetWorldmapFilterQuery,
@@ -315,7 +315,6 @@ function normalizeHeatmapResponse(
 const WorldmapPage: React.FC = () => {
   const isDark = useShellTheme();
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const reportMonthInputRef = useRef<HTMLInputElement>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [mapMode, setMapMode] = useState<MapMode>('flow');
@@ -1208,10 +1207,6 @@ const WorldmapPage: React.FC = () => {
     setFilterDrawerOpen(false);
   };
 
-  const openDatePicker = () => {
-    reportMonthInputRef.current?.showPicker?.();
-  };
-
   return (
     <div className="space-y-5 pt-2 pb-2 pl-2 pr-4 sm:pt-3 sm:pb-3 sm:pl-3 sm:pr-6">
       <DataPageHeader
@@ -1252,7 +1247,9 @@ const WorldmapPage: React.FC = () => {
               aria-label="Filter panelini bağla"
               className={[
                 'absolute inset-0 bg-slate-950/40 transition-opacity',
-                filterDrawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+                filterDrawerOpen
+                  ? 'opacity-100 pointer-events-auto'
+                  : 'opacity-0 pointer-events-none',
               ].join(' ')}
               onClick={() => setFilterDrawerOpen(false)}
               type="button"
@@ -1269,10 +1266,14 @@ const WorldmapPage: React.FC = () => {
             >
               <button
                 aria-expanded={filterDrawerOpen}
-                aria-label={filterDrawerOpen ? 'Filter panelini bağla' : 'Filter panelini aç'}
+                aria-label={
+                  filterDrawerOpen ? 'Filter panelini bağla' : 'Filter panelini aç'
+                }
                 className={[
                   'absolute right-full bottom-32 z-[90] -rotate-90 origin-center flex h-8 items-center gap-1.5 rounded-t-md border-x border-t px-3.5 text-[10px] font-bold uppercase tracking-wider shadow-2xl transition-all duration-300 pointer-events-auto',
-                  filterDrawerOpen ? 'translate-x-[calc(50%-16px)]' : 'translate-x-[calc(50%-28px)]',
+                  filterDrawerOpen
+                    ? 'translate-x-[calc(50%-16px)]'
+                    : 'translate-x-[calc(50%-28px)]',
                   isDark
                     ? 'border-cyan-500/30 bg-slate-950/95 text-cyan-400 hover:text-cyan-300 hover:bg-slate-900'
                     : 'border-cyan-200 bg-white/95 text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50',
@@ -1288,7 +1289,10 @@ const WorldmapPage: React.FC = () => {
                 <span>Filterlər</span>
                 <Filter className="h-3 w-3 text-cyan-500" />
                 {hasActiveFilters && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" aria-hidden="true" />
+                  <span
+                    className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse"
+                    aria-hidden="true"
+                  />
                 )}
               </button>
               <div
@@ -1424,14 +1428,10 @@ const WorldmapPage: React.FC = () => {
 
                   <label className="space-y-1.5 text-sm font-medium">
                     <span className={mutedText}>Ay</span>
-                    <input
-                      ref={reportMonthInputRef}
+                    <DateInput
                       className={inputClass}
-                      type="date"
                       value={draftReportMonth}
-                      onChange={(event) => setDraftReportMonth(event.target.value)}
-                      onClick={openDatePicker}
-                      onFocus={openDatePicker}
+                      onChange={setDraftReportMonth}
                     />
                   </label>
 

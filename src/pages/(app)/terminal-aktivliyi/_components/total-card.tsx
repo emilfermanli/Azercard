@@ -5,7 +5,9 @@ export function TotalCard({ value }: { value: string }) {
   const isDark = useShellTheme();
 
   return (
-    <section className={['rounded-xl border px-4 py-2 shadow-lg', panelClass(isDark)].join(' ')}>
+    <section
+      className={['rounded-xl border px-4 py-2 shadow-lg', panelClass(isDark)].join(' ')}
+    >
       <p className={['text-xs font-semibold', mutedText(isDark)].join(' ')}>Cəmi</p>
       <p className="mt-1 text-2xl font-bold tabular-nums">{value}</p>
     </section>

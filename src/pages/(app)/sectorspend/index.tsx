@@ -228,8 +228,14 @@ function groupRows(
   });
 
   return Array.from(map.values())
-    .map(({ avgTicketValues: _avgTicketValues, ratios: _ratios, shares: _shares, ...item }) => ({
-      ...item,
+    .map((item) => ({
+      label: item.label,
+      amount: item.amount,
+      count: item.count,
+      localAmount: item.localAmount,
+      avgTicket: item.avgTicket,
+      localRatio: item.localRatio,
+      marketShare: item.marketShare,
       name: item.label,
       value: item.amount,
     }))

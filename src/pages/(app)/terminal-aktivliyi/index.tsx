@@ -24,11 +24,11 @@ const CardActivityPage: React.FC = () => {
   const [xDimension, setXDimension] = useState<DeviceDimension>(XY_DEFAULT_X_DIMENSION);
   const [yDimension, setYDimension] = useState<DeviceDimension>(XY_DEFAULT_Y_DIMENSION);
   const handleXChange = (dimension: DeviceDimension) => {
-    if (dimension === yDimension) setYDimension(xDimension);
+    if (dimension === yDimension) return;
     setXDimension(dimension);
   };
   const handleYChange = (dimension: DeviceDimension) => {
-    if (dimension === xDimension) setXDimension(yDimension);
+    if (dimension === xDimension) return;
     setYDimension(dimension);
   };
   const swapDimensions = () => {
@@ -73,6 +73,8 @@ const CardActivityPage: React.FC = () => {
           matrixRows={dashboard.matrixRows}
           xDimension={xDimension}
           yDimension={yDimension}
+          isMatrixLoading={dashboard.isMatrixLoading}
+          isMatrixFetching={dashboard.isMatrixFetching}
           onXChange={handleXChange}
           onYChange={handleYChange}
           onSwap={swapDimensions}

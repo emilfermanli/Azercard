@@ -29,6 +29,8 @@ type DashboardData = {
   channels: string[];
   matrixRows: DisplayRow[];
   trendChartData: TrendDatum[];
+  isMatrixLoading: boolean;
+  isMatrixFetching: boolean;
 };
 
 /**
@@ -58,7 +60,11 @@ export function useDevicesDashboard({
     { skip: !prevMonth }
   );
 
-  const { data: xyData } = useGetDevicesXyAnalysisQuery(
+  const {
+    data: xyData,
+    isLoading: isMatrixLoading,
+    isFetching: isMatrixFetching,
+  } = useGetDevicesXyAnalysisQuery(
     {
       dateFrom: xyDateFrom ?? '',
       dateTo: xyDateTo ?? '',
@@ -181,5 +187,14 @@ export function useDevicesDashboard({
     [monthlyTotals]
   );
 
-  return { totalValue, summaryCards, pieData, channels, matrixRows, trendChartData };
+  return {
+    totalValue,
+    summaryCards,
+    pieData,
+    channels,
+    matrixRows,
+    trendChartData,
+    isMatrixLoading: isMatrixLoading && !xyData,
+    isMatrixFetching,
+  };
 }

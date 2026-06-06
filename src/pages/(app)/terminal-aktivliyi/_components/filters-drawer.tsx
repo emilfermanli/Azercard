@@ -16,18 +16,14 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
     setOpen,
     options,
     selected,
-    draftMonthInput,
     draftDateFromInput,
     draftDateToInput,
     setDraftBankName,
     setDraftRegionName,
     setDraftMccName,
     setDraftRetailCategory,
-    setDraftMonthInput,
     setDraftDateFromInput,
     setDraftDateToInput,
-    monthInputRef,
-    openDatePicker,
     hasActiveFilters,
     canReset,
     apply,
@@ -145,7 +141,7 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
             <div>
               <h2 className="font-semibold">Filterlər</h2>
               <p className={['text-sm', muted].join(' ')}>
-                Terminal aktivliyini bank, region, MCC, kateqoriya və ay üzrə süzün.
+                Terminal aktivliyini bank, region, MCC, kateqoriya və tarix aralığı üzrə süzün.
               </p>
             </div>
           </div>
@@ -224,26 +220,8 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
               />
             </label>
 
-            <label className="space-y-1.5 text-sm font-medium">
-              <span className={muted}>Ay</span>
-              <input
-                ref={monthInputRef}
-                className={inputClass}
-                type="date"
-                value={draftMonthInput}
-                onChange={(event) => setDraftMonthInput(event.target.value)}
-                onClick={openDatePicker}
-                onFocus={openDatePicker}
-              />
-            </label>
-
-            <div className="space-y-1.5">
-              <span className={['text-sm font-medium', muted].join(' ')}>
-                Matris tarix aralığı
-              </span>
-              <div className="grid grid-cols-2 gap-3">
                 <label className="space-y-1.5 text-sm font-medium">
-                  <span className={muted}>Başlanğıc</span>
+                  <span className={muted}>Başlanğıc tarix</span>
                   <input
                     className={inputClass}
                     type="date"
@@ -255,7 +233,7 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
                   />
                 </label>
                 <label className="space-y-1.5 text-sm font-medium">
-                  <span className={muted}>Son</span>
+                  <span className={muted}>Son tarix</span>
                   <input
                     className={inputClass}
                     type="date"
@@ -266,8 +244,6 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
                     onFocus={showDatePicker}
                   />
                 </label>
-              </div>
-            </div>
           </div>
         </div>
 

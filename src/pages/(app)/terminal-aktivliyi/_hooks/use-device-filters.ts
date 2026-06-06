@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import {
   useGetDevicesFiltersQuery,
-  useGetDevicesLatestMonthQuery,
+  // useGetDevicesLatestMonthQuery,
 } from '@/services/devices.service';
 import type { SelectOption } from '../_types';
 import { shiftMonth, toDateInput, toDateTime, toReportMonth } from '../_utils';
@@ -25,7 +25,9 @@ function toOptions(values: string[] = []): SelectOption[] {
  * Data layer üçün `reportMonth`, `queryFilters`, `retailCategories` verir.
  */
 export function useDeviceFilters() {
-  const { data: latestMonth } = useGetDevicesLatestMonthQuery();
+  // const { data: latestMonth } = useGetDevicesLatestMonthQuery();
+  //latestMonth?.reportMonth ?? '2004-04-01';
+  const latestReportMonth = '2004-04-01';
   const { data: filtersData } = useGetDevicesFiltersQuery();
 
   const [isOpen, setOpen] = useState(false);
@@ -35,8 +37,7 @@ export function useDeviceFilters() {
   const [regionName, setRegionName] = useState('');
   const [mccName, setMccName] = useState('');
   const [retailCategory, setRetailCategory] = useState('');
-  const [monthInput, setMonthInput] = useState(''); // "YYYY-MM-DD", boş = ən son ay
-  // Matris (xy-analysis) üçün tarix aralığı — boş = ən son ay.
+  // Matris tarix aralığı — boş = ən son ay; Son həm də reportMonth mənbəyidir.
   const [dateFromInput, setDateFromInput] = useState('');
   const [dateToInput, setDateToInput] = useState('');
 
@@ -45,21 +46,20 @@ export function useDeviceFilters() {
   const [draftRegionName, setDraftRegionName] = useState('');
   const [draftMccName, setDraftMccName] = useState('');
   const [draftRetailCategory, setDraftRetailCategory] = useState('');
-  const [draftMonthInput, setDraftMonthInput] = useState('');
   const [draftDateFromInput, setDraftDateFromInput] = useState('');
   const [draftDateToInput, setDraftDateToInput] = useState('');
 
-  const monthInputRef = useRef<HTMLInputElement>(null);
-
-  const reportMonth = monthInput ? toReportMonth(monthInput) : latestMonth?.reportMonth;
-  const prevMonth = reportMonth ? shiftMonth(reportMonth, -1) : undefined;
-  const latestInput = toDateInput(latestMonth?.reportMonth);
+  const latestInput = toDateInput(latestReportMonth);
 
   // Matris tarix aralığı (boş olduqda ən son aya düşür).
   const effectiveDateFrom = dateFromInput || latestInput;
   const effectiveDateTo = dateToInput || latestInput;
   const xyDateFrom = effectiveDateFrom ? toDateTime(effectiveDateFrom) : undefined;
   const xyDateTo = effectiveDateTo ? toDateTime(effectiveDateTo) : undefined;
+
+  // Cəmi, kartlar və trend — matrisin Son tarixinin ayı.
+  const reportMonth = toReportMonth(effectiveDateTo);
+  const prevMonth = reportMonth ? shiftMonth(reportMonth, -1) : undefined;
 
   // Kartlar/donut üçün (retailCategory xaric — hər kart bir kateqoriyadır).
   const baseFilters = useMemo(
@@ -109,7 +109,6 @@ export function useDeviceFilters() {
       regionName ||
       mccName ||
       retailCategory ||
-      (monthInput && monthInput !== latestInput) ||
       isCustomRange(dateFromInput, dateToInput)
   );
   const hasDraftSelection = Boolean(
@@ -117,7 +116,6 @@ export function useDeviceFilters() {
       draftRegionName ||
       draftMccName ||
       draftRetailCategory ||
-      (draftMonthInput && draftMonthInput !== latestInput) ||
       isCustomRange(draftDateFromInput, draftDateToInput)
   );
 
@@ -128,7 +126,6 @@ export function useDeviceFilters() {
       setDraftRegionName(regionName);
       setDraftMccName(mccName);
       setDraftRetailCategory(retailCategory);
-      setDraftMonthInput(monthInput || latestInput);
       setDraftDateFromInput(dateFromInput || latestInput);
       setDraftDateToInput(dateToInput || latestInput);
     }
@@ -138,22 +135,18 @@ export function useDeviceFilters() {
     regionName,
     mccName,
     retailCategory,
-    monthInput,
     dateFromInput,
     dateToInput,
     latestInput,
   ]);
-
-  const openDatePicker = () => monthInputRef.current?.showPicker?.();
 
   const apply = () => {
     setBankName(draftBankName);
     setRegionName(draftRegionName);
     setMccName(draftMccName);
     setRetailCategory(draftRetailCategory);
-    setMonthInput(draftMonthInput && draftMonthInput !== latestInput ? draftMonthInput : '');
-    setDateFromInput(draftDateFromInput);
-    setDateToInput(draftDateToInput);
+    setDateFromInput(draftDateFromInput !== latestInput ? draftDateFromInput : '');
+    setDateToInput(draftDateToInput !== latestInput ? draftDateToInput : '');
     setOpen(false);
   };
 
@@ -162,14 +155,12 @@ export function useDeviceFilters() {
     setRegionName('');
     setMccName('');
     setRetailCategory('');
-    setMonthInput('');
     setDateFromInput('');
     setDateToInput('');
     setDraftBankName('');
     setDraftRegionName('');
     setDraftMccName('');
     setDraftRetailCategory('');
-    setDraftMonthInput(latestInput);
     setDraftDateFromInput(latestInput);
     setDraftDateToInput(latestInput);
     setOpen(false);
@@ -189,19 +180,14 @@ export function useDeviceFilters() {
     // dropdownlar
     options,
     selected,
-    draftMonthInput,
     draftDateFromInput,
     draftDateToInput,
     setDraftBankName,
     setDraftRegionName,
     setDraftMccName,
     setDraftRetailCategory,
-    setDraftMonthInput,
     setDraftDateFromInput,
     setDraftDateToInput,
-    // ref + handlerlər
-    monthInputRef,
-    openDatePicker,
     // flaglar + əməliyyatlar
     hasActiveFilters,
     canReset: hasActiveFilters || hasDraftSelection,

@@ -27,7 +27,9 @@ export type DeviceDimension =
   | 'mcc_name'
   | 'retail_category';
 
-export type DeviceXyArgs = DeviceFilterArgs & {
+export type DeviceXyArgs = DeviceBaseFilters & {
+  dateFrom: string;
+  dateTo: string;
   xDimension: DeviceDimension;
   yDimension: DeviceDimension;
 };
@@ -61,9 +63,16 @@ export type DeviceFilters = {
   retailCategories: string[];
 };
 
+export type DeviceTotalCategory = {
+  retailCategory: string;
+  totalDevices: number;
+};
+
 export type DeviceTotal = {
   reportMonth: string;
   total: number;
+  /** Kateqoriya üzrə bölgü (kartlar üçün — tək sorğuda gəlir). */
+  categories: DeviceTotalCategory[];
 };
 
 /** summary/mom/share item-lərinin ortaq əsas sahələri. */
@@ -106,13 +115,6 @@ export type DeviceXyItem = {
   sharePct: number;
   momDiff: number | null;
   momPctChange: number | null;
-};
-
-/** Kartlar üçün kateqoriya üzrə cəmi (client-də /total çağırışlarından yığılır). */
-export type DeviceCategoryTotal = {
-  category: string;
-  total: number;
-  prevTotal: number | null;
 };
 
 /** Trend qrafiki üçün ay üzrə cəmi (client-də /total çağırışlarından yığılır). */

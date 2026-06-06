@@ -17,11 +17,15 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
     options,
     selected,
     draftMonthInput,
+    draftDateFromInput,
+    draftDateToInput,
     setDraftBankName,
     setDraftRegionName,
     setDraftMccName,
     setDraftRetailCategory,
     setDraftMonthInput,
+    setDraftDateFromInput,
+    setDraftDateToInput,
     monthInputRef,
     openDatePicker,
     hasActiveFilters,
@@ -29,6 +33,9 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
     apply,
     reset,
   } = filters;
+
+  const showDatePicker = (event: React.MouseEvent<HTMLInputElement> | React.FocusEvent<HTMLInputElement>) =>
+    event.currentTarget.showPicker?.();
 
   const inputClass = [
     'h-10 w-full rounded-lg border px-3 text-sm outline-none ring-blue-500/40 transition focus:ring-2',
@@ -138,7 +145,7 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
             <div>
               <h2 className="font-semibold">Filterlər</h2>
               <p className={['text-sm', muted].join(' ')}>
-                Kart aktivliyini bank, region, MCC, kateqoriya və ay üzrə süzün.
+                Terminal aktivliyini bank, region, MCC, kateqoriya və ay üzrə süzün.
               </p>
             </div>
           </div>
@@ -229,6 +236,38 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
                 onFocus={openDatePicker}
               />
             </label>
+
+            <div className="space-y-1.5">
+              <span className={['text-sm font-medium', muted].join(' ')}>
+                Matris tarix aralığı
+              </span>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1.5 text-sm font-medium">
+                  <span className={muted}>Başlanğıc</span>
+                  <input
+                    className={inputClass}
+                    type="date"
+                    value={draftDateFromInput}
+                    max={draftDateToInput || undefined}
+                    onChange={(event) => setDraftDateFromInput(event.target.value)}
+                    onClick={showDatePicker}
+                    onFocus={showDatePicker}
+                  />
+                </label>
+                <label className="space-y-1.5 text-sm font-medium">
+                  <span className={muted}>Son</span>
+                  <input
+                    className={inputClass}
+                    type="date"
+                    value={draftDateToInput}
+                    min={draftDateFromInput || undefined}
+                    onChange={(event) => setDraftDateToInput(event.target.value)}
+                    onClick={showDatePicker}
+                    onFocus={showDatePicker}
+                  />
+                </label>
+              </div>
+            </div>
           </div>
         </div>
 

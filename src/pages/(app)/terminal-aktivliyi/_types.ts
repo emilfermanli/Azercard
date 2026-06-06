@@ -1,5 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 
+import type { DeviceDimension } from '@/types/devices.type';
+
 export type Trend = 'up' | 'down' | 'flat';
 
 export type SelectOption = {
@@ -41,5 +43,6 @@ export type RightPanelMode = 'share' | 'trend';
 
 export type DimensionTab = {
   label: string;
+  value: DeviceDimension;
   icon: LucideIcon;
 };

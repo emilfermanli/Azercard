@@ -11,20 +11,41 @@ import { useCardCarousel } from './_hooks/use-card-carousel';
 import { useChartPanel } from './_hooks/use-chart-panel';
 import { useDeviceFilters } from './_hooks/use-device-filters';
 import { useDevicesDashboard } from './_hooks/use-devices-dashboard';
+import { XY_DEFAULT_X_DIMENSION, XY_DEFAULT_Y_DIMENSION } from './_constants';
 import type { RightPanelMode } from './_types';
+import type { DeviceDimension } from '@/types/devices.type';
 
 const CardActivityPage: React.FC = () => {
   const isDark = useShellTheme();
   const [rightPanelMode, setRightPanelMode] = useState<RightPanelMode>('share');
+
+  // Matrisin sütun (X) və sətir (Y) ölçüləri — hər ikisi 4 keydən seçilir.
+  // Backend x===y üçün 500 verir, ona görə eyni seçiləndə yerlər dəyişir.
+  const [xDimension, setXDimension] = useState<DeviceDimension>(XY_DEFAULT_X_DIMENSION);
+  const [yDimension, setYDimension] = useState<DeviceDimension>(XY_DEFAULT_Y_DIMENSION);
+  const handleXChange = (dimension: DeviceDimension) => {
+    if (dimension === yDimension) setYDimension(xDimension);
+    setXDimension(dimension);
+  };
+  const handleYChange = (dimension: DeviceDimension) => {
+    if (dimension === xDimension) setXDimension(yDimension);
+    setYDimension(dimension);
+  };
+  const swapDimensions = () => {
+    setXDimension(yDimension);
+    setYDimension(xDimension);
+  };
 
   const filters = useDeviceFilters();
   const chart = useChartPanel();
   const dashboard = useDevicesDashboard({
     reportMonth: filters.reportMonth,
     prevMonth: filters.prevMonth,
-    baseFilters: filters.baseFilters,
+    xyDateFrom: filters.xyDateFrom,
+    xyDateTo: filters.xyDateTo,
     queryFilters: filters.queryFilters,
-    retailCategories: filters.retailCategories,
+    xDimension,
+    yDimension,
     chartOpen: chart.chartOpen,
     rightPanelMode,
   });
@@ -50,6 +71,11 @@ const CardActivityPage: React.FC = () => {
         <AnalysisSection
           channels={dashboard.channels}
           matrixRows={dashboard.matrixRows}
+          xDimension={xDimension}
+          yDimension={yDimension}
+          onXChange={handleXChange}
+          onYChange={handleYChange}
+          onSwap={swapDimensions}
           style={{ flex: chart.chartOpen && chart.chartStacked ? '1 1 100%' : '1 1 0%' }}
         />
 

@@ -1,4 +1,4 @@
-import { CreditCard, Globe2, Landmark, MapPinned } from 'lucide-react';
+import { CreditCard, Globe2, Landmark, Tags } from 'lucide-react';
 
 import type { DeviceDimension } from '@/types/devices.type';
 import type { DimensionTab, RightPanelMode } from './_types';
@@ -37,12 +37,10 @@ export const MONTHS_AZ = [
 export const XY_DEFAULT_X_DIMENSION: DeviceDimension = 'retail_category';
 export const XY_DEFAULT_Y_DIMENSION: DeviceDimension = 'region_name';
 
-// Statik tablar — backend qarşılığı yoxdur (period/dimension).
-export const PERIOD_TABS = ['Ay', 'İl'];
+// Matrisin sətir ölçüsünü (yDimension) seçən tablar.
 export const DIMENSION_TABS: DimensionTab[] = [
-  { label: 'Kart', icon: CreditCard },
-  { label: 'ÖS', icon: Landmark },
-  { label: 'AZC', icon: MapPinned },
-  { label: 'Bank', icon: Landmark },
-  { label: 'Region', icon: Globe2 },
+  { label: 'Bank', value: 'bank_name', icon: Landmark },
+  { label: 'Region', value: 'region_name', icon: Globe2 },
+  { label: 'Mcc', value: 'mcc_name', icon: Tags },
+  { label: 'Terminal', value: 'retail_category', icon: CreditCard },
 ];

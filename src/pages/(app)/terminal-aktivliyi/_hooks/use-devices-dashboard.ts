@@ -1,30 +1,23 @@
 import { useMemo } from 'react';
 
 import {
-  useDeviceCategoryTotals,
   useDeviceMonthlyTotals,
-  useGetDevicesShareQuery,
   useGetDevicesTotalQuery,
   useGetDevicesXyAnalysisQuery,
 } from '@/services/devices.service';
-import type { DeviceBaseFilters } from '@/types/devices.type';
-import {
-  CARD_TONES,
-  MONTHS_AZ,
-  PIE_COLORS,
-  TREND_MONTH_COUNT,
-  XY_DEFAULT_X_DIMENSION,
-  XY_DEFAULT_Y_DIMENSION,
-} from '../_constants';
+import type { DeviceBaseFilters, DeviceDimension } from '@/types/devices.type';
+import { CARD_TONES, MONTHS_AZ, PIE_COLORS, TREND_MONTH_COUNT } from '../_constants';
 import type { DisplayRow, PieDatum, RightPanelMode, SummaryCard, TrendDatum } from '../_types';
 import { formatCount, shiftMonth, trendOf } from '../_utils';
 
 type DashboardArgs = {
   reportMonth: string | undefined;
   prevMonth: string | undefined;
-  baseFilters: DeviceBaseFilters;
+  xyDateFrom: string | undefined;
+  xyDateTo: string | undefined;
   queryFilters: DeviceBaseFilters;
-  retailCategories: string[];
+  xDimension: DeviceDimension;
+  yDimension: DeviceDimension;
   chartOpen: boolean;
   rightPanelMode: RightPanelMode;
 };
@@ -45,41 +38,50 @@ type DashboardData = {
 export function useDevicesDashboard({
   reportMonth,
   prevMonth,
-  baseFilters,
+  xyDateFrom,
+  xyDateTo,
   queryFilters,
-  retailCategories,
+  xDimension,
+  yDimension,
   chartOpen,
   rightPanelMode,
 }: DashboardArgs): DashboardData {
+  // Cəmi + kartlar (kateqoriya bölgüsü) — tək sorğuda gəlir.
   const { data: totalData } = useGetDevicesTotalQuery(
     { reportMonth: reportMonth ?? '', ...queryFilters },
     { skip: !reportMonth }
   );
 
+  // Keçən ay — kartlardakı ↑↓ ox işarəsi (mom) üçün ikinci və yeganə əlavə sorğu.
+  const { data: prevTotalData } = useGetDevicesTotalQuery(
+    { reportMonth: prevMonth ?? '', ...queryFilters },
+    { skip: !prevMonth }
+  );
+
   const { data: xyData } = useGetDevicesXyAnalysisQuery(
     {
-      reportMonth: reportMonth ?? '',
-      xDimension: XY_DEFAULT_X_DIMENSION,
-      yDimension: XY_DEFAULT_Y_DIMENSION,
+      dateFrom: xyDateFrom ?? '',
+      dateTo: xyDateTo ?? '',
+      xDimension,
+      yDimension,
       ...queryFilters,
     },
-    { skip: !reportMonth }
+    { skip: !xyDateFrom || !xyDateTo }
   );
 
-  const { data: categoryTotals } = useDeviceCategoryTotals(
-    reportMonth,
-    prevMonth,
-    retailCategories,
-    baseFilters
-  );
-
-  // Donut — /share (yalnız panel açıq və "Pay" rejimində yüklənir).
-  // Hər sətirdəki sharePctByRetailCat kateqoriya üzrə eynidir, ona görə
-  // bir səhifə (PageSize 100) bütün kateqoriyaları əhatə edir.
-  const { data: shareData } = useGetDevicesShareQuery(
-    { reportMonth: reportMonth ?? '', Page: 1, PageSize: 100, ...queryFilters },
-    { skip: !reportMonth || !chartOpen || rightPanelMode !== 'share' }
-  );
+  // Kateqoriya cəmiləri — cari + keçən ay /total cavablarından birləşdirilir.
+  const categoryTotals = useMemo(() => {
+    const prevByCategory = new Map(
+      (prevTotalData?.categories ?? []).map((item) => [item.retailCategory, item.totalDevices])
+    );
+    return (totalData?.categories ?? []).map((item) => ({
+      category: item.retailCategory,
+      total: item.totalDevices,
+      prevTotal: prevByCategory.has(item.retailCategory)
+        ? (prevByCategory.get(item.retailCategory) as number)
+        : null,
+    }));
+  }, [totalData, prevTotalData]);
 
   // Trend qrafiki — son 6 ay (yalnız panel açıq və "Trend" rejimində yüklənir).
   const trendMonths = useMemo(
@@ -121,29 +123,16 @@ export function useDevicesDashboard({
     [categoryTotals, grandTotal]
   );
 
-  // retailCategory → sharePctByRetailCat (hər kateqoriyadan ilk sətir).
-  const shareByCategory = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const item of shareData?.items ?? []) {
-      if (!map.has(item.retailCategory)) {
-        map.set(item.retailCategory, item.sharePctByRetailCat);
-      }
-    }
-    return map;
-  }, [shareData]);
-
+  // Donut — kateqoriya payları (/total.categories-dən; /share yavaş/etibarsız
+  // olduğu üçün artıq onsuz da yüklənən cəmi datasından hesablanır).
   const pieData = useMemo<PieDatum[]>(() => {
-    const categories = retailCategories.length
-      ? retailCategories
-      : Array.from(shareByCategory.keys());
-    return categories
-      .filter((category) => shareByCategory.has(category))
-      .map((category, index) => ({
-        name: category,
-        value: Math.round(shareByCategory.get(category) ?? 0),
-        color: PIE_COLORS[index % PIE_COLORS.length],
-      }));
-  }, [retailCategories, shareByCategory]);
+    const categories = totalData?.categories ?? [];
+    return categories.map((item, index) => ({
+      name: item.retailCategory,
+      value: grandTotal ? Math.round((item.totalDevices / grandTotal) * 100) : 0,
+      color: PIE_COLORS[index % PIE_COLORS.length],
+    }));
+  }, [totalData, grandTotal]);
 
   // xy-analysis → pivot (sütun = xValue, sətir = yValue).
   const xyItems = useMemo(() => xyData ?? [], [xyData]);

@@ -6,7 +6,6 @@ import type { AppDispatch } from '@/store';
 import { baseQuery } from '@/utils/fetchBaseQuery';
 import type {
   DeviceBaseFilters,
-  DeviceCategoryTotal,
   DeviceFilters,
   DeviceFilterArgs,
   DeviceLatestMonth,
@@ -107,89 +106,6 @@ export const {
   useGetDevicesTrendQuery,
   useGetDevicesShareQuery,
 } = devicesApi;
-
-/**
- * Kartlar üçün kateqoriya üzrə cəmiləri yığır.
- *
- * `/summary` granular sətir qaytarır və `PageSize` backend-də 100-lə
- * limitlənib, ona görə client-də toplamaq mümkün deyil. Onun əvəzinə hər
- * retail_category üçün `/total` (cari + keçən ay) çağırılır.
- * Kateqoriya sayı azdır (5), buna görə bu yanaşma kifayətdir.
- */
-export function useDeviceCategoryTotals(
-  reportMonth: string | undefined,
-  prevMonth: string | undefined,
-  categories: string[],
-  filters?: Omit<DeviceFilterArgs, 'reportMonth' | 'retailCategory'>
-) {
-  const dispatch = useDispatch<AppDispatch>();
-  const [data, setData] = useState<DeviceCategoryTotal[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const filtersKey = JSON.stringify(filters ?? {});
-  const categoriesKey = categories.join('|');
-
-  useEffect(() => {
-    if (!reportMonth || categories.length === 0) {
-      setData([]);
-      return;
-    }
-
-    let active = true;
-    const subscriptions: Array<{ unsubscribe: () => void }> = [];
-    setIsLoading(true);
-
-    const run = async () => {
-      const results = await Promise.all(
-        categories.map(async (category) => {
-          const currentReq = dispatch(
-            devicesApi.endpoints.getDevicesTotal.initiate({
-              ...filters,
-              reportMonth,
-              retailCategory: category,
-            })
-          );
-          subscriptions.push(currentReq);
-          const current = await currentReq.unwrap().catch(() => null);
-
-          let previous: DeviceTotal | null = null;
-          if (prevMonth) {
-            const previousReq = dispatch(
-              devicesApi.endpoints.getDevicesTotal.initiate({
-                ...filters,
-                reportMonth: prevMonth,
-                retailCategory: category,
-              })
-            );
-            subscriptions.push(previousReq);
-            previous = await previousReq.unwrap().catch(() => null);
-          }
-
-          return {
-            category,
-            total: current?.total ?? 0,
-            prevTotal: previous?.total ?? null,
-          };
-        })
-      );
-
-      if (active) {
-        setData(results);
-        setIsLoading(false);
-      }
-    };
-
-    run();
-
-    return () => {
-      active = false;
-      subscriptions.forEach((sub) => sub.unsubscribe());
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch, reportMonth, prevMonth, categoriesKey, filtersKey]);
-
-  return { data, isLoading };
-}
 
 /**
  * Trend qrafiki üçün ay üzrə cəmiləri yığır.

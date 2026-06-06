@@ -60,8 +60,8 @@ export const navLinks: NavLinkItem[] = [
     icon: WalletCards,
   },
   {
-    path: '/kart-aktivliyi',
-    label: 'Kart aktivliyi',
+    path: '/terminal-aktivliyi',
+    label: 'Terminal aktivliyi',
     icon: CreditCard,
   },
   {

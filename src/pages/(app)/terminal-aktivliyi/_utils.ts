@@ -22,6 +22,11 @@ export function toReportMonth(dateInput: string): string {
   return `${year}-${month}-01T00:00:00`;
 }
 
+/** Date input dəyərini ("YYYY-MM-DD") API DateTime formatına çevirir (gün qorunur). */
+export function toDateTime(dateInput: string): string {
+  return `${dateInput}T00:00:00`;
+}
+
 /** "YYYY-MM-01T00:00:00" tarixini `delta` ay sürüşdürür. */
 export function shiftMonth(iso: string, delta: number): string {
   const date = new Date(iso);

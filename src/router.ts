@@ -10,12 +10,12 @@ export type Path =
   | `/departamentler`
   | `/forecasting`
   | `/istifadeciler`
-  | `/kart-aktivliyi`
   | `/login`
   | `/marketbenchmark`
   | `/pozisiyalar`
   | `/rollar`
   | `/sectorspend`
+  | `/terminal-aktivliyi`
   | `/worldmap`;
 
 export type Params = {};

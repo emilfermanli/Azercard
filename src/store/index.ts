@@ -19,6 +19,7 @@ import { marketbenchmarkApi } from '@/services/marketbenchmark.service';
 import { sectorspendApi } from '@/services/sectorspend.service';
 import { worldmapApi } from '@/services/worldmap.service';
 import { devicesApi } from '@/services/devices.service';
+import { cardsApi } from '@/services/cards.service';
 
 const encryptor = encryptTransform({
   secretKey: import.meta.env.VITE_PERSIST_KEY,
@@ -37,6 +38,7 @@ const rootReducer = combineReducers({
   [sectorspendApi.reducerPath]: sectorspendApi.reducer,
   [worldmapApi.reducerPath]: worldmapApi.reducer,
   [devicesApi.reducerPath]: devicesApi.reducer,
+  [cardsApi.reducerPath]: cardsApi.reducer,
 });
 
 type RootReducerState = ReturnType<typeof rootReducer>;
@@ -67,7 +69,8 @@ const store = configureStore({
         marketbenchmarkApi.middleware,
         sectorspendApi.middleware,
         worldmapApi.middleware,
-        devicesApi.middleware
+        devicesApi.middleware,
+        cardsApi.middleware
       )
       .prepend(ErrorMiddleware),
 });

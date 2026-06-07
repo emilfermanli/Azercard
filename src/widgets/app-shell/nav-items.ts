@@ -9,6 +9,7 @@ import {
   Shield,
   TrendingUp,
   Users,
+  Wallet,
   WalletCards,
 } from 'lucide-react';
 
@@ -63,6 +64,11 @@ export const navLinks: NavLinkItem[] = [
     path: '/terminal-aktivliyi',
     label: 'Terminal aktivliyi',
     icon: CreditCard,
+  },
+  {
+    path: '/kart-portfoliyosu',
+    label: 'Kart portfoliyosu',
+    icon: Wallet,
   },
   {
     path: '/forecasting',

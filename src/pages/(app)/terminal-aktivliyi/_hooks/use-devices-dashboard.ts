@@ -21,6 +21,9 @@ type DashboardArgs = {
   prevMonth: string | undefined;
   xyDateFrom: string | undefined;
   xyDateTo: string | undefined;
+  /** /total üçün — yalnız bank/region/mcc (retailCategory daxil deyil). */
+  baseFilters: DeviceBaseFilters;
+  /** Matris (xy-analysis) üçün — bank/region/mcc + retailCategory. */
   queryFilters: DeviceBaseFilters;
   xDimension: DeviceDimension;
   yDimension: DeviceDimension;
@@ -48,6 +51,7 @@ export function useDevicesDashboard({
   prevMonth,
   xyDateFrom,
   xyDateTo,
+  baseFilters,
   queryFilters,
   xDimension,
   yDimension,
@@ -55,14 +59,15 @@ export function useDevicesDashboard({
   rightPanelMode,
 }: DashboardArgs): DashboardData {
   // Cəmi + kartlar (kateqoriya bölgüsü) — tək sorğuda gəlir.
+  // /total yalnız bank/region/mcc + reportMonth alır (retailCategory yox).
   const { data: totalData } = useGetDevicesTotalQuery(
-    { reportMonth: reportMonth ?? '', ...queryFilters },
+    { reportMonth: reportMonth ?? '', ...baseFilters },
     { skip: !reportMonth }
   );
 
   // Keçən ay — kartlardakı ↑↓ ox işarəsi (mom) üçün ikinci və yeganə əlavə sorğu.
   const { data: prevTotalData } = useGetDevicesTotalQuery(
-    { reportMonth: prevMonth ?? '', ...queryFilters },
+    { reportMonth: prevMonth ?? '', ...baseFilters },
     { skip: !prevMonth }
   );
 
@@ -110,7 +115,7 @@ export function useDevicesDashboard({
   );
   const { data: monthlyTotals } = useDeviceMonthlyTotals(
     trendMonths,
-    queryFilters,
+    baseFilters,
     !reportMonth || !chartOpen || rightPanelMode !== 'trend'
   );
 

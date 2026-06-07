@@ -181,7 +181,7 @@ export function MatrixDimensionToolbar({
     >
       <div className="flex flex-col items-stretch gap-4 @[42rem]:flex-row @[42rem]:items-end">
         <DimensionPicker
-          label="Sətir"
+          label="Sətir (X)"
           axisIcon={<Rows3 className="h-3.5 w-3.5" aria-hidden />}
           active={yDimension}
           excluded={xDimension}
@@ -203,7 +203,7 @@ export function MatrixDimensionToolbar({
         </div>
 
         <DimensionPicker
-          label="Sütun"
+          label="Sütun (Y)"
           axisIcon={<Columns3 className="h-3.5 w-3.5" aria-hidden />}
           active={xDimension}
           excluded={yDimension}

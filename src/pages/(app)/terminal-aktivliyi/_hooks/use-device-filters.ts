@@ -172,6 +172,7 @@ export function useDeviceFilters() {
     prevMonth,
     xyDateFrom,
     xyDateTo,
+    baseFilters,
     queryFilters,
     retailCategories,
     // drawer

@@ -1,5 +1,3 @@
-import { RefreshCcw } from 'lucide-react';
-
 import { Loading, LoadingSpinner } from '@/components';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import type { DeviceDimension } from '@/types/devices.type';
@@ -99,20 +97,15 @@ export function AnalysisSection({
               <div style={{ minWidth: matrixMinWidth }}>
                 <div className="grid gap-2" style={matrixGridStyle}>
                   <div className="flex h-10 items-center justify-center">
-                    <button
-                      type="button"
-                      onClick={onSwap}
+                    <span
                       className={[
-                        'flex h-10 w-10 items-center justify-center rounded-full border transition',
-                        isDark
-                          ? 'border-blue-500/40 bg-slate-800/80 text-blue-300 hover:bg-blue-500/20 hover:text-blue-200'
-                          : 'border-blue-200 bg-white text-blue-700 hover:bg-blue-50',
+                        'text-[13px] font-medium uppercase tracking-wider',
+                        isDark ? 'text-slate-500' : 'text-slate-400',
                       ].join(' ')}
-                      aria-label="Sətir və sütun ölçülərini dəyiş"
-                      title="Sətir və sütun ölçülərini dəyiş"
+                      title="Sütun (X) / Sətir (Y)"
                     >
-                      <RefreshCcw className="h-5 w-5" />
-                    </button>
+                      X/Y
+                    </span>
                   </div>
                   {tableColumns.map((column) => (
                     <button

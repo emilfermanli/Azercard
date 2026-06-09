@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Filter, RotateCcw, X } from 'lucide-react';
 import Select, {
+  components as RSComponents,
   type MultiValue,
+  type MultiValueProps,
   type SingleValue,
   type StylesConfig,
 } from 'react-select';
@@ -9,9 +11,13 @@ import Select, {
 import { Button, DateInput } from '@/components';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import { FILTER_FIELDS } from '../_constants';
+import type { CardDimension } from '@/types/cards.type';
 import type { CardFiltersController } from '../_hooks/use-card-filters';
 import type { SelectOption } from '../_types';
 import { mutedText } from '../_utils';
+
+/** Multi select-də ən çox 3 çip göstərilir, qalan say "+N" kimi. */
+const MAX_VISIBLE_CHIPS = 3;
 
 export function FiltersDrawer({ filters }: { filters: CardFiltersController }) {
   const isDark = useShellTheme();
@@ -22,6 +28,9 @@ export function FiltersDrawer({ filters }: { filters: CardFiltersController }) {
     options,
     selected,
     setDraftField,
+    dimensionOptions,
+    selectedDimension,
+    setDraftCardDimension,
     draftDateFromInput,
     draftDateToInput,
     setDraftDateFromInput,
@@ -92,6 +101,32 @@ export function FiltersDrawer({ filters }: { filters: CardFiltersController }) {
         color: isDark ? '#94a3b8' : '#3b82f6',
         ':hover': { backgroundColor: '#2563eb', color: '#ffffff' },
       }),
+    }),
+    [isDark]
+  );
+
+  // İlk 3 çipi göstərir, 3-cüdən sonra qalan sayı "+N" kimi verir, qalanları gizlədir.
+  const selectComponents = useMemo(
+    () => ({
+      MultiValue: (props: MultiValueProps<SelectOption, true>) => {
+        const { index, getValue } = props;
+        if (index < MAX_VISIBLE_CHIPS) {
+          return <RSComponents.MultiValue {...props} />;
+        }
+        if (index === MAX_VISIBLE_CHIPS) {
+          return (
+            <span
+              className={[
+                'ml-1 self-center text-xs font-semibold',
+                isDark ? 'text-slate-300' : 'text-slate-600',
+              ].join(' ')}
+            >
+              +{getValue().length - MAX_VISIBLE_CHIPS}
+            </span>
+          );
+        }
+        return null;
+      },
     }),
     [isDark]
   );
@@ -182,6 +217,24 @@ export function FiltersDrawer({ filters }: { filters: CardFiltersController }) {
 
         <div className="min-h-0 flex-1 overflow-y-auto p-4">
           <div className="grid gap-3">
+            <label className="space-y-1.5 text-sm font-medium">
+              <span className={muted}>Bölgü</span>
+              <Select
+                inputId="cards-filter-dimension"
+                noOptionsMessage={() => 'Tapılmadı'}
+                onChange={(value) => {
+                  const option = (
+                    Array.isArray(value) ? value[0] : value
+                  ) as SingleValue<SelectOption>;
+                  if (option) setDraftCardDimension(option.value as CardDimension);
+                }}
+                options={dimensionOptions}
+                placeholder="Bölgü seçin"
+                styles={selectStyles}
+                value={selectedDimension}
+              />
+            </label>
+
             {FILTER_FIELDS.map((field) => (
               <label key={field.key} className="space-y-1.5 text-sm font-medium">
                 <span className={muted}>{field.label}</span>
@@ -207,6 +260,8 @@ export function FiltersDrawer({ filters }: { filters: CardFiltersController }) {
                     isMulti
                     isClearable
                     closeMenuOnSelect={false}
+                    hideSelectedOptions={false}
+                    components={selectComponents}
                     noOptionsMessage={() => 'Tapılmadı'}
                     onChange={(opts: MultiValue<SelectOption>) =>
                       setDraftField(

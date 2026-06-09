@@ -31,6 +31,8 @@ export type CardRangeArgs = CardApiFilters & {
   ToMonth: string;
 };
 
+/** top-cards — seçilmiş ölçü (dimension) üzrə kart bölgüsü. */
+export type CardTopCardsArgs = CardRangeArgs & { dimension?: CardDimension };
 export type CardPayChartArgs = CardRangeArgs & { Dimension: CardDimension };
 export type CardXyChartArgs = CardRangeArgs & {
   XDimension: CardDimension;
@@ -58,22 +60,14 @@ export type CardFilterOptions = {
   maxMonth: string;
 };
 
-export type CardScheme = {
+/**
+ * top-cards massiv qaytarır: seçilmiş ölçünün hər dəyəri üzrə kart sayı və pay.
+ * `paymentScheme` sahəsi ölçüdən asılı olmayaraq dəyər etiketini saxlayır.
+ */
+export type CardTopCardItem = {
   paymentScheme: string;
   totalCards: number;
   sharePercent: number;
-  momChange: number;
-  momIsUp: boolean;
-  shareIsUp: boolean;
-  salary: number;
-  credit: number;
-  social: number;
-  other: number;
-};
-
-export type CardTopSchemes = {
-  grandTotal: number;
-  schemes: CardScheme[];
 };
 
 export type CardPayChartItem = {

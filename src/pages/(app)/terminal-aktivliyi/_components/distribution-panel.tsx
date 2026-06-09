@@ -13,7 +13,7 @@ import {
 } from 'recharts';
 
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
-import { RIGHT_PANEL_MODES, TREND_MONTH_COUNT } from '../_constants';
+import { RIGHT_PANEL_MODES } from '../_constants';
 import type { PieDatum, RightPanelMode, TrendDatum } from '../_types';
 import { mutedText, panelClass, subtlePanelClass } from '../_utils';
 import { ShareTooltip, TrendTooltip } from './chart-tooltips';
@@ -190,11 +190,7 @@ export function DistributionPanel({
         )}
       </div>
 
-      <p className={['mt-4 text-sm leading-6', muted].join(' ')}>
-        {mode === 'share'
-          ? 'Seçilmiş filtrlər üzrə kateqoriyaların ümumi cihaz sayındakı payı.'
-          : `Son ${TREND_MONTH_COUNT} ayın ümumi cihaz sayı (seçilmiş filtrlər üzrə).`}
-      </p>
+
     </aside>
   );
 }

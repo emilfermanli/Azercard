@@ -49,6 +49,9 @@ export const XY_DEFAULT_Y_DIMENSION: CardDimension = 'region_name';
 // Donut (pay-chart) üçün default ölçü.
 export const PAY_DEFAULT_DIMENSION: CardDimension = 'payment_scheme';
 
+// "Bölgü" filtri — yuxarı kartların (top-cards) `dimension`-ı. Seçimlər = DIMENSION_TABS.
+export const CARD_DIMENSION_DEFAULT: CardDimension = 'payment_scheme';
+
 // Filter drawer sahələri (8 dropdown).
 export type CardFilterKey =
   | 'bankName'
@@ -85,7 +88,7 @@ export const FILTER_FIELDS: CardFilterField[] = [
   { key: 'regionName', apiKey: 'RegionNames', optionsKey: 'regions', label: 'Region', placeholder: 'Bütün regionlar' },
   { key: 'paymentScheme', apiKey: 'PaymentSchemes', optionsKey: 'paymentSchemes', label: 'Ödəniş sistemi', placeholder: 'Bütün sistemlər' },
   { key: 'productType', apiKey: 'ProductTypes', optionsKey: 'productTypes', label: 'Məhsul tipi', placeholder: 'Bütün tiplər' },
-  { key: 'contactlessStatus', apiKey: 'ContactlessStatuses', optionsKey: 'contactlessStatuses', label: 'Kontaktsız', placeholder: 'Hamısı' },
+  { key: 'contactlessStatus', apiKey: 'ContactlessStatuses', optionsKey: 'contactlessStatuses', label: 'Kontaktsız', placeholder: 'Hamısı', multi: false },
   { key: 'expStatus', apiKey: 'ExpStatuses', optionsKey: 'expStatuses', label: 'Müddət (EXP)', placeholder: 'Hamısı', multi: false },
   { key: 'baseCurrency', apiKey: 'BaseCurrencies', optionsKey: 'currencies', label: 'Valyuta', placeholder: 'Bütün valyutalar' },
   { key: 'cardProductName', apiKey: 'CardProductNames', optionsKey: 'cardProducts', label: 'Kart məhsulu', placeholder: 'Bütün məhsullar' },

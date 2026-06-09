@@ -39,11 +39,10 @@ const CardActivityPage: React.FC = () => {
   const filters = useDeviceFilters();
   const chart = useChartPanel();
   const dashboard = useDevicesDashboard({
-    reportMonth: filters.reportMonth,
-    prevMonth: filters.prevMonth,
     xyDateFrom: filters.xyDateFrom,
     xyDateTo: filters.xyDateTo,
     queryFilters: filters.queryFilters,
+    shareDimension: filters.shareDimension,
     xDimension,
     yDimension,
     chartOpen: chart.chartOpen,
@@ -51,9 +50,16 @@ const CardActivityPage: React.FC = () => {
   });
   const carousel = useCardCarousel(dashboard.summaryCards.length);
 
+
+
+
+  console.log(dashboard, "++++++")
+
   return (
     <div className="space-y-5 pt-2 pb-2 pl-2 pr-4 sm:pt-3 sm:pb-3 sm:pl-3 sm:pr-6">
       <FiltersDrawer filters={filters} />
+
+
 
       <TotalCard value={dashboard.totalValue} />
 

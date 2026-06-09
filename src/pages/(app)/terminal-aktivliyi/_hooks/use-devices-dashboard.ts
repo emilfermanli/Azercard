@@ -6,7 +6,13 @@ import {
   useGetDevicesXyAnalysisQuery,
 } from '@/services/devices.service';
 import type { DeviceBaseFilters, DeviceDimension } from '@/types/devices.type';
-import { CARD_TONES, MONTHS_AZ, PIE_COLORS, TREND_MONTH_COUNT } from '../_constants';
+import {
+  CARD_TONES,
+  MONTHS_AZ,
+  PIE_COLORS,
+  SHARE_DIMENSION_API,
+  type ShareDimensionValue,
+} from '../_constants';
 import type {
   DisplayRow,
   PieDatum,
@@ -17,12 +23,12 @@ import type {
 import { formatCount, shiftMonth, trendOf } from '../_utils';
 
 type DashboardArgs = {
-  reportMonth: string | undefined;
-  prevMonth: string | undefined;
   xyDateFrom: string | undefined;
   xyDateTo: string | undefined;
-  /** Matris (xy-analysis) üçün — bank/region/mcc + retailCategory. */
+  /** share + xy-analysis üçün — bank/region/mcc + retailCategory. */
   queryFilters: DeviceBaseFilters;
+  /** share endpointinin "Bölgü"sü (dimension). */
+  shareDimension: ShareDimensionValue;
   xDimension: DeviceDimension;
   yDimension: DeviceDimension;
   chartOpen: boolean;
@@ -45,35 +51,51 @@ type DashboardData = {
  * hazır view-model qaytarır (cəmi, kartlar, donut, matris, trend).
  */
 export function useDevicesDashboard({
-  reportMonth,
-  prevMonth,
   xyDateFrom,
   xyDateTo,
   queryFilters,
+  shareDimension,
   xDimension,
   yDimension,
   chartOpen,
   rightPanelMode,
 }: DashboardArgs): DashboardData {
-  // Cəmi + kartlar (kateqoriya bölgüsü) — /share-dən gəlir (retail_category üzrə).
-  // Qeyd: /share bank/region/mcc filtrlərini qəbul etmir — yalnız tarix üzrə.
+  // share endpointinin `dimension`-ı (UI camelCase → API snake_case).
+  const dimension = SHARE_DIMENSION_API[shareDimension];
+
+  // Əvvəlki bərabər uzunluqlu dövr (kartlardakı ↑↓ müqayisəsi üçün).
+  const prevRange = useMemo(() => {
+    if (!xyDateFrom || !xyDateTo) return null;
+    const fromYM = xyDateFrom.slice(0, 7); // "YYYY-MM"
+    const toYM = xyDateTo.slice(0, 7);
+    const [fromYear, fromMonth] = fromYM.split('-').map(Number);
+    const [toYear, toMonth] = toYM.split('-').map(Number);
+    const count = (toYear - fromYear) * 12 + (toMonth - fromMonth) + 1;
+    if (count < 1) return null;
+    const fromFirst = `${fromYM}-01T00:00:00`;
+    return { from: shiftMonth(fromFirst, -count), to: shiftMonth(fromFirst, -1) };
+  }, [xyDateFrom, xyDateTo]);
+
+  // Cəmi + kartlar — /share (seçilmiş tarix aralığı + filtrlər + bölgü).
   const { data: shareData } = useGetDevicesShareQuery(
     {
-      dateFrom: reportMonth ?? '',
-      dateTo: reportMonth ?? '',
-      dimension: 'retail_category',
+      dateFrom: xyDateFrom ?? '',
+      dateTo: xyDateTo ?? '',
+      dimension,
+      ...queryFilters,
     },
-    { skip: !reportMonth }
+    { skip: !xyDateFrom || !xyDateTo }
   );
 
-  // Keçən ay — kartlardakı ↑↓ ox işarəsi (mom) üçün ikinci sorğu.
+  // Əvvəlki dövr — kartlardakı ↑↓ ox işarəsi (mom) üçün ikinci sorğu.
   const { data: prevShareData } = useGetDevicesShareQuery(
     {
-      dateFrom: prevMonth ?? '',
-      dateTo: prevMonth ?? '',
-      dimension: 'retail_category',
+      dateFrom: prevRange?.from ?? '',
+      dateTo: prevRange?.to ?? '',
+      dimension,
+      ...queryFilters,
     },
-    { skip: !prevMonth }
+    { skip: !prevRange }
   );
 
   const {
@@ -94,35 +116,38 @@ export function useDevicesDashboard({
   // Kateqoriya cəmiləri — cari + keçən ay /share cavablarından birləşdirilir.
   const categoryTotals = useMemo(() => {
     const prevByCategory = new Map(
-      (prevShareData ?? []).map((item) => [item.retailCategory, item.totalDevices])
+      (prevShareData ?? []).map((item) => [item.dimensionValue, item.totalDevices])
     );
     return (shareData ?? []).map((item) => ({
-      category: item.retailCategory,
+      category: item.dimensionValue,
       total: item.totalDevices,
-      prevTotal: prevByCategory.has(item.retailCategory)
-        ? (prevByCategory.get(item.retailCategory) as number)
+      prevTotal: prevByCategory.has(item.dimensionValue)
+        ? (prevByCategory.get(item.dimensionValue) as number)
         : null,
     }));
   }, [shareData, prevShareData]);
 
-  // Trend qrafiki — son 6 ay (yalnız panel açıq və "Trend" rejimində yüklənir).
-  // `/trend` tam massiv qaytarır → ay üzrə cəmi client-də yığılır.
-  const trendMonths = useMemo(
-    () =>
-      reportMonth
-        ? Array.from({ length: TREND_MONTH_COUNT }, (_, index) =>
-            shiftMonth(reportMonth, index - (TREND_MONTH_COUNT - 1))
-          )
-        : [],
-    [reportMonth]
-  );
+  // Trend qrafiki — filterdə seçilmiş tarix aralığı (başlanğıc → son).
+  // `/trend` ay üzrə seriyalar qaytarır → hər ay üçün cəmi client-də yığılır.
+  const trendMonths = useMemo(() => {
+    if (!xyDateFrom || !xyDateTo) return [];
+    const fromYM = xyDateFrom.slice(0, 7); // "YYYY-MM"
+    const toYM = xyDateTo.slice(0, 7);
+    const [fromYear, fromMonth] = fromYM.split('-').map(Number);
+    const [toYear, toMonth] = toYM.split('-').map(Number);
+    const count = (toYear - fromYear) * 12 + (toMonth - fromMonth) + 1;
+    if (count < 1) return [];
+    const start = `${fromYM}-01T00:00:00`;
+    return Array.from({ length: count }, (_, index) => shiftMonth(start, index));
+  }, [xyDateFrom, xyDateTo]);
+
   const { data: trendData } = useGetDevicesTrendQuery(
     {
-      dateFrom: trendMonths[0] ?? '',
-      dateTo: trendMonths[trendMonths.length - 1] ?? '',
+      dateFrom: xyDateFrom ?? '',
+      dateTo: xyDateTo ?? '',
       dimension: 'retail_category',
     },
-    { skip: !reportMonth || !chartOpen || rightPanelMode !== 'trend' }
+    { skip: !xyDateFrom || !xyDateTo || !chartOpen || rightPanelMode !== 'trend' }
   );
 
   // Cəmi — /share sətirlərinin cihaz saylarının cəmi.
@@ -156,7 +181,7 @@ export function useDevicesDashboard({
   // Donut — kateqoriya payları (/share datasından, kartlarla eyni mənbə).
   const pieData = useMemo<PieDatum[]>(() => {
     return (shareData ?? []).map((item, index) => ({
-      name: item.retailCategory,
+      name: item.dimensionValue,
       value: grandTotal ? Math.round((item.totalDevices / grandTotal) * 100) : 0,
       color: PIE_COLORS[index % PIE_COLORS.length],
     }));

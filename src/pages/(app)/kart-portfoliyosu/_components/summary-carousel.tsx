@@ -22,15 +22,18 @@ function CarouselCard({ card }: { card: SummaryCard }) {
       ].join(' ')}
     >
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0 flex-1">
           <p className="text-2xl font-bold tabular-nums">{card.value}</p>
-          <span className="mt-3 inline-flex min-w-20 items-center justify-center rounded-md border border-white/50 px-3 py-1 text-xs font-bold">
+          <span
+            title={card.label}
+            className="mt-3 inline-block max-w-full min-w-20 truncate rounded-md border border-white/50 px-3 py-1 text-center text-xs font-bold align-middle"
+          >
             {card.label}
           </span>
         </div>
         <div
           className={[
-            'mt-12 flex items-center gap-1 text-lg font-bold',
+            'mt-12 flex shrink-0 items-center gap-1 text-lg font-bold',
             trendClasses(card.trend),
           ].join(' ')}
         >

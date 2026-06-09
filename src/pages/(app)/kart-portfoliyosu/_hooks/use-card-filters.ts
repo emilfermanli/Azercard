@@ -1,8 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { useGetCardFilterOptionsQuery } from '@/services/cards.service';
-import type { CardApiFilters } from '@/types/cards.type';
-import { FILTER_FIELDS, type CardFilterKey } from '../_constants';
+import type { CardApiFilters, CardDimension } from '@/types/cards.type';
+import {
+  CARD_DIMENSION_DEFAULT,
+  DIMENSION_TABS,
+  FILTER_FIELDS,
+  type CardFilterKey,
+} from '../_constants';
 import type { SelectOption } from '../_types';
 import { toDateInput, toReportMonth } from '../_utils';
 
@@ -36,6 +41,12 @@ export function useCardFilters() {
   const [isOpen, setOpen] = useState(false);
   const [applied, setApplied] = useState<FilterValues>(EMPTY_FILTERS);
   const [draft, setDraft] = useState<FilterValues>(EMPTY_FILTERS);
+
+  // "Bölgü" — top-cards endpointinin `dimension`-ı (tək seçim, default Ödəniş sistemi).
+  const [cardDimension, setCardDimension] =
+    useState<CardDimension>(CARD_DIMENSION_DEFAULT);
+  const [draftCardDimension, setDraftCardDimension] =
+    useState<CardDimension>(CARD_DIMENSION_DEFAULT);
 
   // Tarix aralığı — boş = ən son ay.
   const [dateFromInput, setDateFromInput] = useState('');
@@ -81,26 +92,42 @@ export function useCardFilters() {
   const setDraftField = (key: CardFilterKey, value: string[]) =>
     setDraft((current) => ({ ...current, [key]: value }));
 
+  // "Bölgü" seçimləri = matris ölçü tabları (7 ədəd).
+  const dimensionOptions = useMemo<SelectOption[]>(
+    () => DIMENSION_TABS.map((tab) => ({ label: tab.label, value: tab.value })),
+    []
+  );
+  const selectedDimension =
+    dimensionOptions.find((o) => o.value === draftCardDimension) ?? null;
+
   const isCustomRange = (from: string, to: string) =>
     Boolean((from && from !== latestInput) || (to && to !== latestInput));
 
   const anyApplied = FILTER_FIELDS.some((field) => applied[field.key].length);
   const anyDraft = FILTER_FIELDS.some((field) => draft[field.key].length);
-  const hasActiveFilters = anyApplied || isCustomRange(dateFromInput, dateToInput);
+  const hasActiveFilters =
+    anyApplied ||
+    cardDimension !== CARD_DIMENSION_DEFAULT ||
+    isCustomRange(dateFromInput, dateToInput);
   const canReset =
-    hasActiveFilters || anyDraft || isCustomRange(draftDateFromInput, draftDateToInput);
+    hasActiveFilters ||
+    anyDraft ||
+    draftCardDimension !== CARD_DIMENSION_DEFAULT ||
+    isCustomRange(draftDateFromInput, draftDateToInput);
 
   // Drawer açılanda qaralamanı tətbiq olunmuş dəyərlərlə doldur.
   useEffect(() => {
     if (isOpen) {
       setDraft(applied);
+      setDraftCardDimension(cardDimension);
       setDraftDateFromInput(dateFromInput || latestInput);
       setDraftDateToInput(dateToInput || latestInput);
     }
-  }, [isOpen, applied, dateFromInput, dateToInput, latestInput]);
+  }, [isOpen, applied, cardDimension, dateFromInput, dateToInput, latestInput]);
 
   const apply = () => {
     setApplied(draft);
+    setCardDimension(draftCardDimension);
     setDateFromInput(draftDateFromInput !== latestInput ? draftDateFromInput : '');
     setDateToInput(draftDateToInput !== latestInput ? draftDateToInput : '');
     setOpen(false);
@@ -109,6 +136,8 @@ export function useCardFilters() {
   const reset = () => {
     setApplied(EMPTY_FILTERS);
     setDraft(EMPTY_FILTERS);
+    setCardDimension(CARD_DIMENSION_DEFAULT);
+    setDraftCardDimension(CARD_DIMENSION_DEFAULT);
     setDateFromInput('');
     setDateToInput('');
     setDraftDateFromInput(latestInput);
@@ -122,6 +151,7 @@ export function useCardFilters() {
     rangeFrom,
     rangeTo,
     apiFilters,
+    cardDimension,
     // drawer
     isOpen,
     setOpen,
@@ -129,6 +159,9 @@ export function useCardFilters() {
     selected,
     draft,
     setDraftField,
+    dimensionOptions,
+    selectedDimension,
+    setDraftCardDimension,
     draftDateFromInput,
     draftDateToInput,
     setDraftDateFromInput,

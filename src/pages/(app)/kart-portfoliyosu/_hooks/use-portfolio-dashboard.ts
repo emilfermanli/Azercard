@@ -2,17 +2,12 @@ import { useMemo } from 'react';
 
 import {
   useGetCardPayChartQuery,
-  useGetCardTopSchemesQuery,
+  useGetCardTopCardsQuery,
   useGetCardTrendQuery,
   useGetCardXyChartQuery,
 } from '@/services/cards.service';
 import type { CardApiFilters, CardDimension, CardXyCell } from '@/types/cards.type';
-import {
-  CARD_TONES,
-  PAY_DEFAULT_DIMENSION,
-  PIE_COLORS,
-  TREND_MONTH_COUNT,
-} from '../_constants';
+import { CARD_TONES, PIE_COLORS, TREND_MONTH_COUNT } from '../_constants';
 import type {
   DisplayRow,
   PieDatum,
@@ -27,6 +22,8 @@ type DashboardArgs = {
   rangeFrom: string | undefined;
   rangeTo: string | undefined;
   apiFilters: CardApiFilters;
+  /** "Bölgü" — top-cards + donut + trend `dimension`-ı. */
+  cardDimension: CardDimension;
   xDimension: CardDimension;
   yDimension: CardDimension;
   chartOpen: boolean;
@@ -50,21 +47,41 @@ export function usePortfolioDashboard({
   rangeFrom,
   rangeTo,
   apiFilters,
+  cardDimension,
   xDimension,
   yDimension,
   chartOpen,
   rightPanelMode,
 }: DashboardArgs): DashboardData {
-  // Cəmi + kartlar (top-schemes) — tək ay.
-  const { data: topData } = useGetCardTopSchemesQuery(
-    { FromMonth: snapshotMonth ?? '', ToMonth: snapshotMonth ?? '', ...apiFilters },
+  // Əvvəlki ay — kartlardakı ↑↓ ox işarəsi (mom) üçün.
+  const prevMonth = snapshotMonth ? shiftMonth(snapshotMonth, -1) : undefined;
+
+  // Yuxarı kartlar (top-cards) — seçilmiş bölgü (dimension) üzrə, tək ay.
+  const { data: topData } = useGetCardTopCardsQuery(
+    {
+      FromMonth: snapshotMonth ?? '',
+      ToMonth: snapshotMonth ?? '',
+      dimension: cardDimension,
+      ...apiFilters,
+    },
     { skip: !snapshotMonth }
   );
 
-  // Donut (pay-chart) — yalnız panel açıq və "Pay" rejimində.
+  // Əvvəlki ay — eyni bölgü ilə (mom müqayisəsi).
+  const { data: prevTopData } = useGetCardTopCardsQuery(
+    {
+      FromMonth: prevMonth ?? '',
+      ToMonth: prevMonth ?? '',
+      dimension: cardDimension,
+      ...apiFilters,
+    },
+    { skip: !prevMonth }
+  );
+
+  // Donut (pay-chart) — seçilmiş bölgü üzrə; yalnız panel açıq və "Pay" rejimində.
   const { data: payData } = useGetCardPayChartQuery(
     {
-      Dimension: PAY_DEFAULT_DIMENSION,
+      Dimension: cardDimension,
       FromMonth: snapshotMonth ?? '',
       ToMonth: snapshotMonth ?? '',
       ...apiFilters,
@@ -88,14 +105,14 @@ export function usePortfolioDashboard({
     { skip: !rangeFrom || !rangeTo }
   );
 
-  // Trend — ən böyük ödəniş sistemi üzrə son 6 ay (panel açıq + "Trend" rejimi).
-  const trendDimValue = topData?.schemes?.[0]?.paymentScheme ?? '';
+  // Trend — seçilmiş bölgünün ən böyük dəyəri üzrə son 6 ay (panel açıq + "Trend").
+  const trendDimValue = topData?.[0]?.paymentScheme ?? '';
   const trendFrom = snapshotMonth
     ? shiftMonth(snapshotMonth, -(TREND_MONTH_COUNT - 1))
     : undefined;
   const { data: trendData } = useGetCardTrendQuery(
     {
-      Dimension: 'payment_scheme',
+      Dimension: cardDimension,
       DimValues: trendDimValue ? [trendDimValue] : [],
       Granularity: 'month',
       FromMonth: trendFrom ?? '',
@@ -112,26 +129,38 @@ export function usePortfolioDashboard({
     }
   );
 
-  const grandTotal = topData?.grandTotal ?? 0;
-  const totalValue = grandTotal ? formatCount(grandTotal) : '—';
-
-  const summaryCards = useMemo<SummaryCard[]>(
-    () =>
-      (topData?.schemes ?? []).map((scheme, index) => ({
-        label: scheme.paymentScheme,
-        value: formatCount(scheme.totalCards),
-        share: `${Math.round(scheme.sharePercent)}%`,
-        trend: trendFromBool(scheme.momIsUp, scheme.momChange === 0),
-        tone: CARD_TONES[index % CARD_TONES.length],
-        details: [
-          `Əmək ${formatCount(scheme.salary)}`,
-          `Kredit ${formatCount(scheme.credit)}`,
-          `Sosial ${formatCount(scheme.social)}`,
-          `Digər ${formatCount(scheme.other)}`,
-        ],
-      })),
+  // Cəmi — top-cards sətirlərinin kart saylarının cəmi.
+  const grandTotal = useMemo(
+    () => (topData ?? []).reduce((sum, item) => sum + item.totalCards, 0),
     [topData]
   );
+  const totalValue = grandTotal ? formatCount(grandTotal) : '—';
+
+  const summaryCards = useMemo<SummaryCard[]>(() => {
+    const prevByLabel = new Map(
+      (prevTopData ?? []).map((item) => [item.paymentScheme, item.totalCards])
+    );
+    return (topData ?? []).map((item, index) => {
+      const prev = prevByLabel.has(item.paymentScheme)
+        ? (prevByLabel.get(item.paymentScheme) as number)
+        : null;
+      const details: string[] = [];
+      if (prev != null) {
+        details.push(`Keçən ay ${formatCount(prev)}`);
+        const diff = item.totalCards - prev;
+        details.push(`${diff >= 0 ? '+' : ''}${formatCount(diff)}`);
+      }
+      const diff = prev == null ? 0 : item.totalCards - prev;
+      return {
+        label: item.paymentScheme,
+        value: formatCount(item.totalCards),
+        share: `${Math.round(item.sharePercent)}%`,
+        trend: prev == null ? 'flat' : trendFromBool(diff > 0, diff === 0),
+        tone: CARD_TONES[index % CARD_TONES.length],
+        details,
+      };
+    });
+  }, [topData, prevTopData]);
 
   const pieData = useMemo<PieDatum[]>(
     () =>

@@ -4,6 +4,7 @@ import { mutedText, panelClass } from '../_utils';
 export function TotalCard({ value }: { value: string }) {
   const isDark = useShellTheme();
 
+
   return (
     <section
       className={['rounded-xl border px-4 py-2 shadow-lg', panelClass(isDark)].join(' ')}

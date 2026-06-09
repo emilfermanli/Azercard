@@ -46,14 +46,13 @@ export type DeviceTrendArgs = {
 };
 
 /**
- * share — tarix aralığı + bir ölçü üzrə bölgü (tam massiv qaytarır).
- * Qeyd: backend `share` bank/region/mcc filtrlərini qəbul etmir, yalnız
- * `dimension` + ixtiyari `dimensionValues` ilə süzülür.
+ * share — tarix aralığı + bank/region/mcc/retail filtrləri + bir ölçü üzrə bölgü.
+ * Verilmədikdə backend tək cəm ("All") sətri qaytarır.
  */
-export type DeviceShareArgs = {
+export type DeviceShareArgs = DeviceBaseFilters & {
   dateFrom: string;
   dateTo: string;
-  dimension: DeviceDimension;
+  dimension?: DeviceDimension;
   dimensionValues?: string[];
 };
 
@@ -131,10 +130,9 @@ export type DeviceTrendResponse = {
   series: DeviceTrendSeries[];
 };
 
-/** share massiv qaytarır: seçilmiş ölçünün hər dəyəri üzrə cihaz sayı. */
+/** share massiv qaytarır: seçilmiş ölçünün hər dəyəri üzrə cihaz sayı və pay. */
 export type DeviceShareItem = {
   dimensionValue: string;
-  retailCategory: string;
   totalDevices: number;
   sharePct: number;
 };

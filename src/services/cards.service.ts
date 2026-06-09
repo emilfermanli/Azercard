@@ -5,8 +5,8 @@ import type {
   CardFilterOptions,
   CardPayChart,
   CardPayChartArgs,
-  CardRangeArgs,
-  CardTopSchemes,
+  CardTopCardItem,
+  CardTopCardsArgs,
   CardTrend,
   CardTrendArgs,
   CardXyChart,
@@ -32,9 +32,9 @@ export const cardsApi = createApi({
     getCardFilterOptions: builder.query<CardFilterOptions, void>({
       query: () => ({ url: 'cards/filter-options', method: 'GET' }),
     }),
-    // Cəmi (grandTotal) + yuxarı kartlar (schemes).
-    getCardTopSchemes: builder.query<CardTopSchemes, CardRangeArgs>({
-      query: (args) => ({ url: 'cards/top-schemes', method: 'GET', params: cleanParams(args) }),
+    // Yuxarı kartlar — seçilmiş ölçü (dimension) üzrə bölgü (tam massiv qaytarır).
+    getCardTopCards: builder.query<CardTopCardItem[], CardTopCardsArgs>({
+      query: (args) => ({ url: 'cards/top-cards', method: 'GET', params: cleanParams(args) }),
     }),
     // Donut — seçilmiş ölçü üzrə pay bölgüsü.
     getCardPayChart: builder.query<CardPayChart, CardPayChartArgs>({
@@ -53,7 +53,7 @@ export const cardsApi = createApi({
 
 export const {
   useGetCardFilterOptionsQuery,
-  useGetCardTopSchemesQuery,
+  useGetCardTopCardsQuery,
   useGetCardPayChartQuery,
   useGetCardXyChartQuery,
   useGetCardTrendQuery,

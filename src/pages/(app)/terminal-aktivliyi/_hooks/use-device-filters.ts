@@ -5,6 +5,11 @@ import {
   // useGetDevicesLatestMonthQuery,
 } from '@/services/devices.service';
 import type { DeviceBaseFilters } from '@/types/devices.type';
+import {
+  SHARE_DIMENSION_DEFAULT,
+  SHARE_DIMENSION_OPTIONS,
+  type ShareDimensionValue,
+} from '../_constants';
 import type { SelectOption } from '../_types';
 import { shiftMonth, toDateInput, toDateTime, toReportMonth } from '../_utils';
 
@@ -38,6 +43,9 @@ export function useDeviceFilters() {
   const [regionNames, setRegionNames] = useState<string[]>([]);
   const [mccNames, setMccNames] = useState<string[]>([]);
   const [retailCategories, setRetailCategories] = useState<string[]>([]);
+  // "Bölgü" — share endpointinin `dimension`-ı (tək seçim, default Terminal).
+  const [shareDimension, setShareDimension] =
+    useState<ShareDimensionValue>(SHARE_DIMENSION_DEFAULT);
   // Matris tarix aralığı — boş = ən son ay; Son həm də reportMonth mənbəyidir.
   const [dateFromInput, setDateFromInput] = useState('');
   const [dateToInput, setDateToInput] = useState('');
@@ -47,6 +55,8 @@ export function useDeviceFilters() {
   const [draftRegionNames, setDraftRegionNames] = useState<string[]>([]);
   const [draftMccNames, setDraftMccNames] = useState<string[]>([]);
   const [draftRetailCategories, setDraftRetailCategories] = useState<string[]>([]);
+  const [draftShareDimension, setDraftShareDimension] =
+    useState<ShareDimensionValue>(SHARE_DIMENSION_DEFAULT);
   const [draftDateFromInput, setDraftDateFromInput] = useState('');
   const [draftDateToInput, setDraftDateToInput] = useState('');
 
@@ -88,6 +98,8 @@ export function useDeviceFilters() {
     regions: options.regions.filter((o) => draftRegionNames.includes(o.value)),
     mccs: options.mccs.filter((o) => draftMccNames.includes(o.value)),
     retails: options.retails.filter((o) => draftRetailCategories.includes(o.value)),
+    dimension:
+      SHARE_DIMENSION_OPTIONS.find((o) => o.value === draftShareDimension) ?? null,
   };
 
   const isCustomRange = (from: string, to: string) =>
@@ -98,6 +110,7 @@ export function useDeviceFilters() {
       regionNames.length ||
       mccNames.length ||
       retailCategories.length ||
+      shareDimension !== SHARE_DIMENSION_DEFAULT ||
       isCustomRange(dateFromInput, dateToInput)
   );
   const hasDraftSelection = Boolean(
@@ -105,6 +118,7 @@ export function useDeviceFilters() {
       draftRegionNames.length ||
       draftMccNames.length ||
       draftRetailCategories.length ||
+      draftShareDimension !== SHARE_DIMENSION_DEFAULT ||
       isCustomRange(draftDateFromInput, draftDateToInput)
   );
 
@@ -115,6 +129,7 @@ export function useDeviceFilters() {
       setDraftRegionNames(regionNames);
       setDraftMccNames(mccNames);
       setDraftRetailCategories(retailCategories);
+      setDraftShareDimension(shareDimension);
       setDraftDateFromInput(dateFromInput || latestInput);
       setDraftDateToInput(dateToInput || latestInput);
     }
@@ -124,6 +139,7 @@ export function useDeviceFilters() {
     regionNames,
     mccNames,
     retailCategories,
+    shareDimension,
     dateFromInput,
     dateToInput,
     latestInput,
@@ -134,6 +150,7 @@ export function useDeviceFilters() {
     setRegionNames(draftRegionNames);
     setMccNames(draftMccNames);
     setRetailCategories(draftRetailCategories);
+    setShareDimension(draftShareDimension);
     setDateFromInput(draftDateFromInput !== latestInput ? draftDateFromInput : '');
     setDateToInput(draftDateToInput !== latestInput ? draftDateToInput : '');
     setOpen(false);
@@ -144,12 +161,14 @@ export function useDeviceFilters() {
     setRegionNames([]);
     setMccNames([]);
     setRetailCategories([]);
+    setShareDimension(SHARE_DIMENSION_DEFAULT);
     setDateFromInput('');
     setDateToInput('');
     setDraftBankNames([]);
     setDraftRegionNames([]);
     setDraftMccNames([]);
     setDraftRetailCategories([]);
+    setDraftShareDimension(SHARE_DIMENSION_DEFAULT);
     setDraftDateFromInput(latestInput);
     setDraftDateToInput(latestInput);
     setOpen(false);
@@ -162,6 +181,7 @@ export function useDeviceFilters() {
     xyDateFrom,
     xyDateTo,
     queryFilters,
+    shareDimension,
     // drawer
     isOpen,
     setOpen,
@@ -174,6 +194,7 @@ export function useDeviceFilters() {
     setDraftRegionNames,
     setDraftMccNames,
     setDraftRetailCategories,
+    setDraftShareDimension,
     setDraftDateFromInput,
     setDraftDateToInput,
     // flaglar + əməliyyatlar

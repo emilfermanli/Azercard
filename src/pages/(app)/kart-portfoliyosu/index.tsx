@@ -42,6 +42,7 @@ const CardPortfolioPage: React.FC = () => {
     rangeFrom: filters.rangeFrom,
     rangeTo: filters.rangeTo,
     apiFilters: filters.apiFilters,
+    cardDimension: filters.cardDimension,
     xDimension,
     yDimension,
     chartOpen: chart.chartOpen,

@@ -54,3 +54,30 @@ export const DIMENSION_TABS: DimensionTab[] = [
   { label: 'Mcc', value: 'mcc_name', icon: Tags },
   { label: 'Terminal', value: 'retail_category', icon: CreditCard },
 ];
+
+// "Bölgü" (share dimension) seçimləri.
+// UI dəyəri camelCase, API isə snake_case `dimension` gözləyir → SHARE_DIMENSION_API.
+export type ShareDimensionValue =
+  | 'bankName'
+  | 'regionName'
+  | 'mccName'
+  | 'retailCategory';
+
+export const SHARE_DIMENSION_OPTIONS: Array<{
+  label: string;
+  value: ShareDimensionValue;
+}> = [
+  { label: 'Bank', value: 'bankName' },
+  { label: 'Region', value: 'regionName' },
+  { label: 'Mcc', value: 'mccName' },
+  { label: 'Terminal', value: 'retailCategory' },
+];
+
+export const SHARE_DIMENSION_API: Record<ShareDimensionValue, DeviceDimension> = {
+  bankName: 'bank_name',
+  regionName: 'region_name',
+  mccName: 'mcc_name',
+  retailCategory: 'retail_category',
+};
+
+export const SHARE_DIMENSION_DEFAULT: ShareDimensionValue = 'retailCategory';

@@ -1,23 +1,19 @@
-import { useEffect, useState } from 'react';
-import { useDispatch } from 'react-redux';
 import { createApi } from '@reduxjs/toolkit/query/react';
 
-import type { AppDispatch } from '@/store';
 import { baseQuery } from '@/utils/fetchBaseQuery';
 import type {
-  DeviceBaseFilters,
   DeviceFilters,
   DeviceFilterArgs,
   DeviceLatestMonth,
   DeviceMomItem,
-  DeviceMonthlyTotal,
   DevicePagedArgs,
   DevicePaginated,
+  DeviceShareArgs,
   DeviceShareItem,
   DeviceSummaryItem,
   DeviceTotal,
   DeviceTrendArgs,
-  DeviceTrendItem,
+  DeviceTrendResponse,
   DeviceXyArgs,
   DeviceXyItem,
 } from '@/types/devices.type';
@@ -82,16 +78,16 @@ export const devicesApi = createApi({
         params: cleanParams(args),
       }),
     }),
-    // Sağ panel — "Trend" düyməsi (tarix aralığı üzrə).
-    getDevicesTrend: builder.query<DevicePaginated<DeviceTrendItem>, DeviceTrendArgs>({
+    // Sağ panel — "Trend" düyməsi (tarix aralığı üzrə, ölçü seriyaları qaytarır).
+    getDevicesTrend: builder.query<DeviceTrendResponse, DeviceTrendArgs>({
       query: (args) => ({
         url: 'devices/trend',
         method: 'GET',
         params: cleanParams(args),
       }),
     }),
-    // Sağ panel — "Pay" düyməsi (donut chart).
-    getDevicesShare: builder.query<DevicePaginated<DeviceShareItem>, DevicePagedArgs>({
+    // Yuxarı kartlar + donut — kateqoriya üzrə bölgü (tam massiv qaytarır).
+    getDevicesShare: builder.query<DeviceShareItem[], DeviceShareArgs>({
       query: (args) => ({
         url: 'devices/share',
         method: 'GET',
@@ -111,65 +107,3 @@ export const {
   useGetDevicesTrendQuery,
   useGetDevicesShareQuery,
 } = devicesApi;
-
-/**
- * Trend qrafiki üçün ay üzrə cəmiləri yığır.
- *
- * `/trend` granular sətir qaytarır və `PageSize` 100-lə limitli olduğu üçün
- * aylıq cəmi xətti çıxarmaq mümkün deyil. Onun əvəzinə hər ay üçün `/total`
- * çağırılır (limitsiz, dəqiq).
- */
-export function useDeviceMonthlyTotals(
-  months: string[],
-  filters?: DeviceBaseFilters,
-  skip = false
-) {
-  const dispatch = useDispatch<AppDispatch>();
-  const [data, setData] = useState<DeviceMonthlyTotal[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const filtersKey = JSON.stringify(filters ?? {});
-  const monthsKey = months.join('|');
-
-  useEffect(() => {
-    if (skip || months.length === 0) {
-      setData([]);
-      return;
-    }
-
-    let active = true;
-    const subscriptions: Array<{ unsubscribe: () => void }> = [];
-    setIsLoading(true);
-
-    const run = async () => {
-      const results = await Promise.all(
-        months.map(async (month) => {
-          const request = dispatch(
-            devicesApi.endpoints.getDevicesTotal.initiate({
-              ...filters,
-              reportMonth: month,
-            })
-          );
-          subscriptions.push(request);
-          const response = await request.unwrap().catch(() => null);
-          return { reportMonth: month, total: response?.total ?? 0 };
-        })
-      );
-
-      if (active) {
-        setData(results);
-        setIsLoading(false);
-      }
-    };
-
-    run();
-
-    return () => {
-      active = false;
-      subscriptions.forEach((sub) => sub.unsubscribe());
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dispatch, monthsKey, filtersKey, skip]);
-
-  return { data, isLoading };
-}

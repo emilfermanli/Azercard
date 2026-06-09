@@ -2,12 +2,15 @@
 // Swagger response sxemləri boş ("OK") olduğu üçün bu tiplər real
 // API cavablarından çıxarılıb (http://89.47.113.100/api/devices/*).
 
-/** Bütün device endpoint-lərində paylaşılan filtr parametrləri. */
+/**
+ * Filtr parametrləri — summary/mom/xy-analysis çox seçimli (massiv) qəbul edir.
+ * Boş massiv = filtr yoxdur.
+ */
 export type DeviceBaseFilters = {
-  bankName?: string;
-  regionName?: string;
-  mccName?: string;
-  retailCategory?: string;
+  bankNames?: string[];
+  regionNames?: string[];
+  mccNames?: string[];
+  retailCategories?: string[];
 };
 
 /** `reportMonth` formatı: "YYYY-MM-01T00:00:00" (ayın 1-i). */
@@ -34,11 +37,24 @@ export type DeviceXyArgs = DeviceBaseFilters & {
   yDimension: DeviceDimension;
 };
 
-export type DeviceTrendArgs = DeviceBaseFilters & {
+/** trend — tarix aralığı + ölçü üzrə seriya qaytarır (bank/region/mcc qəbul etmir). */
+export type DeviceTrendArgs = {
   dateFrom: string;
   dateTo: string;
-  Page?: number;
-  PageSize?: number;
+  dimension?: DeviceDimension;
+  dimensionValues?: string[];
+};
+
+/**
+ * share — tarix aralığı + bir ölçü üzrə bölgü (tam massiv qaytarır).
+ * Qeyd: backend `share` bank/region/mcc filtrlərini qəbul etmir, yalnız
+ * `dimension` + ixtiyari `dimensionValues` ilə süzülür.
+ */
+export type DeviceShareArgs = {
+  dateFrom: string;
+  dateTo: string;
+  dimension: DeviceDimension;
+  dimensionValues?: string[];
 };
 
 /** Standart səhifələnmiş cavab zərfi (summary, mom, share, trend). */
@@ -97,14 +113,30 @@ export type DeviceMomItem = DeviceRecordBase & {
   momPctChange: number;
 };
 
-/** trend item-i mom item-i ilə eyni strukturdadır. */
-export type DeviceTrendItem = DeviceMomItem;
+/** trend cavabı — ölçü dəyəri üzrə (label) seriya, hər birində ay-nöqtələri. */
+export type DeviceTrendPoint = {
+  period: string;
+  count: number;
+  prevMonthDevices: number;
+  momDiff: number;
+  momPctChange: number;
+};
 
-export type DeviceShareItem = DeviceSummaryItem & {
-  sharePctByBank: number;
-  sharePctByRegion: number;
-  sharePctByMcc: number;
-  sharePctByRetailCat: number;
+export type DeviceTrendSeries = {
+  label: string;
+  points: DeviceTrendPoint[];
+};
+
+export type DeviceTrendResponse = {
+  series: DeviceTrendSeries[];
+};
+
+/** share massiv qaytarır: seçilmiş ölçünün hər dəyəri üzrə cihaz sayı. */
+export type DeviceShareItem = {
+  dimensionValue: string;
+  retailCategory: string;
+  totalDevices: number;
+  sharePct: number;
 };
 
 /** xy-analysis massiv qaytarır (səhifələnmir). momDiff/momPctChange null ola bilər. */
@@ -115,10 +147,4 @@ export type DeviceXyItem = {
   sharePct: number;
   momDiff: number | null;
   momPctChange: number | null;
-};
-
-/** Trend qrafiki üçün ay üzrə cəmi (client-də /total çağırışlarından yığılır). */
-export type DeviceMonthlyTotal = {
-  reportMonth: string;
-  total: number;
 };

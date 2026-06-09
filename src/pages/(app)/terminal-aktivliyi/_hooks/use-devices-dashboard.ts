@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 
 import {
-  useDeviceMonthlyTotals,
-  useGetDevicesTotalQuery,
+  useGetDevicesShareQuery,
+  useGetDevicesTrendQuery,
   useGetDevicesXyAnalysisQuery,
 } from '@/services/devices.service';
 import type { DeviceBaseFilters, DeviceDimension } from '@/types/devices.type';
@@ -21,8 +21,6 @@ type DashboardArgs = {
   prevMonth: string | undefined;
   xyDateFrom: string | undefined;
   xyDateTo: string | undefined;
-  /** /total üçün — yalnız bank/region/mcc (retailCategory daxil deyil). */
-  baseFilters: DeviceBaseFilters;
   /** Matris (xy-analysis) üçün — bank/region/mcc + retailCategory. */
   queryFilters: DeviceBaseFilters;
   xDimension: DeviceDimension;
@@ -51,23 +49,30 @@ export function useDevicesDashboard({
   prevMonth,
   xyDateFrom,
   xyDateTo,
-  baseFilters,
   queryFilters,
   xDimension,
   yDimension,
   chartOpen,
   rightPanelMode,
 }: DashboardArgs): DashboardData {
-  // Cəmi + kartlar (kateqoriya bölgüsü) — tək sorğuda gəlir.
-  // /total yalnız bank/region/mcc + reportMonth alır (retailCategory yox).
-  const { data: totalData } = useGetDevicesTotalQuery(
-    { reportMonth: reportMonth ?? '', ...baseFilters },
+  // Cəmi + kartlar (kateqoriya bölgüsü) — /share-dən gəlir (retail_category üzrə).
+  // Qeyd: /share bank/region/mcc filtrlərini qəbul etmir — yalnız tarix üzrə.
+  const { data: shareData } = useGetDevicesShareQuery(
+    {
+      dateFrom: reportMonth ?? '',
+      dateTo: reportMonth ?? '',
+      dimension: 'retail_category',
+    },
     { skip: !reportMonth }
   );
 
-  // Keçən ay — kartlardakı ↑↓ ox işarəsi (mom) üçün ikinci və yeganə əlavə sorğu.
-  const { data: prevTotalData } = useGetDevicesTotalQuery(
-    { reportMonth: prevMonth ?? '', ...baseFilters },
+  // Keçən ay — kartlardakı ↑↓ ox işarəsi (mom) üçün ikinci sorğu.
+  const { data: prevShareData } = useGetDevicesShareQuery(
+    {
+      dateFrom: prevMonth ?? '',
+      dateTo: prevMonth ?? '',
+      dimension: 'retail_category',
+    },
     { skip: !prevMonth }
   );
 
@@ -86,24 +91,22 @@ export function useDevicesDashboard({
     { skip: !xyDateFrom || !xyDateTo }
   );
 
-  // Kateqoriya cəmiləri — cari + keçən ay /total cavablarından birləşdirilir.
+  // Kateqoriya cəmiləri — cari + keçən ay /share cavablarından birləşdirilir.
   const categoryTotals = useMemo(() => {
     const prevByCategory = new Map(
-      (prevTotalData?.categories ?? []).map((item) => [
-        item.retailCategory,
-        item.totalDevices,
-      ])
+      (prevShareData ?? []).map((item) => [item.retailCategory, item.totalDevices])
     );
-    return (totalData?.categories ?? []).map((item) => ({
+    return (shareData ?? []).map((item) => ({
       category: item.retailCategory,
       total: item.totalDevices,
       prevTotal: prevByCategory.has(item.retailCategory)
         ? (prevByCategory.get(item.retailCategory) as number)
         : null,
     }));
-  }, [totalData, prevTotalData]);
+  }, [shareData, prevShareData]);
 
   // Trend qrafiki — son 6 ay (yalnız panel açıq və "Trend" rejimində yüklənir).
+  // `/trend` tam massiv qaytarır → ay üzrə cəmi client-də yığılır.
   const trendMonths = useMemo(
     () =>
       reportMonth
@@ -113,13 +116,20 @@ export function useDevicesDashboard({
         : [],
     [reportMonth]
   );
-  const { data: monthlyTotals } = useDeviceMonthlyTotals(
-    trendMonths,
-    baseFilters,
-    !reportMonth || !chartOpen || rightPanelMode !== 'trend'
+  const { data: trendData } = useGetDevicesTrendQuery(
+    {
+      dateFrom: trendMonths[0] ?? '',
+      dateTo: trendMonths[trendMonths.length - 1] ?? '',
+      dimension: 'retail_category',
+    },
+    { skip: !reportMonth || !chartOpen || rightPanelMode !== 'trend' }
   );
 
-  const grandTotal = totalData?.total ?? 0;
+  // Cəmi — /share sətirlərinin cihaz saylarının cəmi.
+  const grandTotal = useMemo(
+    () => (shareData ?? []).reduce((sum, item) => sum + item.totalDevices, 0),
+    [shareData]
+  );
   const totalValue = grandTotal ? formatCount(grandTotal) : '—';
 
   const summaryCards = useMemo<SummaryCard[]>(
@@ -143,16 +153,14 @@ export function useDevicesDashboard({
     [categoryTotals, grandTotal]
   );
 
-  // Donut — kateqoriya payları (/total.categories-dən; /share yavaş/etibarsız
-  // olduğu üçün artıq onsuz da yüklənən cəmi datasından hesablanır).
+  // Donut — kateqoriya payları (/share datasından, kartlarla eyni mənbə).
   const pieData = useMemo<PieDatum[]>(() => {
-    const categories = totalData?.categories ?? [];
-    return categories.map((item, index) => ({
+    return (shareData ?? []).map((item, index) => ({
       name: item.retailCategory,
       value: grandTotal ? Math.round((item.totalDevices / grandTotal) * 100) : 0,
       color: PIE_COLORS[index % PIE_COLORS.length],
     }));
-  }, [totalData, grandTotal]);
+  }, [shareData, grandTotal]);
 
   // xy-analysis → pivot (sütun = xValue, sətir = yValue).
   const xyItems = useMemo(() => xyData ?? [], [xyData]);
@@ -189,17 +197,23 @@ export function useDevicesDashboard({
     }));
   }, [xyItems, channels]);
 
-  const trendChartData = useMemo<TrendDatum[]>(
-    () =>
-      monthlyTotals.map((row) => {
-        const monthIndex = Number(row.reportMonth.slice(5, 7)) - 1;
-        return {
-          label: `${MONTHS_AZ[monthIndex] ?? ''} ${row.reportMonth.slice(2, 4)}`,
-          total: row.total,
-        };
-      }),
-    [monthlyTotals]
-  );
+  const trendChartData = useMemo<TrendDatum[]>(() => {
+    // Seriyalar kateqoriya üzrədir → hər ay üçün bütün seriyaların `count`-u yığılır.
+    const totalsByMonth = new Map<string, number>();
+    for (const series of trendData?.series ?? []) {
+      for (const point of series.points) {
+        const key = point.period.slice(0, 7); // "YYYY-MM"
+        totalsByMonth.set(key, (totalsByMonth.get(key) ?? 0) + point.count);
+      }
+    }
+    return trendMonths.map((month) => {
+      const monthIndex = Number(month.slice(5, 7)) - 1;
+      return {
+        label: `${MONTHS_AZ[monthIndex] ?? ''} ${month.slice(2, 4)}`,
+        total: totalsByMonth.get(month.slice(0, 7)) ?? 0,
+      };
+    });
+  }, [trendData, trendMonths]);
 
   return {
     totalValue,

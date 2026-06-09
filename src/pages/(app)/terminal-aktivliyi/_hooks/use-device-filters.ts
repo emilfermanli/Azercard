@@ -4,6 +4,7 @@ import {
   useGetDevicesFiltersQuery,
   // useGetDevicesLatestMonthQuery,
 } from '@/services/devices.service';
+import type { DeviceBaseFilters } from '@/types/devices.type';
 import type { SelectOption } from '../_types';
 import { shiftMonth, toDateInput, toDateTime, toReportMonth } from '../_utils';
 
@@ -22,7 +23,7 @@ function toOptions(values: string[] = []): SelectOption[] {
 /**
  * Kart aktivliyi filtrlərinin bütün vəziyyəti:
  * tətbiq olunmuş dəyərlər + qaralama (draft) + dropdown seçimləri + handler-lər.
- * Data layer üçün `reportMonth`, `queryFilters`, `retailCategories` verir.
+ * Data layer üçün `reportMonth`, `prevMonth`, tarix aralığı və `queryFilters` verir.
  */
 export function useDeviceFilters() {
   // const { data: latestMonth } = useGetDevicesLatestMonthQuery();
@@ -32,20 +33,20 @@ export function useDeviceFilters() {
 
   const [isOpen, setOpen] = useState(false);
 
-  // Tətbiq olunmuş dəyərlər.
-  const [bankName, setBankName] = useState('');
-  const [regionName, setRegionName] = useState('');
-  const [mccName, setMccName] = useState('');
-  const [retailCategory, setRetailCategory] = useState('');
+  // Tətbiq olunmuş dəyərlər (çox seçimli → massiv).
+  const [bankNames, setBankNames] = useState<string[]>([]);
+  const [regionNames, setRegionNames] = useState<string[]>([]);
+  const [mccNames, setMccNames] = useState<string[]>([]);
+  const [retailCategories, setRetailCategories] = useState<string[]>([]);
   // Matris tarix aralığı — boş = ən son ay; Son həm də reportMonth mənbəyidir.
   const [dateFromInput, setDateFromInput] = useState('');
   const [dateToInput, setDateToInput] = useState('');
 
   // Qaralama (drawer-dakı seçimlər, "Təsdiq"ə qədər).
-  const [draftBankName, setDraftBankName] = useState('');
-  const [draftRegionName, setDraftRegionName] = useState('');
-  const [draftMccName, setDraftMccName] = useState('');
-  const [draftRetailCategory, setDraftRetailCategory] = useState('');
+  const [draftBankNames, setDraftBankNames] = useState<string[]>([]);
+  const [draftRegionNames, setDraftRegionNames] = useState<string[]>([]);
+  const [draftMccNames, setDraftMccNames] = useState<string[]>([]);
+  const [draftRetailCategories, setDraftRetailCategories] = useState<string[]>([]);
   const [draftDateFromInput, setDraftDateFromInput] = useState('');
   const [draftDateToInput, setDraftDateToInput] = useState('');
 
@@ -61,28 +62,16 @@ export function useDeviceFilters() {
   const reportMonth = toReportMonth(effectiveDateTo);
   const prevMonth = reportMonth ? shiftMonth(reportMonth, -1) : undefined;
 
-  // Kartlar/donut üçün (retailCategory xaric — hər kart bir kateqoriyadır).
-  const baseFilters = useMemo(
+  // Matris (xy-analysis) üçün filtrlər — çox seçimli massivlər (boşları atılır).
+  const queryFilters = useMemo<DeviceBaseFilters>(
     () => ({
-      ...(bankName ? { bankName } : {}),
-      ...(regionName ? { regionName } : {}),
-      ...(mccName ? { mccName } : {}),
+      ...(bankNames.length ? { bankNames } : {}),
+      ...(regionNames.length ? { regionNames } : {}),
+      ...(mccNames.length ? { mccNames } : {}),
+      ...(retailCategories.length ? { retailCategories } : {}),
     }),
-    [bankName, regionName, mccName]
+    [bankNames, regionNames, mccNames, retailCategories]
   );
-  // Cəmi/matris üçün (retailCategory daxil).
-  const queryFilters = useMemo(
-    () => ({
-      ...baseFilters,
-      ...(retailCategory ? { retailCategory } : {}),
-    }),
-    [baseFilters, retailCategory]
-  );
-
-  const retailCategories = useMemo(() => {
-    const all = filtersData?.retailCategories ?? [];
-    return retailCategory ? all.filter((category) => category === retailCategory) : all;
-  }, [filtersData, retailCategory]);
 
   const options = useMemo(
     () => ({
@@ -95,72 +84,72 @@ export function useDeviceFilters() {
   );
 
   const selected = {
-    bank: options.banks.find((o) => o.value === draftBankName) ?? null,
-    region: options.regions.find((o) => o.value === draftRegionName) ?? null,
-    mcc: options.mccs.find((o) => o.value === draftMccName) ?? null,
-    retail: options.retails.find((o) => o.value === draftRetailCategory) ?? null,
+    banks: options.banks.filter((o) => draftBankNames.includes(o.value)),
+    regions: options.regions.filter((o) => draftRegionNames.includes(o.value)),
+    mccs: options.mccs.filter((o) => draftMccNames.includes(o.value)),
+    retails: options.retails.filter((o) => draftRetailCategories.includes(o.value)),
   };
 
   const isCustomRange = (from: string, to: string) =>
     Boolean((from && from !== latestInput) || (to && to !== latestInput));
 
   const hasActiveFilters = Boolean(
-    bankName ||
-      regionName ||
-      mccName ||
-      retailCategory ||
+    bankNames.length ||
+      regionNames.length ||
+      mccNames.length ||
+      retailCategories.length ||
       isCustomRange(dateFromInput, dateToInput)
   );
   const hasDraftSelection = Boolean(
-    draftBankName ||
-      draftRegionName ||
-      draftMccName ||
-      draftRetailCategory ||
+    draftBankNames.length ||
+      draftRegionNames.length ||
+      draftMccNames.length ||
+      draftRetailCategories.length ||
       isCustomRange(draftDateFromInput, draftDateToInput)
   );
 
   // Drawer açılanda qaralamanı tətbiq olunmuş dəyərlərlə doldur.
   useEffect(() => {
     if (isOpen) {
-      setDraftBankName(bankName);
-      setDraftRegionName(regionName);
-      setDraftMccName(mccName);
-      setDraftRetailCategory(retailCategory);
+      setDraftBankNames(bankNames);
+      setDraftRegionNames(regionNames);
+      setDraftMccNames(mccNames);
+      setDraftRetailCategories(retailCategories);
       setDraftDateFromInput(dateFromInput || latestInput);
       setDraftDateToInput(dateToInput || latestInput);
     }
   }, [
     isOpen,
-    bankName,
-    regionName,
-    mccName,
-    retailCategory,
+    bankNames,
+    regionNames,
+    mccNames,
+    retailCategories,
     dateFromInput,
     dateToInput,
     latestInput,
   ]);
 
   const apply = () => {
-    setBankName(draftBankName);
-    setRegionName(draftRegionName);
-    setMccName(draftMccName);
-    setRetailCategory(draftRetailCategory);
+    setBankNames(draftBankNames);
+    setRegionNames(draftRegionNames);
+    setMccNames(draftMccNames);
+    setRetailCategories(draftRetailCategories);
     setDateFromInput(draftDateFromInput !== latestInput ? draftDateFromInput : '');
     setDateToInput(draftDateToInput !== latestInput ? draftDateToInput : '');
     setOpen(false);
   };
 
   const reset = () => {
-    setBankName('');
-    setRegionName('');
-    setMccName('');
-    setRetailCategory('');
+    setBankNames([]);
+    setRegionNames([]);
+    setMccNames([]);
+    setRetailCategories([]);
     setDateFromInput('');
     setDateToInput('');
-    setDraftBankName('');
-    setDraftRegionName('');
-    setDraftMccName('');
-    setDraftRetailCategory('');
+    setDraftBankNames([]);
+    setDraftRegionNames([]);
+    setDraftMccNames([]);
+    setDraftRetailCategories([]);
     setDraftDateFromInput(latestInput);
     setDraftDateToInput(latestInput);
     setOpen(false);
@@ -172,9 +161,7 @@ export function useDeviceFilters() {
     prevMonth,
     xyDateFrom,
     xyDateTo,
-    baseFilters,
     queryFilters,
-    retailCategories,
     // drawer
     isOpen,
     setOpen,
@@ -183,10 +170,10 @@ export function useDeviceFilters() {
     selected,
     draftDateFromInput,
     draftDateToInput,
-    setDraftBankName,
-    setDraftRegionName,
-    setDraftMccName,
-    setDraftRetailCategory,
+    setDraftBankNames,
+    setDraftRegionNames,
+    setDraftMccNames,
+    setDraftRetailCategories,
     setDraftDateFromInput,
     setDraftDateToInput,
     // flaglar + əməliyyatlar

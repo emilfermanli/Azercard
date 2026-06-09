@@ -76,17 +76,19 @@ export type CardFilterField = {
   optionsKey: CardFilterOptionsKey;
   label: string;
   placeholder: string;
+  /** false = tək seçim (default: çox seçimli). */
+  multi?: boolean;
 };
 
 export const FILTER_FIELDS: CardFilterField[] = [
-  { key: 'bankName', apiKey: 'BankName', optionsKey: 'banks', label: 'Bank', placeholder: 'Bütün banklar' },
-  { key: 'regionName', apiKey: 'RegionName', optionsKey: 'regions', label: 'Region', placeholder: 'Bütün regionlar' },
-  { key: 'paymentScheme', apiKey: 'PaymentScheme', optionsKey: 'paymentSchemes', label: 'Ödəniş sistemi', placeholder: 'Bütün sistemlər' },
-  { key: 'productType', apiKey: 'ProductType', optionsKey: 'productTypes', label: 'Məhsul tipi', placeholder: 'Bütün tiplər' },
-  { key: 'contactlessStatus', apiKey: 'ContactlessStatus', optionsKey: 'contactlessStatuses', label: 'Kontaktsız', placeholder: 'Hamısı' },
-  { key: 'expStatus', apiKey: 'ExpStatus', optionsKey: 'expStatuses', label: 'Müddət (EXP)', placeholder: 'Hamısı' },
-  { key: 'baseCurrency', apiKey: 'BaseCurrency', optionsKey: 'currencies', label: 'Valyuta', placeholder: 'Bütün valyutalar' },
-  { key: 'cardProductName', apiKey: 'CardProductName', optionsKey: 'cardProducts', label: 'Kart məhsulu', placeholder: 'Bütün məhsullar' },
+  { key: 'bankName', apiKey: 'BankNames', optionsKey: 'banks', label: 'Bank', placeholder: 'Bütün banklar' },
+  { key: 'regionName', apiKey: 'RegionNames', optionsKey: 'regions', label: 'Region', placeholder: 'Bütün regionlar' },
+  { key: 'paymentScheme', apiKey: 'PaymentSchemes', optionsKey: 'paymentSchemes', label: 'Ödəniş sistemi', placeholder: 'Bütün sistemlər' },
+  { key: 'productType', apiKey: 'ProductTypes', optionsKey: 'productTypes', label: 'Məhsul tipi', placeholder: 'Bütün tiplər' },
+  { key: 'contactlessStatus', apiKey: 'ContactlessStatuses', optionsKey: 'contactlessStatuses', label: 'Kontaktsız', placeholder: 'Hamısı' },
+  { key: 'expStatus', apiKey: 'ExpStatuses', optionsKey: 'expStatuses', label: 'Müddət (EXP)', placeholder: 'Hamısı', multi: false },
+  { key: 'baseCurrency', apiKey: 'BaseCurrencies', optionsKey: 'currencies', label: 'Valyuta', placeholder: 'Bütün valyutalar' },
+  { key: 'cardProductName', apiKey: 'CardProductNames', optionsKey: 'cardProducts', label: 'Kart məhsulu', placeholder: 'Bütün məhsullar' },
 ];
 
 // Matris ölçü seçiciləri üçün tablar.

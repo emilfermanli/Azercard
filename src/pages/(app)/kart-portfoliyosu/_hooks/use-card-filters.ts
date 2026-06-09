@@ -6,10 +6,10 @@ import { FILTER_FIELDS, type CardFilterKey } from '../_constants';
 import type { SelectOption } from '../_types';
 import { toDateInput, toReportMonth } from '../_utils';
 
-type FilterValues = Record<CardFilterKey, string>;
+type FilterValues = Record<CardFilterKey, string[]>;
 
 const EMPTY_FILTERS: FilterValues = FILTER_FIELDS.reduce(
-  (acc, field) => ({ ...acc, [field.key]: '' }),
+  (acc, field) => ({ ...acc, [field.key]: [] }),
   {} as FilterValues
 );
 
@@ -55,7 +55,7 @@ export function useCardFilters() {
     const out: CardApiFilters = {};
     for (const field of FILTER_FIELDS) {
       const value = applied[field.key];
-      if (value) out[field.apiKey] = value;
+      if (value.length) out[field.apiKey] = value;
     }
     return out;
   }, [applied]);
@@ -69,21 +69,23 @@ export function useCardFilters() {
   }, [filterOptions]);
 
   const selected = useMemo(() => {
-    const out = {} as Record<CardFilterKey, SelectOption | null>;
+    const out = {} as Record<CardFilterKey, SelectOption[]>;
     for (const field of FILTER_FIELDS) {
-      out[field.key] = options[field.key].find((o) => o.value === draft[field.key]) ?? null;
+      out[field.key] = options[field.key].filter((o) =>
+        draft[field.key].includes(o.value)
+      );
     }
     return out;
   }, [options, draft]);
 
-  const setDraftField = (key: CardFilterKey, value: string) =>
+  const setDraftField = (key: CardFilterKey, value: string[]) =>
     setDraft((current) => ({ ...current, [key]: value }));
 
   const isCustomRange = (from: string, to: string) =>
     Boolean((from && from !== latestInput) || (to && to !== latestInput));
 
-  const anyApplied = FILTER_FIELDS.some((field) => applied[field.key]);
-  const anyDraft = FILTER_FIELDS.some((field) => draft[field.key]);
+  const anyApplied = FILTER_FIELDS.some((field) => applied[field.key].length);
+  const anyDraft = FILTER_FIELDS.some((field) => draft[field.key].length);
   const hasActiveFilters = anyApplied || isCustomRange(dateFromInput, dateToInput);
   const canReset =
     hasActiveFilters || anyDraft || isCustomRange(draftDateFromInput, draftDateToInput);

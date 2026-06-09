@@ -43,7 +43,6 @@ const CardActivityPage: React.FC = () => {
     prevMonth: filters.prevMonth,
     xyDateFrom: filters.xyDateFrom,
     xyDateTo: filters.xyDateTo,
-    baseFilters: filters.baseFilters,
     queryFilters: filters.queryFilters,
     xDimension,
     yDimension,

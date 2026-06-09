@@ -10,16 +10,19 @@ export type CardDimension =
   | 'exp_status'
   | 'card_product_name';
 
-/** Bütün cards endpoint-lərində paylaşılan filtr parametrləri (API PascalCase). */
+/**
+ * Bütün cards endpoint-lərində paylaşılan filtr parametrləri (API PascalCase).
+ * Çox seçimli → massiv; boş massiv = filtr yoxdur.
+ */
 export type CardApiFilters = {
-  BankName?: string;
-  RegionName?: string;
-  PaymentScheme?: string;
-  ProductType?: string;
-  ContactlessStatus?: string;
-  ExpStatus?: string;
-  BaseCurrency?: string;
-  CardProductName?: string;
+  BankNames?: string[];
+  RegionNames?: string[];
+  PaymentSchemes?: string[];
+  ProductTypes?: string[];
+  ContactlessStatuses?: string[];
+  ExpStatuses?: string[];
+  BaseCurrencies?: string[];
+  CardProductNames?: string[];
 };
 
 /** Tarix aralığı (ayın 1-i, "YYYY-MM-01T00:00:00"). */
@@ -35,7 +38,7 @@ export type CardXyChartArgs = CardRangeArgs & {
 };
 export type CardTrendArgs = CardRangeArgs & {
   Dimension: CardDimension;
-  DimValue: string;
+  DimValues: string[];
   Granularity: string;
 };
 

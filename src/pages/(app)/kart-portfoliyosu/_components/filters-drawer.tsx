@@ -1,6 +1,10 @@
 import { useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Filter, RotateCcw, X } from 'lucide-react';
-import Select, { type SingleValue, type StylesConfig } from 'react-select';
+import Select, {
+  type MultiValue,
+  type SingleValue,
+  type StylesConfig,
+} from 'react-select';
 
 import { Button, DateInput } from '@/components';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
@@ -38,7 +42,7 @@ export function FiltersDrawer({ filters }: { filters: CardFiltersController }) {
     ? 'border-slate-500 bg-slate-800/90 text-slate-100 hover:bg-slate-700 hover:text-white'
     : '';
 
-  const selectStyles = useMemo<StylesConfig<SelectOption, false>>(
+  const selectStyles = useMemo<StylesConfig<SelectOption, boolean>>(
     () => ({
       control: (base, state) => ({
         ...base,
@@ -74,6 +78,20 @@ export function FiltersDrawer({ filters }: { filters: CardFiltersController }) {
       }),
       placeholder: (base) => ({ ...base, color: isDark ? '#94a3b8' : '#64748b' }),
       singleValue: (base) => ({ ...base, color: isDark ? '#f8fafc' : '#0f172a' }),
+      multiValue: (base) => ({
+        ...base,
+        borderRadius: 6,
+        backgroundColor: isDark ? '#1e293b' : '#eff6ff',
+      }),
+      multiValueLabel: (base) => ({
+        ...base,
+        color: isDark ? '#f8fafc' : '#1d4ed8',
+      }),
+      multiValueRemove: (base) => ({
+        ...base,
+        color: isDark ? '#94a3b8' : '#3b82f6',
+        ':hover': { backgroundColor: '#2563eb', color: '#ffffff' },
+      }),
     }),
     [isDark]
   );
@@ -167,18 +185,41 @@ export function FiltersDrawer({ filters }: { filters: CardFiltersController }) {
             {FILTER_FIELDS.map((field) => (
               <label key={field.key} className="space-y-1.5 text-sm font-medium">
                 <span className={muted}>{field.label}</span>
-                <Select
-                  inputId={`cards-filter-${field.key}`}
-                  isClearable
-                  noOptionsMessage={() => 'Tapılmadı'}
-                  onChange={(option: SingleValue<SelectOption>) =>
-                    setDraftField(field.key, option?.value ?? '')
-                  }
-                  options={options[field.key]}
-                  placeholder={field.placeholder}
-                  styles={selectStyles}
-                  value={selected[field.key]}
-                />
+                {field.multi === false ? (
+                  <Select
+                    inputId={`cards-filter-${field.key}`}
+                    isClearable
+                    noOptionsMessage={() => 'Tapılmadı'}
+                    onChange={(value) => {
+                      const option = (
+                        Array.isArray(value) ? value[0] : value
+                      ) as SingleValue<SelectOption>;
+                      setDraftField(field.key, option ? [option.value] : []);
+                    }}
+                    options={options[field.key]}
+                    placeholder={field.placeholder}
+                    styles={selectStyles}
+                    value={selected[field.key][0] ?? null}
+                  />
+                ) : (
+                  <Select
+                    inputId={`cards-filter-${field.key}`}
+                    isMulti
+                    isClearable
+                    closeMenuOnSelect={false}
+                    noOptionsMessage={() => 'Tapılmadı'}
+                    onChange={(opts: MultiValue<SelectOption>) =>
+                      setDraftField(
+                        field.key,
+                        opts.map((option) => option.value)
+                      )
+                    }
+                    options={options[field.key]}
+                    placeholder={field.placeholder}
+                    styles={selectStyles}
+                    value={selected[field.key]}
+                  />
+                )}
               </label>
             ))}
 

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { ChevronLeft, ChevronRight, Filter, RotateCcw, X } from 'lucide-react';
-import Select, { type SingleValue, type StylesConfig } from 'react-select';
+import Select, { type MultiValue, type StylesConfig } from 'react-select';
 
 import { Button, DateInput } from '@/components';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
@@ -18,10 +18,10 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
     selected,
     draftDateFromInput,
     draftDateToInput,
-    setDraftBankName,
-    setDraftRegionName,
-    setDraftMccName,
-    setDraftRetailCategory,
+    setDraftBankNames,
+    setDraftRegionNames,
+    setDraftMccNames,
+    setDraftRetailCategories,
     setDraftDateFromInput,
     setDraftDateToInput,
     hasActiveFilters,
@@ -40,7 +40,7 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
     ? 'border-slate-500 bg-slate-800/90 text-slate-100 hover:bg-slate-700 hover:text-white'
     : '';
 
-  const selectStyles = useMemo<StylesConfig<SelectOption, false>>(
+  const selectStyles = useMemo<StylesConfig<SelectOption, true>>(
     () => ({
       control: (base, state) => ({
         ...base,
@@ -76,9 +76,26 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
       }),
       placeholder: (base) => ({ ...base, color: isDark ? '#94a3b8' : '#64748b' }),
       singleValue: (base) => ({ ...base, color: isDark ? '#f8fafc' : '#0f172a' }),
+      multiValue: (base) => ({
+        ...base,
+        borderRadius: 6,
+        backgroundColor: isDark ? '#1e293b' : '#eff6ff',
+      }),
+      multiValueLabel: (base) => ({
+        ...base,
+        color: isDark ? '#f8fafc' : '#1d4ed8',
+      }),
+      multiValueRemove: (base) => ({
+        ...base,
+        color: isDark ? '#94a3b8' : '#3b82f6',
+        ':hover': { backgroundColor: '#2563eb', color: '#ffffff' },
+      }),
     }),
     [isDark]
   );
+
+  const toValues = (options: MultiValue<SelectOption>) =>
+    options.map((option) => option.value);
 
   return (
     <div
@@ -171,15 +188,15 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
               <span className={muted}>Bank</span>
               <Select
                 inputId="devices-filter-bank"
+                isMulti
                 isClearable
+                closeMenuOnSelect={false}
                 noOptionsMessage={() => 'Bank tapılmadı'}
-                onChange={(option: SingleValue<SelectOption>) =>
-                  setDraftBankName(option?.value ?? '')
-                }
+                onChange={(opts) => setDraftBankNames(toValues(opts))}
                 options={options.banks}
                 placeholder="Bütün banklar"
                 styles={selectStyles}
-                value={selected.bank}
+                value={selected.banks}
               />
             </label>
 
@@ -187,15 +204,15 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
               <span className={muted}>Region</span>
               <Select
                 inputId="devices-filter-region"
+                isMulti
                 isClearable
+                closeMenuOnSelect={false}
                 noOptionsMessage={() => 'Region tapılmadı'}
-                onChange={(option: SingleValue<SelectOption>) =>
-                  setDraftRegionName(option?.value ?? '')
-                }
+                onChange={(opts) => setDraftRegionNames(toValues(opts))}
                 options={options.regions}
                 placeholder="Bütün regionlar"
                 styles={selectStyles}
-                value={selected.region}
+                value={selected.regions}
               />
             </label>
 
@@ -203,15 +220,15 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
               <span className={muted}>MCC</span>
               <Select
                 inputId="devices-filter-mcc"
+                isMulti
                 isClearable
+                closeMenuOnSelect={false}
                 noOptionsMessage={() => 'MCC tapılmadı'}
-                onChange={(option: SingleValue<SelectOption>) =>
-                  setDraftMccName(option?.value ?? '')
-                }
+                onChange={(opts) => setDraftMccNames(toValues(opts))}
                 options={options.mccs}
                 placeholder="Bütün MCC-lər"
                 styles={selectStyles}
-                value={selected.mcc}
+                value={selected.mccs}
               />
             </label>
 
@@ -219,15 +236,15 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
               <span className={muted}>Kateqoriya</span>
               <Select
                 inputId="devices-filter-retail"
+                isMulti
                 isClearable
+                closeMenuOnSelect={false}
                 noOptionsMessage={() => 'Kateqoriya tapılmadı'}
-                onChange={(option: SingleValue<SelectOption>) =>
-                  setDraftRetailCategory(option?.value ?? '')
-                }
+                onChange={(opts) => setDraftRetailCategories(toValues(opts))}
                 options={options.retails}
                 placeholder="Bütün kateqoriyalar"
                 styles={selectStyles}
-                value={selected.retail}
+                value={selected.retails}
               />
             </label>
 

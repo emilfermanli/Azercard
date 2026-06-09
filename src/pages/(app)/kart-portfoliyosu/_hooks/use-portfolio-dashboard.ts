@@ -96,7 +96,7 @@ export function usePortfolioDashboard({
   const { data: trendData } = useGetCardTrendQuery(
     {
       Dimension: 'payment_scheme',
-      DimValue: trendDimValue,
+      DimValues: trendDimValue ? [trendDimValue] : [],
       Granularity: 'month',
       FromMonth: trendFrom ?? '',
       ToMonth: snapshotMonth ?? '',

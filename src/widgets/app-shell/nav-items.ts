@@ -6,7 +6,10 @@ import {
   CreditCard,
   Globe2,
   MapPinned,
+  LayoutDashboard,
+  Network,
   Shield,
+  Smartphone,
   TrendingUp,
   Users,
   Wallet,
@@ -69,6 +72,21 @@ export const navLinks: NavLinkItem[] = [
     path: '/kart-portfoliyosu',
     label: 'Kart portfoliyosu',
     icon: Wallet,
+  },
+  {
+    path: '/acquiring-device-transaction',
+    label: 'Acquiring qurğu əməliyyatları',
+    icon: Smartphone,
+  },
+  {
+    path: '/card-dashboard',
+    label: 'Kart əməliyyat icmalı',
+    icon: LayoutDashboard,
+  },
+  {
+    path: '/card-transaction-detailed',
+    label: 'Kart əməliyyat detalları',
+    icon: Network,
   },
   {
     path: '/forecasting',

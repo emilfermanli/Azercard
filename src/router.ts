@@ -6,7 +6,10 @@ import { components, hooks, utils } from '@generouted/react-router/client';
 export type Path =
   | `///`
   | `/403`
+  | `/acquiring-device-transaction`
   | `/azmap`
+  | `/card-dashboard`
+  | `/card-transaction-detailed`
   | `/departamentler`
   | `/forecasting`
   | `/istifadeciler`

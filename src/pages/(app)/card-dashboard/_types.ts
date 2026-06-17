@@ -11,7 +11,10 @@ export type SelectOption = {
 export type KpiCard = {
   key: Metric;
   label: string;
+  /** qısa (kompakt) dəyər — kartda göstərilir. */
   value: string;
+  /** tam dəyər — hover tooltipində göstərilir. */
+  fullValue: string;
   active: boolean;
   monetary: boolean;
 };

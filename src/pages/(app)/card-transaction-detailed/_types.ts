@@ -17,6 +17,8 @@ export type ColumnRow = {
   amount: number;
   count: number;
   percent: number;
+  /** keçən dövrlə müqayisədə dəyişmə (%). */
+  changePercent: number;
   selected: boolean;
 };
 

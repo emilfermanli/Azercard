@@ -14,7 +14,7 @@ import {
   KPI_METRICS,
 } from '../_constants';
 import type { AlertItem, DonutDatum, KpiCard, Metric, TrendDatum } from '../_types';
-import { formatMetricValue, labelText } from '../_utils';
+import { formatCompact, formatMetricValue, labelText } from '../_utils';
 
 type DataArgs = {
   apiArgs: CardDashboardArgs;
@@ -66,7 +66,9 @@ export function useCardDashboardData({
     return KPI_METRICS.map((m) => ({
       key: m.key,
       label: m.label,
-      value: kpi ? formatMetricValue(kpi[m.kpiField], m.monetary, roundTo) : '—',
+      // Kartda qısa dəyər, hover-da tam dəyər.
+      value: kpi ? formatCompact(kpi[m.kpiField], m.monetary) : '—',
+      fullValue: kpi ? formatMetricValue(kpi[m.kpiField], m.monetary, roundTo) : '—',
       active: m.key === metric,
       monetary: m.monetary,
     }));

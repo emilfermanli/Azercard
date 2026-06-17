@@ -35,6 +35,18 @@ export function formatMetricValue(
   return suffix ? `${formatNumber(value)} ${suffix}` : formatNumber(value);
 }
 
+/**
+ * Qısa (kompakt) format — böyük rəqəmləri "1,44 mlrd", "236,33 mln" kimi yazır.
+ * az-AZ lokalı kompakt notasiyada "min / mln / mlrd" işlədir.
+ */
+export function formatCompact(value: number, monetary: boolean): string {
+  const short = new Intl.NumberFormat('az-AZ', {
+    notation: 'compact',
+    maximumFractionDigits: 2,
+  }).format(value);
+  return monetary ? `${short} ₼` : short;
+}
+
 /** Faiz formatı. */
 export function formatPct(value: number): string {
   return `${value.toLocaleString('az-AZ', { maximumFractionDigits: 1 })}%`;

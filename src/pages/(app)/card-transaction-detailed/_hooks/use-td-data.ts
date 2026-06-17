@@ -16,7 +16,13 @@ type DataArgs = {
   selections: Record<ColumnKey, string>;
 };
 
-type RawRow = { value: string; amount: number; count: number; selected: boolean };
+type RawRow = {
+  value: string;
+  amount: number;
+  count: number;
+  changePercent: number;
+  selected: boolean;
+};
 
 /**
  * Sütun faizini seçilmiş göstərici (məbləğ/say) üzrə klient tərəfdə hesablayır —
@@ -30,6 +36,7 @@ function toColumnRows(raw: RawRow[], measure: Measure): ColumnRow[] {
     amount: r.amount,
     count: r.count,
     percent: total ? (rowValue(r, measure) / total) * 100 : 0,
+    changePercent: r.changePercent,
     selected: r.selected,
   }));
 }
@@ -48,6 +55,7 @@ export function useTdData({ apiArgs, measure, selections }: DataArgs) {
           value: b.bankName,
           amount: b.amount,
           count: b.count,
+          changePercent: b.changePercent,
           selected: selections.bank === b.bankName,
         })),
         measure
@@ -62,6 +70,7 @@ export function useTdData({ apiArgs, measure, selections }: DataArgs) {
           value: d.deviceType,
           amount: d.amount,
           count: d.count,
+          changePercent: d.changePercent,
           selected: selections.device === d.deviceType,
         })),
         measure
@@ -76,6 +85,7 @@ export function useTdData({ apiArgs, measure, selections }: DataArgs) {
           value: i.label,
           amount: i.amount,
           count: i.count,
+          changePercent: i.changePercent,
           selected: selections.issuing === i.label,
         })),
         measure
@@ -90,6 +100,7 @@ export function useTdData({ apiArgs, measure, selections }: DataArgs) {
           value: b.bankName,
           amount: b.amount,
           count: b.count,
+          changePercent: b.changePercent,
           selected: selections.targetBank === b.bankName,
         })),
         measure

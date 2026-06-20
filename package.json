@@ -10,7 +10,7 @@
 		"react-router",
 		"starter-kit"
 	],
-	"author": "Elchin Abilov <abilovelchin@gmail.com> (https://abilov.az/)",
+	"author": "Azericard",
 	"license": "MIT",
 	"scripts": {
 		"dev": "vite",

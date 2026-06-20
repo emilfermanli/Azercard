@@ -23,6 +23,7 @@ import { cardsApi } from '@/services/cards.service';
 import { acquiringDeviceApi } from '@/services/acquiring-device.service';
 import { cardDashboardApi } from '@/services/card-dashboard.service';
 import { transactionDetailedApi } from '@/services/card-transaction-detailed.service';
+import { summaryTransactionApi } from '@/services/summary-transaction.service';
 
 const encryptor = encryptTransform({
   secretKey: import.meta.env.VITE_PERSIST_KEY,
@@ -45,6 +46,7 @@ const rootReducer = combineReducers({
   [acquiringDeviceApi.reducerPath]: acquiringDeviceApi.reducer,
   [cardDashboardApi.reducerPath]: cardDashboardApi.reducer,
   [transactionDetailedApi.reducerPath]: transactionDetailedApi.reducer,
+  [summaryTransactionApi.reducerPath]: summaryTransactionApi.reducer,
 });
 
 type RootReducerState = ReturnType<typeof rootReducer>;
@@ -79,7 +81,8 @@ const store = configureStore({
         cardsApi.middleware,
         acquiringDeviceApi.middleware,
         cardDashboardApi.middleware,
-        transactionDetailedApi.middleware
+        transactionDetailedApi.middleware,
+        summaryTransactionApi.middleware
       )
       .prepend(ErrorMiddleware),
 });

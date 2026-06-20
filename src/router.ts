@@ -19,6 +19,7 @@ export type Path =
   | `/pozisiyalar`
   | `/rollar`
   | `/sectorspend`
+  | `/summary-transaction`
   | `/terminal-aktivliyi`
   | `/worldmap`;
 

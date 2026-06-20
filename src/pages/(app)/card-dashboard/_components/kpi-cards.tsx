@@ -59,10 +59,10 @@ export function KpiCards({ cards, onSelect }: KpiCardsProps) {
             className={[
               'flex min-h-[9.5rem] flex-col justify-between rounded-2xl bg-gradient-to-br p-6 text-left text-white shadow-lg transition duration-200',
               ACCENTS[card.key],
-              // Seçilən rəngli, seçilməyənlər ağ-qara (grayscale).
+              // Seçilən tam rəngli, seçilməyənlər öz rəngində amma solğun (opacity).
               card.active
-                ? 'grayscale-0 shadow-xl'
-                : 'grayscale hover:-translate-y-0.5 hover:grayscale-0',
+                ? 'opacity-100 shadow-xl'
+                : 'opacity-50 hover:-translate-y-0.5 hover:opacity-100',
             ].join(' ')}
           >
             <div className="flex items-start justify-between gap-3">

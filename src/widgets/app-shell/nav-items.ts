@@ -5,6 +5,7 @@ import {
   Building2,
   CreditCard,
   Globe2,
+  Layers,
   MapPinned,
   LayoutDashboard,
   Network,
@@ -87,6 +88,11 @@ export const navLinks: NavLinkItem[] = [
     path: '/card-transaction-detailed',
     label: 'Kart əməliyyat detalları',
     icon: Network,
+  },
+  {
+    path: '/summary-transaction',
+    label: 'Tranzaksiya xülasəsi',
+    icon: Layers,
   },
   {
     path: '/forecasting',

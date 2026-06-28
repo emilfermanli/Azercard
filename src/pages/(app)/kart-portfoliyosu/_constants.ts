@@ -38,8 +38,18 @@ export const RIGHT_PANEL_MODES: Array<{ value: RightPanelMode; label: string }> 
 // Trend qrafiki üçün ay sayı və ay adları.
 export const TREND_MONTH_COUNT = 6;
 export const MONTHS_AZ = [
-  'Yan', 'Fev', 'Mar', 'Apr', 'May', 'İyn',
-  'İyl', 'Avq', 'Sen', 'Okt', 'Noy', 'Dek',
+  'Yan',
+  'Fev',
+  'Mar',
+  'Apr',
+  'May',
+  'İyn',
+  'İyl',
+  'Avq',
+  'Sen',
+  'Okt',
+  'Noy',
+  'Dek',
 ];
 
 // xy-chart default ölçüləri.
@@ -84,14 +94,64 @@ export type CardFilterField = {
 };
 
 export const FILTER_FIELDS: CardFilterField[] = [
-  { key: 'bankName', apiKey: 'BankNames', optionsKey: 'banks', label: 'Bank', placeholder: 'Bütün banklar' },
-  { key: 'regionName', apiKey: 'RegionNames', optionsKey: 'regions', label: 'Region', placeholder: 'Bütün regionlar' },
-  { key: 'paymentScheme', apiKey: 'PaymentSchemes', optionsKey: 'paymentSchemes', label: 'Ödəniş sistemi', placeholder: 'Bütün sistemlər' },
-  { key: 'productType', apiKey: 'ProductTypes', optionsKey: 'productTypes', label: 'Məhsul tipi', placeholder: 'Bütün tiplər' },
-  { key: 'contactlessStatus', apiKey: 'ContactlessStatuses', optionsKey: 'contactlessStatuses', label: 'Kontaktsız', placeholder: 'Hamısı', multi: false },
-  { key: 'expStatus', apiKey: 'ExpStatuses', optionsKey: 'expStatuses', label: 'Müddət (EXP)', placeholder: 'Hamısı', multi: false },
-  { key: 'baseCurrency', apiKey: 'BaseCurrencies', optionsKey: 'currencies', label: 'Valyuta', placeholder: 'Bütün valyutalar' },
-  { key: 'cardProductName', apiKey: 'CardProductNames', optionsKey: 'cardProducts', label: 'Kart məhsulu', placeholder: 'Bütün məhsullar' },
+  {
+    key: 'bankName',
+    apiKey: 'BankNames',
+    optionsKey: 'banks',
+    label: 'Bank',
+    placeholder: 'Bütün banklar',
+  },
+  {
+    key: 'regionName',
+    apiKey: 'RegionNames',
+    optionsKey: 'regions',
+    label: 'Region',
+    placeholder: 'Bütün regionlar',
+  },
+  {
+    key: 'paymentScheme',
+    apiKey: 'PaymentSchemes',
+    optionsKey: 'paymentSchemes',
+    label: 'Ödəniş sistemi',
+    placeholder: 'Bütün sistemlər',
+  },
+  {
+    key: 'productType',
+    apiKey: 'ProductTypes',
+    optionsKey: 'productTypes',
+    label: 'Məhsul tipi',
+    placeholder: 'Bütün tiplər',
+  },
+  {
+    key: 'contactlessStatus',
+    apiKey: 'ContactlessStatuses',
+    optionsKey: 'contactlessStatuses',
+    label: 'Kontaktsız',
+    placeholder: 'Hamısı',
+    multi: false,
+  },
+  {
+    key: 'expStatus',
+    apiKey: 'ExpStatuses',
+    optionsKey: 'expStatuses',
+    label: 'Müddət (EXP)',
+    placeholder: 'Hamısı',
+    multi: false,
+  },
+  {
+    key: 'baseCurrency',
+    apiKey: 'BaseCurrencies',
+    optionsKey: 'currencies',
+    label: 'Valyuta',
+    placeholder: 'Bütün valyutalar',
+  },
+  {
+    key: 'cardProductName',
+    apiKey: 'CardProductNames',
+    optionsKey: 'cardProducts',
+    label: 'Kart məhsulu',
+    placeholder: 'Bütün məhsullar',
+  },
 ];
 
 // Matris ölçü seçiciləri üçün tablar.

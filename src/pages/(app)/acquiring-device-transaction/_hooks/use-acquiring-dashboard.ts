@@ -102,10 +102,7 @@ export function useAcquiringDashboard({
       const count = items.reduce((sum, item) => sum + item.count, 0);
       return formatMetric(count ? volume / count : 0, metric, amountUnit);
     }
-    const total = items.reduce(
-      (sum, item) => sum + pickDeviceMetric(item, metric),
-      0
-    );
+    const total = items.reduce((sum, item) => sum + pickDeviceMetric(item, metric), 0);
     return formatMetric(total, metric, amountUnit);
   }, [dashboard, metric, amountUnit]);
 
@@ -178,9 +175,13 @@ export function useAcquiringDashboard({
     const byPeriod = new Map<string, Acc>();
     for (const s of series) {
       for (const p of s.points) {
-        const acc =
-          byPeriod.get(p.period) ??
-          { actual: 0, forecast: 0, lower: 0, upper: 0, hasForecast: false };
+        const acc = byPeriod.get(p.period) ?? {
+          actual: 0,
+          forecast: 0,
+          lower: 0,
+          upper: 0,
+          hasForecast: false,
+        };
         acc.actual += p.actual;
         acc.forecast += p.forecast;
         acc.lower += p.forecastLower;

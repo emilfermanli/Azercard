@@ -2,10 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useGetCardDashboardFiltersQuery } from '@/services/card-dashboard.service';
 import type { SummaryTransactionArgs } from '@/types/summary-transaction.type';
-import {
-  FILTER_FIELDS,
-  type SummaryFilterKey,
-} from '../_constants';
+import { FILTER_FIELDS, type SummaryFilterKey } from '../_constants';
 import type { SelectOption } from '../_types';
 
 type FilterValues = Record<SummaryFilterKey, string>;
@@ -65,7 +62,8 @@ export function useSummaryFilters() {
   const selected = useMemo(() => {
     const out = {} as Record<SummaryFilterKey, SelectOption | null>;
     for (const field of FILTER_FIELDS) {
-      out[field.key] = options[field.key].find((o) => o.value === draft[field.key]) ?? null;
+      out[field.key] =
+        options[field.key].find((o) => o.value === draft[field.key]) ?? null;
     }
     return out;
   }, [options, draft]);
@@ -74,7 +72,9 @@ export function useSummaryFilters() {
     setDraft((current) => ({ ...current, [key]: value }));
 
   const anyApplied =
-    FILTER_FIELDS.some((field) => applied[field.key]) || Boolean(dateFrom) || Boolean(dateTo);
+    FILTER_FIELDS.some((field) => applied[field.key]) ||
+    Boolean(dateFrom) ||
+    Boolean(dateTo);
   const anyDraft =
     FILTER_FIELDS.some((field) => draft[field.key]) ||
     Boolean(draftDateFrom) ||

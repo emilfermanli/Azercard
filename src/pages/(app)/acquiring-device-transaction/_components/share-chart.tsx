@@ -27,7 +27,9 @@ function ShareTooltip({
   return (
     <div className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white shadow-xl">
       <p className="font-semibold">{item.name}</p>
-      <p className="mt-1 tabular-nums">{formatMetric(item.value ?? 0, metric, amountUnit)}</p>
+      <p className="mt-1 tabular-nums">
+        {formatMetric(item.value ?? 0, metric, amountUnit)}
+      </p>
     </div>
   );
 }
@@ -45,9 +47,7 @@ export function ShareChart({ data, metric, amountUnit }: ShareChartProps) {
       <div className="h-60">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Tooltip
-              content={<ShareTooltip metric={metric} amountUnit={amountUnit} />}
-            />
+            <Tooltip content={<ShareTooltip metric={metric} amountUnit={amountUnit} />} />
             <Pie
               data={data}
               dataKey="value"

@@ -44,8 +44,9 @@ export function useDeviceFilters() {
   const [mccNames, setMccNames] = useState<string[]>([]);
   const [retailCategories, setRetailCategories] = useState<string[]>([]);
   // "Bölgü" — share endpointinin `dimension`-ı (tək seçim, default Terminal).
-  const [shareDimension, setShareDimension] =
-    useState<ShareDimensionValue>(SHARE_DIMENSION_DEFAULT);
+  const [shareDimension, setShareDimension] = useState<ShareDimensionValue>(
+    SHARE_DIMENSION_DEFAULT
+  );
   // Matris tarix aralığı — boş = ən son ay; Son həm də reportMonth mənbəyidir.
   const [dateFromInput, setDateFromInput] = useState('');
   const [dateToInput, setDateToInput] = useState('');
@@ -55,8 +56,9 @@ export function useDeviceFilters() {
   const [draftRegionNames, setDraftRegionNames] = useState<string[]>([]);
   const [draftMccNames, setDraftMccNames] = useState<string[]>([]);
   const [draftRetailCategories, setDraftRetailCategories] = useState<string[]>([]);
-  const [draftShareDimension, setDraftShareDimension] =
-    useState<ShareDimensionValue>(SHARE_DIMENSION_DEFAULT);
+  const [draftShareDimension, setDraftShareDimension] = useState<ShareDimensionValue>(
+    SHARE_DIMENSION_DEFAULT
+  );
   const [draftDateFromInput, setDraftDateFromInput] = useState('');
   const [draftDateToInput, setDraftDateToInput] = useState('');
 

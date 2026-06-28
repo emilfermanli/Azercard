@@ -1,4 +1,4 @@
-import type { DisplayMode, Measure } from './_types';
+import type { Measure } from './_types';
 
 /** null/boş label-ı oxunaqlı mətnə çevirir. */
 export function labelText(label: string | null | undefined): string {
@@ -28,15 +28,17 @@ export function rowValue(
   return measure === 'count' ? row.count : row.amount;
 }
 
-/** Seçilmiş göstərici + göstərmə rejiminə uyğun formatlanmış etiket. */
-export function formatCell(
-  row: { amount: number; count: number; percent: number },
-  measure: Measure,
-  display: DisplayMode
+/** Göstərici üzrə dəqiq, tam dəyər (yuvarlaqlaşdırma yoxdur) — say / məbləğ. */
+export function measureValue(
+  row: { amount: number; count: number },
+  measure: Measure
 ): string {
-  if (display === 'pct') return formatPct(row.percent);
   return measure === 'count' ? formatInt(row.count) : `${formatAmount(row.amount)} ₼`;
 }
+
+/** İşarəli faiz (dəyişmə) — "+12,3%" / "-4%". */
+export const signedPct = (value: number): string =>
+  `${value > 0 ? '+' : ''}${value.toLocaleString('az-AZ', { maximumFractionDigits: 1 })}%`;
 
 // --- Tema class tokenləri (light/dark) ---
 

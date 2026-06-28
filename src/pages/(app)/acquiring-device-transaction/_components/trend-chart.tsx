@@ -66,7 +66,12 @@ export function TrendChart({
     : 'Qurğu tipləri üzrə cəmi dövriyyənin zaman üzrə dəyişməsi';
 
   return (
-    <ChartCard title="Zaman trendi" subtitle={subtitle} empty={data.length === 0} className={className}>
+    <ChartCard
+      title="Zaman trendi"
+      subtitle={subtitle}
+      empty={data.length === 0}
+      className={className}
+    >
       <div className="h-72">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 8, right: 16, left: -4, bottom: 0 }}>
@@ -88,9 +93,7 @@ export function TrendChart({
               tick={{ fontSize: 12, fill: axisColor }}
               tickFormatter={(value: number) => formatAxisTick(value, metric, amountUnit)}
             />
-            <Tooltip
-              content={<TrendTooltip metric={metric} amountUnit={amountUnit} />}
-            />
+            <Tooltip content={<TrendTooltip metric={metric} amountUnit={amountUnit} />} />
             {/* Proqnoz güvən zolağı (lower–upper). */}
             <Area
               dataKey={(d: TrendDatum) =>

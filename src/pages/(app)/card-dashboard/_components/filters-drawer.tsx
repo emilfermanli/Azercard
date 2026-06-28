@@ -9,11 +9,7 @@ import type { CardDashboardFiltersController } from '../_hooks/use-card-dashboar
 import type { SelectOption } from '../_types';
 import { mutedText } from '../_utils';
 
-export function FiltersDrawer({
-  filters,
-}: {
-  filters: CardDashboardFiltersController;
-}) {
+export function FiltersDrawer({ filters }: { filters: CardDashboardFiltersController }) {
   const isDark = useShellTheme();
   const muted = mutedText(isDark);
   const {
@@ -85,7 +81,8 @@ export function FiltersDrawer({
   );
 
   const contactlessValue =
-    CONTACTLESS_OPTIONS.find((o) => o.value === draftContactless) ?? CONTACTLESS_OPTIONS[0];
+    CONTACTLESS_OPTIONS.find((o) => o.value === draftContactless) ??
+    CONTACTLESS_OPTIONS[0];
 
   return (
     <div

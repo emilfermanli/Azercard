@@ -43,7 +43,9 @@ export function AnalysisSection({
 
   return (
     <section
-      className={['min-w-0 rounded-xl border p-4 shadow-lg', panelClass(isDark)].join(' ')}
+      className={['min-w-0 rounded-xl border p-4 shadow-lg', panelClass(isDark)].join(
+        ' '
+      )}
       style={style}
     >
       <div>
@@ -62,7 +64,10 @@ export function AnalysisSection({
         isDark={isDark}
       />
 
-      <div className="relative mt-4 min-w-0" aria-busy={isMatrixLoading || isMatrixFetching}>
+      <div
+        className="relative mt-4 min-w-0"
+        aria-busy={isMatrixLoading || isMatrixFetching}
+      >
         {isMatrixLoading ? (
           <Loading className="min-h-48 rounded-xl border border-dashed border-blue-500/25" />
         ) : (
@@ -78,7 +83,9 @@ export function AnalysisSection({
                   size="lg"
                   className={isDark ? 'text-blue-300' : 'text-blue-600'}
                 />
-                <span className={['text-sm font-medium', muted].join(' ')}>Yenilənir...</span>
+                <span className={['text-sm font-medium', muted].join(' ')}>
+                  Yenilənir...
+                </span>
               </div>
             )}
             <div
@@ -134,7 +141,9 @@ export function AnalysisSection({
                             : 'border-blue-200 bg-blue-100 text-blue-950 hover:bg-blue-200',
                         ].join(' ')}
                       >
-                        <span className="line-clamp-2 text-left leading-tight">{row.name}</span>
+                        <span className="line-clamp-2 text-left leading-tight">
+                          {row.name}
+                        </span>
                       </button>
                       {row.values.map((cell, index) => (
                         <div

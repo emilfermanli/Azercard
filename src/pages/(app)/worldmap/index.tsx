@@ -24,7 +24,13 @@ import {
 } from 'lucide-react';
 import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
-import { Button, DataPagination, DataTable, DateInput, LoadingSpinner } from '@/components';
+import {
+  Button,
+  DataPagination,
+  DataTable,
+  DateInput,
+  LoadingSpinner,
+} from '@/components';
 import { useGetGeneralBanksQuery } from '@/services/general.service';
 import {
   useGetWorldmapFilterQuery,

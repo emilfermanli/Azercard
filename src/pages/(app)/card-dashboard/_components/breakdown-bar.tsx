@@ -25,9 +25,10 @@ const truncate = (text: string, max = 16) =>
   text.length > max ? `${text.slice(0, max)}…` : text;
 
 const compact = (value: number) =>
-  new Intl.NumberFormat('az-AZ', { notation: 'compact', maximumFractionDigits: 1 }).format(
-    value
-  );
+  new Intl.NumberFormat('az-AZ', {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value);
 
 function BarTooltip({
   active,
@@ -86,7 +87,12 @@ export function BreakdownBar({ title, subtitle, data, maxRows = 12 }: BreakdownB
   );
 
   return (
-    <ChartCard title={title} subtitle={subtitle} action={toggle} empty={rows.length === 0}>
+    <ChartCard
+      title={title}
+      subtitle={subtitle}
+      action={toggle}
+      empty={rows.length === 0}
+    >
       <div style={{ height }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
@@ -99,7 +105,9 @@ export function BreakdownBar({ title, subtitle, data, maxRows = 12 }: BreakdownB
               tickLine={false}
               axisLine={false}
               tick={{ fontSize: 11, fill: axisColor }}
-              tickFormatter={(v: number) => (mode === 'pct' ? `${Math.round(v)}%` : compact(v))}
+              tickFormatter={(v: number) =>
+                mode === 'pct' ? `${Math.round(v)}%` : compact(v)
+              }
             />
             <YAxis
               type="category"

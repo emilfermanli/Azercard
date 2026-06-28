@@ -148,7 +148,10 @@ export function DatePickerPanel({ value, onChange, min, max }: DatePickerPanelPr
           <>
             <button
               type="button"
-              className={cn(navButtonClass, !canShiftMonth(-1) && 'cursor-not-allowed opacity-40')}
+              className={cn(
+                navButtonClass,
+                !canShiftMonth(-1) && 'cursor-not-allowed opacity-40'
+              )}
               disabled={!canShiftMonth(-1)}
               onClick={() => shiftMonth(-1)}
               aria-label="Əvvəlki ay"
@@ -176,7 +179,10 @@ export function DatePickerPanel({ value, onChange, min, max }: DatePickerPanelPr
             </div>
             <button
               type="button"
-              className={cn(navButtonClass, !canShiftMonth(1) && 'cursor-not-allowed opacity-40')}
+              className={cn(
+                navButtonClass,
+                !canShiftMonth(1) && 'cursor-not-allowed opacity-40'
+              )}
               disabled={!canShiftMonth(1)}
               onClick={() => shiftMonth(1)}
               aria-label="Növbəti ay"
@@ -190,7 +196,10 @@ export function DatePickerPanel({ value, onChange, min, max }: DatePickerPanelPr
           <>
             <button
               type="button"
-              className={cn(navButtonClass, !canShiftYear(-1) && 'cursor-not-allowed opacity-40')}
+              className={cn(
+                navButtonClass,
+                !canShiftYear(-1) && 'cursor-not-allowed opacity-40'
+              )}
               disabled={!canShiftYear(-1)}
               onClick={() => setYear((current) => current - 1)}
               aria-label="Əvvəlki il"
@@ -199,7 +208,10 @@ export function DatePickerPanel({ value, onChange, min, max }: DatePickerPanelPr
             </button>
             <button
               type="button"
-              className={cn('flex-1 text-center text-sm font-semibold', headerButtonClass)}
+              className={cn(
+                'flex-1 text-center text-sm font-semibold',
+                headerButtonClass
+              )}
               onClick={() => {
                 setYearPageStart(Math.floor(year / YEARS_PER_PAGE) * YEARS_PER_PAGE);
                 setView('years');
@@ -209,7 +221,10 @@ export function DatePickerPanel({ value, onChange, min, max }: DatePickerPanelPr
             </button>
             <button
               type="button"
-              className={cn(navButtonClass, !canShiftYear(1) && 'cursor-not-allowed opacity-40')}
+              className={cn(
+                navButtonClass,
+                !canShiftYear(1) && 'cursor-not-allowed opacity-40'
+              )}
               disabled={!canShiftYear(1)}
               onClick={() => setYear((current) => current + 1)}
               aria-label="Növbəti il"
@@ -223,19 +238,30 @@ export function DatePickerPanel({ value, onChange, min, max }: DatePickerPanelPr
           <>
             <button
               type="button"
-              className={cn(navButtonClass, !canGoPrevYears && 'cursor-not-allowed opacity-40')}
+              className={cn(
+                navButtonClass,
+                !canGoPrevYears && 'cursor-not-allowed opacity-40'
+              )}
               disabled={!canGoPrevYears}
               onClick={() => setYearPageStart((current) => current - YEARS_PER_PAGE)}
               aria-label="Əvvəlki illər"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <p className={cn('flex-1 text-center text-sm font-semibold', isDark ? 'text-slate-100' : 'text-slate-900')}>
+            <p
+              className={cn(
+                'flex-1 text-center text-sm font-semibold',
+                isDark ? 'text-slate-100' : 'text-slate-900'
+              )}
+            >
               {yearPageStart} – {yearPageEnd}
             </p>
             <button
               type="button"
-              className={cn(navButtonClass, !canGoNextYears && 'cursor-not-allowed opacity-40')}
+              className={cn(
+                navButtonClass,
+                !canGoNextYears && 'cursor-not-allowed opacity-40'
+              )}
               disabled={!canGoNextYears}
               onClick={() => setYearPageStart((current) => current + YEARS_PER_PAGE)}
               aria-label="Növbəti illər"
@@ -251,7 +277,10 @@ export function DatePickerPanel({ value, onChange, min, max }: DatePickerPanelPr
           <>
             <div className="mb-2 grid grid-cols-7 gap-1">
               {WEEKDAYS_AZ_SHORT.map((weekday) => (
-                <div key={weekday} className={cn('py-1 text-center text-[11px] font-semibold', muted)}>
+                <div
+                  key={weekday}
+                  className={cn('py-1 text-center text-[11px] font-semibold', muted)}
+                >
                   {weekday}
                 </div>
               ))}
@@ -275,7 +304,11 @@ export function DatePickerPanel({ value, onChange, min, max }: DatePickerPanelPr
                     onClick={() => handleDaySelect(isoDate)}
                     className={cn(
                       tileClass(isSelected, disabled),
-                      !isSelected && isToday && (isDark ? 'bg-blue-500/15 text-blue-300' : 'bg-blue-50 text-blue-700')
+                      !isSelected &&
+                        isToday &&
+                        (isDark
+                          ? 'bg-blue-500/15 text-blue-300'
+                          : 'bg-blue-50 text-blue-700')
                     )}
                   >
                     {day}

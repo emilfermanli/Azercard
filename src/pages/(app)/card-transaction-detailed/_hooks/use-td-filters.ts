@@ -2,11 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useGetCardDashboardFiltersQuery } from '@/services/card-dashboard.service';
 import type { TransactionDetailedArgs } from '@/types/card-transaction-detailed.type';
-import {
-  COLUMNS,
-  FILTER_FIELDS,
-  type TdFilterKey,
-} from '../_constants';
+import { COLUMNS, FILTER_FIELDS, type TdFilterKey } from '../_constants';
 import type { ColumnKey, SelectionChip, SelectOption } from '../_types';
 import { labelText } from '../_utils';
 
@@ -88,7 +84,8 @@ export function useTdFilters() {
   const selected = useMemo(() => {
     const out = {} as Record<TdFilterKey, SelectOption | null>;
     for (const field of FILTER_FIELDS) {
-      out[field.key] = options[field.key].find((o) => o.value === draft[field.key]) ?? null;
+      out[field.key] =
+        options[field.key].find((o) => o.value === draft[field.key]) ?? null;
     }
     return out;
   }, [options, draft]);
@@ -107,7 +104,9 @@ export function useTdFilters() {
     setDraft((current) => ({ ...current, [key]: value }));
 
   const anyDrawerApplied =
-    FILTER_FIELDS.some((field) => applied[field.key]) || Boolean(dateFrom) || Boolean(dateTo);
+    FILTER_FIELDS.some((field) => applied[field.key]) ||
+    Boolean(dateFrom) ||
+    Boolean(dateTo);
   const anyDrawerDraft =
     FILTER_FIELDS.some((field) => draft[field.key]) ||
     Boolean(draftDateFrom) ||

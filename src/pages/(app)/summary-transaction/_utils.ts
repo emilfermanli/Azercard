@@ -25,7 +25,9 @@ export const accentHeader = (accent: Accent, isDark: boolean): string => {
   const map: Record<Accent, string> = {
     blue: isDark ? 'bg-blue-500/15 text-blue-300' : 'bg-blue-50 text-blue-700',
     violet: isDark ? 'bg-violet-500/15 text-violet-300' : 'bg-violet-50 text-violet-700',
-    emerald: isDark ? 'bg-emerald-500/15 text-emerald-300' : 'bg-emerald-50 text-emerald-700',
+    emerald: isDark
+      ? 'bg-emerald-500/15 text-emerald-300'
+      : 'bg-emerald-50 text-emerald-700',
   };
   return map[accent];
 };

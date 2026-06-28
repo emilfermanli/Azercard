@@ -173,10 +173,7 @@ export function usePortfolioDashboard({
   );
 
   // xy-chart → matris (sütun = xLabels, sətir = yLabels).
-  const channels = useMemo(
-    () => (xyData?.xLabels ?? []).map(labelText),
-    [xyData]
-  );
+  const channels = useMemo(() => (xyData?.xLabels ?? []).map(labelText), [xyData]);
   const matrixRows = useMemo<DisplayRow[]>(() => {
     if (!xyData) return [];
     const cellByKey = new Map<string, CardXyCell>();

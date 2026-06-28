@@ -1,10 +1,10 @@
-import { X } from 'lucide-react';
+import { ArrowDownRight, ArrowRightLeft, ArrowUpRight, Wallet, X } from 'lucide-react';
 
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import type { TdKpi } from '@/types/card-transaction-detailed.type';
-import { DISPLAY_OPTIONS, MEASURE_OPTIONS } from '../_constants';
-import type { ColumnKey, DisplayMode, Measure, SelectionChip } from '../_types';
-import { formatAmount, formatInt, mutedText, panelClass } from '../_utils';
+import { MEASURE_OPTIONS } from '../_constants';
+import type { ColumnKey, Measure, SelectionChip } from '../_types';
+import { formatAmount, formatInt, mutedText, panelClass, signedPct } from '../_utils';
 
 type SegmentedProps<T extends string> = {
   value: T;
@@ -37,12 +37,60 @@ function Segmented<T extends string>({ value, options, onChange }: SegmentedProp
   );
 }
 
+type StatProps = {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  active: boolean;
+};
+
+/** Tək KPI bloku — aktiv göstərici (seçilmiş) vurğulanır. */
+function Stat({ icon, label, value, active }: StatProps) {
+  const isDark = useShellTheme();
+  return (
+    <div
+      className={[
+        'flex items-center gap-3 rounded-xl border px-3.5 py-2.5 transition',
+        active
+          ? isDark
+            ? 'border-blue-500/40 bg-blue-500/10'
+            : 'border-blue-200 bg-blue-50'
+          : isDark
+            ? 'border-slate-800 bg-slate-950/40'
+            : 'border-slate-200 bg-slate-50',
+      ].join(' ')}
+    >
+      <span
+        className={[
+          'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+          active
+            ? 'bg-blue-600 text-white'
+            : isDark
+              ? 'bg-slate-800 text-slate-300'
+              : 'bg-white text-slate-500',
+        ].join(' ')}
+      >
+        {icon}
+      </span>
+      <div className="min-w-0">
+        <p
+          className={[
+            'text-[11px] font-semibold uppercase tracking-wide',
+            mutedText(isDark),
+          ].join(' ')}
+        >
+          {label}
+        </p>
+        <p className="text-xl font-bold tabular-nums leading-tight">{value}</p>
+      </div>
+    </div>
+  );
+}
+
 type ToolbarProps = {
   kpi: TdKpi | undefined;
   measure: Measure;
   onMeasureChange: (m: Measure) => void;
-  display: DisplayMode;
-  onDisplayChange: (d: DisplayMode) => void;
   chips: SelectionChip[];
   onClearChip: (key: ColumnKey) => void;
 };
@@ -51,32 +99,75 @@ export function Toolbar({
   kpi,
   measure,
   onMeasureChange,
-  display,
-  onDisplayChange,
   chips,
   onClearChip,
 }: ToolbarProps) {
   const isDark = useShellTheme();
-  const total = kpi
-    ? measure === 'count'
-      ? formatInt(kpi.totalCount)
-      : `${formatAmount(kpi.totalAmount)} ₼`
-    : '—';
+  const amount = kpi ? `${formatAmount(kpi.totalAmount)} ₼` : '—';
+  const count = kpi ? formatInt(kpi.totalCount) : '—';
+  const change = kpi?.changePercent ?? 0;
 
   return (
     <section
       className={[
-        'flex flex-wrap items-end justify-between gap-4 rounded-xl border px-4 py-3 shadow-lg',
+        'flex flex-col gap-4 rounded-xl border px-4 py-3 shadow-lg lg:flex-row lg:items-center lg:justify-between',
         panelClass(isDark),
       ].join(' ')}
     >
-      <div>
-        <p className={['text-xs font-semibold', mutedText(isDark)].join(' ')}>
-          Ümumi {measure === 'count' ? 'əməliyyat sayı' : 'dövriyyə'}
-        </p>
-        <p className="mt-1 text-2xl font-bold tabular-nums">{total}</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <Stat
+            icon={<Wallet className="h-[1.1rem] w-[1.1rem]" />}
+            label="Ümumi dövriyyə"
+            value={amount}
+            active={measure === 'amount'}
+          />
+          <Stat
+            icon={<ArrowRightLeft className="h-[1.1rem] w-[1.1rem]" />}
+            label="Əməliyyat sayı"
+            value={count}
+            active={measure === 'count'}
+          />
+        </div>
+
+        {change !== 0 && (
+          <span
+            className={[
+              'flex w-fit items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold tabular-nums',
+              change > 0
+                ? isDark
+                  ? 'bg-emerald-500/15 text-emerald-400'
+                  : 'bg-emerald-50 text-emerald-600'
+                : isDark
+                  ? 'bg-rose-500/15 text-rose-400'
+                  : 'bg-rose-50 text-rose-600',
+            ].join(' ')}
+            title="Keçən dövrlə müqayisədə dəyişmə"
+          >
+            {change > 0 ? (
+              <ArrowUpRight className="h-3.5 w-3.5" />
+            ) : (
+              <ArrowDownRight className="h-3.5 w-3.5" />
+            )}
+            {signedPct(change)}
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-3 justify-end">
+          <p className={['text-xs font-semibold', mutedText(isDark)].join(' ')}>
+            Göstərici
+          </p>
+          <Segmented<Measure>
+            value={measure}
+            options={MEASURE_OPTIONS}
+            onChange={onMeasureChange}
+          />
+        </div>
+
         {chips.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1.5">
             {chips.map((chip) => (
               <button
                 key={chip.key}
@@ -91,29 +182,6 @@ export function Toolbar({
             ))}
           </div>
         )}
-      </div>
-
-      <div className="flex items-end gap-4">
-        <div>
-          <p className={['mb-1.5 text-xs font-semibold', mutedText(isDark)].join(' ')}>
-            Göstərici
-          </p>
-          <Segmented<Measure>
-            value={measure}
-            options={MEASURE_OPTIONS}
-            onChange={onMeasureChange}
-          />
-        </div>
-        <div>
-          <p className={['mb-1.5 text-xs font-semibold', mutedText(isDark)].join(' ')}>
-            Göstərmə
-          </p>
-          <Segmented<DisplayMode>
-            value={display}
-            options={DISPLAY_OPTIONS}
-            onChange={onDisplayChange}
-          />
-        </div>
       </div>
     </section>
   );

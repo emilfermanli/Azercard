@@ -41,12 +41,41 @@ function toColumnRows(raw: RawRow[], measure: Measure): ColumnRow[] {
   }));
 }
 
+/**
+ * Sətrin seçili olub-olmaması — yalnız aktiv (boş olmayan) seçim üçün.
+ * Boş `deviceType`/`label` dəyəri default boş seçimlə üst-üstə düşməsin deyə vacibdir.
+ */
+const isSelected = (selection: string, value: string): boolean =>
+  Boolean(selection) && selection === value;
+
+/** Args-dan bir filtri çıxarır — sütunun öz seçimi onun öz siyahısına təsir etməsin. */
+function without(
+  args: TransactionDetailedArgs,
+  key: keyof TransactionDetailedArgs
+): TransactionDetailedArgs {
+  if (!(key in args)) return args;
+  const next = { ...args };
+  delete next[key];
+  return next;
+}
+
 export function useTdData({ apiArgs, measure, selections }: DataArgs) {
   const args: TransactionDetailedArgs = { ...apiArgs, Measure: MEASURE_API[measure] };
 
+  // Cross-filter: hər sütun DİGƏR sütunların seçiminə görə filtrlənir, amma
+  // ÖZ seçimini istisna edir — beləliklə seçim edəndə həmin sütun tam siyahı və
+  // eyni sıra ilə qalır (seçilmiş element öz yerində vurğulanır).
+  // KPI isə bütün seçimlərə görə filtrlənmiş ümumi cəmi göstərir (tam args).
+  const issuingArgs = without(args, 'IssuingCategory');
+  const targetArgs = without(args, 'TargetBankName');
+  const bankArgs = without(args, 'SourceBankName');
+  const deviceArgs = without(args, 'AcquiringDevice');
+
   const { data: summary, isFetching: f1 } = useGetTdSummaryQuery(args);
-  const { data: banks, isFetching: f2 } = useGetTdBanksQuery(args);
-  const { data: devices, isFetching: f3 } = useGetTdDevicesQuery(args);
+  const { data: issuingSummary, isFetching: fi } = useGetTdSummaryQuery(issuingArgs);
+  const { data: targetSummary, isFetching: ftb } = useGetTdSummaryQuery(targetArgs);
+  const { data: banks, isFetching: f2 } = useGetTdBanksQuery(bankArgs);
+  const { data: devices, isFetching: f3 } = useGetTdDevicesQuery(deviceArgs);
 
   const bankRows = useMemo<ColumnRow[]>(
     () =>
@@ -56,7 +85,7 @@ export function useTdData({ apiArgs, measure, selections }: DataArgs) {
           amount: b.amount,
           count: b.count,
           changePercent: b.changePercent,
-          selected: selections.bank === b.bankName,
+          selected: isSelected(selections.bank, b.bankName),
         })),
         measure
       ),
@@ -71,7 +100,7 @@ export function useTdData({ apiArgs, measure, selections }: DataArgs) {
           amount: d.amount,
           count: d.count,
           changePercent: d.changePercent,
-          selected: selections.device === d.deviceType,
+          selected: isSelected(selections.device, d.deviceType),
         })),
         measure
       ),
@@ -81,31 +110,31 @@ export function useTdData({ apiArgs, measure, selections }: DataArgs) {
   const issuingRows = useMemo<ColumnRow[]>(
     () =>
       toColumnRows(
-        (summary?.issuingCategories ?? []).map((i) => ({
+        (issuingSummary?.issuingCategories ?? []).map((i) => ({
           value: i.label,
           amount: i.amount,
           count: i.count,
           changePercent: i.changePercent,
-          selected: selections.issuing === i.label,
+          selected: isSelected(selections.issuing, i.label),
         })),
         measure
       ),
-    [summary, selections.issuing, measure]
+    [issuingSummary, selections.issuing, measure]
   );
 
   const targetBankRows = useMemo<ColumnRow[]>(
     () =>
       toColumnRows(
-        (summary?.targetBanks ?? []).map((b) => ({
+        (targetSummary?.targetBanks ?? []).map((b) => ({
           value: b.bankName,
           amount: b.amount,
           count: b.count,
           changePercent: b.changePercent,
-          selected: selections.targetBank === b.bankName,
+          selected: isSelected(selections.targetBank, b.bankName),
         })),
         measure
       ),
-    [summary, selections.targetBank, measure]
+    [targetSummary, selections.targetBank, measure]
   );
 
   const columnData: Record<ColumnKey, ColumnRow[]> = {
@@ -115,9 +144,18 @@ export function useTdData({ apiArgs, measure, selections }: DataArgs) {
     targetBank: targetBankRows,
   };
 
+  // Hər sütun öz sorğusundan gəlir — yüklənmə vəziyyəti də ona uyğun.
+  const loading: Record<ColumnKey, boolean> = {
+    bank: f2,
+    device: f3,
+    issuing: fi,
+    targetBank: ftb,
+  };
+
   return {
     kpi: summary?.kpi,
     columnData,
-    isFetching: f1 || f2 || f3,
+    loading,
+    isFetching: f1 || fi || ftb || f2 || f3,
   };
 }

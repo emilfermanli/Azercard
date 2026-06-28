@@ -21,7 +21,10 @@ export function CashNonCashCard({ title, subtitle, data }: CashNonCashCardProps)
         {data.map((item) => (
           <div
             key={item.name}
-            className={['flex flex-col rounded-xl border p-4', subtlePanelClass(isDark)].join(' ')}
+            className={[
+              'flex flex-col rounded-xl border p-4',
+              subtlePanelClass(isDark),
+            ].join(' ')}
           >
             <span className="flex items-center gap-2 text-sm font-semibold">
               <span
@@ -30,7 +33,9 @@ export function CashNonCashCard({ title, subtitle, data }: CashNonCashCardProps)
               />
               {item.name}
             </span>
-            <span className="mt-3 text-2xl font-bold tabular-nums">{item.valueLabel}</span>
+            <span className="mt-3 text-2xl font-bold tabular-nums">
+              {item.valueLabel}
+            </span>
             <span className={['mt-1 text-sm font-semibold', mutedText(isDark)].join(' ')}>
               {formatPct(item.pct)}
             </span>

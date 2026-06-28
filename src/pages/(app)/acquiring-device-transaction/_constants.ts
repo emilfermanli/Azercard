@@ -2,11 +2,12 @@ import type { AcquiringApiFilters } from '@/types/acquiring-device.type';
 import type { AmountUnit, Metric } from './_types';
 
 // Kateqoriya parametri — bütün qrafiklərdə hansı göstəricinin əks olunduğunu seçir.
-export const METRIC_OPTIONS: Array<{ value: Metric; label: string; monetary: boolean }> = [
-  { value: 'turnover', label: 'Dövriyyə', monetary: true },
-  { value: 'count', label: 'Əməliyyat sayı', monetary: false },
-  { value: 'average', label: 'Ortalama məbləğ', monetary: true },
-];
+export const METRIC_OPTIONS: Array<{ value: Metric; label: string; monetary: boolean }> =
+  [
+    { value: 'turnover', label: 'Dövriyyə', monetary: true },
+    { value: 'count', label: 'Əməliyyat sayı', monetary: false },
+    { value: 'average', label: 'Ortalama məbləğ', monetary: true },
+  ];
 
 // Kateqoriya → API `Category` dəyəri.
 export const METRIC_API_CATEGORY: Record<Metric, string> = {
@@ -16,11 +17,12 @@ export const METRIC_API_CATEGORY: Record<Metric, string> = {
 };
 
 // Məbləğ vahidi — yalnız monetar göstəricilərə (dövriyyə, ortalama) tətbiq olunur.
-export const AMOUNT_UNITS: Array<{ value: AmountUnit; label: string; divisor: number }> = [
-  { value: 'Min', label: 'Min (₼)', divisor: 1 },
-  { value: 'Mln', label: 'Mln (₼)', divisor: 1_000_000 },
-  { value: 'Mlrd', label: 'Mlrd (₼)', divisor: 1_000_000_000 },
-];
+export const AMOUNT_UNITS: Array<{ value: AmountUnit; label: string; divisor: number }> =
+  [
+    { value: 'Min', label: 'Min (₼)', divisor: 1 },
+    { value: 'Mln', label: 'Mln (₼)', divisor: 1_000_000 },
+    { value: 'Mlrd', label: 'Mlrd (₼)', divisor: 1_000_000_000 },
+  ];
 
 // Trend qrafikinin zaman addımı.
 export const GRANULARITY_OPTIONS: Array<{ value: string; label: string }> = [
@@ -35,8 +37,18 @@ export const GRANULARITY_OPTIONS: Array<{ value: string; label: string }> = [
 export const TREND_AGG_DIMENSION = 'trans_group' as const;
 
 export const MONTHS_AZ = [
-  'Yan', 'Fev', 'Mar', 'Apr', 'May', 'İyn',
-  'İyl', 'Avq', 'Sen', 'Okt', 'Noy', 'Dek',
+  'Yan',
+  'Fev',
+  'Mar',
+  'Apr',
+  'May',
+  'İyn',
+  'İyl',
+  'Avq',
+  'Sen',
+  'Okt',
+  'Noy',
+  'Dek',
 ];
 
 // Qurğu tipi → rəng (1-ci slayda uyğun, bütün qrafiklərdə paylaşılır).
@@ -105,15 +117,81 @@ export type AcquiringFilterField = {
 };
 
 export const FILTER_FIELDS: AcquiringFilterField[] = [
-  { key: 'acquiringDeviceType', apiKey: 'AcquiringDeviceTypes', optionsKey: 'acquiringDeviceTypes', label: 'Acquiring qurğu', placeholder: 'Bütün qurğular' },
-  { key: 'transGroup', apiKey: 'TransGroups', optionsKey: 'transGroups', label: 'Əməliyyat qrupu', placeholder: 'Bütün qruplar' },
-  { key: 'operationType', apiKey: 'OperationTypes', optionsKey: 'operationTypes', label: 'Əməliyyat tipi', placeholder: 'Bütün tiplər' },
-  { key: 'tokenStatus', apiKey: 'TokenStatuses', optionsKey: 'tokenStatuses', label: 'Token statusu', placeholder: 'Hamısı' },
-  { key: 'mcc', apiKey: 'Mccs', optionsKey: 'mccs', label: 'MCC', placeholder: 'Bütün MCC-lər' },
-  { key: 'acquiringCategory', apiKey: 'AcquiringCategories', optionsKey: 'acquiringCategories', label: 'Acquiring kateqoriyası', placeholder: 'Bütün kateqoriyalar' },
-  { key: 'targetBankName', apiKey: 'TargetBankNames', optionsKey: 'targetBanks', label: 'Target bank', placeholder: 'Bütün banklar' },
-  { key: 'sourceBankName', apiKey: 'SourceBankNames', optionsKey: 'sourceBanks', label: 'Source bank', placeholder: 'Bütün banklar' },
-  { key: 'targetCity', apiKey: 'TargetCities', optionsKey: 'targetCities', label: 'Target şəhər', placeholder: 'Bütün şəhərlər' },
-  { key: 'paymentSystem', apiKey: 'PaymentSystems', optionsKey: 'paymentSystems', label: 'Ödəniş sistemi', placeholder: 'Bütün sistemlər' },
-  { key: 'contactlessStatus', apiKey: 'ContactlessStatuses', optionsKey: 'contactlessStatuses', label: 'Kontaktsız', placeholder: 'Hamısı' },
+  {
+    key: 'acquiringDeviceType',
+    apiKey: 'AcquiringDeviceTypes',
+    optionsKey: 'acquiringDeviceTypes',
+    label: 'Acquiring qurğu',
+    placeholder: 'Bütün qurğular',
+  },
+  {
+    key: 'transGroup',
+    apiKey: 'TransGroups',
+    optionsKey: 'transGroups',
+    label: 'Əməliyyat qrupu',
+    placeholder: 'Bütün qruplar',
+  },
+  {
+    key: 'operationType',
+    apiKey: 'OperationTypes',
+    optionsKey: 'operationTypes',
+    label: 'Əməliyyat tipi',
+    placeholder: 'Bütün tiplər',
+  },
+  {
+    key: 'tokenStatus',
+    apiKey: 'TokenStatuses',
+    optionsKey: 'tokenStatuses',
+    label: 'Token statusu',
+    placeholder: 'Hamısı',
+  },
+  {
+    key: 'mcc',
+    apiKey: 'Mccs',
+    optionsKey: 'mccs',
+    label: 'MCC',
+    placeholder: 'Bütün MCC-lər',
+  },
+  {
+    key: 'acquiringCategory',
+    apiKey: 'AcquiringCategories',
+    optionsKey: 'acquiringCategories',
+    label: 'Acquiring kateqoriyası',
+    placeholder: 'Bütün kateqoriyalar',
+  },
+  {
+    key: 'targetBankName',
+    apiKey: 'TargetBankNames',
+    optionsKey: 'targetBanks',
+    label: 'Target bank',
+    placeholder: 'Bütün banklar',
+  },
+  {
+    key: 'sourceBankName',
+    apiKey: 'SourceBankNames',
+    optionsKey: 'sourceBanks',
+    label: 'Source bank',
+    placeholder: 'Bütün banklar',
+  },
+  {
+    key: 'targetCity',
+    apiKey: 'TargetCities',
+    optionsKey: 'targetCities',
+    label: 'Target şəhər',
+    placeholder: 'Bütün şəhərlər',
+  },
+  {
+    key: 'paymentSystem',
+    apiKey: 'PaymentSystems',
+    optionsKey: 'paymentSystems',
+    label: 'Ödəniş sistemi',
+    placeholder: 'Bütün sistemlər',
+  },
+  {
+    key: 'contactlessStatus',
+    apiKey: 'ContactlessStatuses',
+    optionsKey: 'contactlessStatuses',
+    label: 'Kontaktsız',
+    placeholder: 'Hamısı',
+  },
 ];

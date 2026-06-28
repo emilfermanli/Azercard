@@ -1,7 +1,14 @@
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import type { AmountScale, SummaryGroup } from '@/types/summary-transaction.type';
 import { DEVICE_ORDER, SCALE_UNIT } from '../_constants';
-import { accentBadge, accentHeader, formatAmount, formatInt, mutedText, panelClass } from '../_utils';
+import {
+  accentBadge,
+  accentHeader,
+  formatAmount,
+  formatInt,
+  mutedText,
+  panelClass,
+} from '../_utils';
 
 type GroupCardProps = {
   index: number;
@@ -12,7 +19,14 @@ type GroupCardProps = {
   scale: AmountScale;
 };
 
-export function GroupCard({ index, title, subtitle, accent, group, scale }: GroupCardProps) {
+export function GroupCard({
+  index,
+  title,
+  subtitle,
+  accent,
+  group,
+  scale,
+}: GroupCardProps) {
   const isDark = useShellTheme();
   const muted = mutedText(isDark);
   const unit = SCALE_UNIT[scale];
@@ -28,7 +42,9 @@ export function GroupCard({ index, title, subtitle, accent, group, scale }: Grou
       ].join(' ')}
     >
       {/* Başlıq lenti */}
-      <div className={['flex items-start gap-3 p-4', accentHeader(accent, isDark)].join(' ')}>
+      <div
+        className={['flex items-start gap-3 p-4', accentHeader(accent, isDark)].join(' ')}
+      >
         <span
           className={[
             'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm font-bold',
@@ -51,14 +67,19 @@ export function GroupCard({ index, title, subtitle, accent, group, scale }: Grou
         ].join(' ')}
       >
         <div>
-          <p className={['text-[11px] font-semibold uppercase', muted].join(' ')}>Məbləğ</p>
+          <p className={['text-[11px] font-semibold uppercase', muted].join(' ')}>
+            Məbləğ
+          </p>
           <p className="mt-0.5 text-lg font-bold tabular-nums">
-            {formatAmount(group?.amount ?? 0)} <span className="text-xs font-medium opacity-70">{unit}</span>
+            {formatAmount(group?.amount ?? 0)}{' '}
+            <span className="text-xs font-medium opacity-70">{unit}</span>
           </p>
         </div>
         <div>
           <p className={['text-[11px] font-semibold uppercase', muted].join(' ')}>Say</p>
-          <p className="mt-0.5 text-lg font-bold tabular-nums">{formatInt(group?.count ?? 0)}</p>
+          <p className="mt-0.5 text-lg font-bold tabular-nums">
+            {formatInt(group?.count ?? 0)}
+          </p>
         </div>
       </div>
 
@@ -67,7 +88,10 @@ export function GroupCard({ index, title, subtitle, accent, group, scale }: Grou
         {DEVICE_ORDER.map(({ code, label }) => {
           const row = deviceMap.get(code);
           return (
-            <li key={code} className="flex items-center justify-between gap-3 px-4 py-2.5">
+            <li
+              key={code}
+              className="flex items-center justify-between gap-3 px-4 py-2.5"
+            >
               <span
                 className={[
                   'inline-flex shrink-0 items-center rounded-md px-2 py-0.5 text-[11px] font-bold',
@@ -79,7 +103,9 @@ export function GroupCard({ index, title, subtitle, accent, group, scale }: Grou
               <div className="flex items-baseline gap-4 text-right tabular-nums">
                 <span className="text-sm font-semibold">
                   {formatAmount(row?.amount ?? 0)}{' '}
-                  <span className={['text-[10px] font-medium', muted].join(' ')}>{unit}</span>
+                  <span className={['text-[10px] font-medium', muted].join(' ')}>
+                    {unit}
+                  </span>
                 </span>
                 <span className={['min-w-16 text-xs', muted].join(' ')}>
                   {formatInt(row?.count ?? 0)}

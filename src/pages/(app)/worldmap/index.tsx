@@ -5,6 +5,7 @@ import { ArcLayer, BitmapLayer, ScatterplotLayer, TextLayer } from '@deck.gl/lay
 import { TileLayer } from '@deck.gl/geo-layers';
 import { FlyToInterpolator } from '@deck.gl/core';
 import type { MapViewState, ViewStateChangeParameters } from '@deck.gl/core';
+import { BASE_MAP_TILE_URL, type BaseMapStyle } from '@/utils/basemap-tiles';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
   ArrowRightLeft,
@@ -88,7 +89,6 @@ type BooleanOption = {
 };
 
 type MapMode = 'flow' | 'heatmap';
-type BaseMapStyle = 'dark' | 'light' | 'voyager' | 'minimal';
 
 type HeatmapPoint = {
   id: string;
@@ -119,12 +119,6 @@ const FLAG_OPTIONS: BooleanOption[] = [
   { label: 'Xeyr', value: false },
 ];
 
-const BASE_MAP_TILE_URL: Record<BaseMapStyle, string> = {
-  dark: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-  light: 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
-  voyager: 'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
-  minimal: 'https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}@2x.png',
-};
 const BASE_MAP_OPTIONS: { label: string; value: BaseMapStyle }[] = [
   { label: 'Qara', value: 'dark' },
   { label: 'Açıq', value: 'light' },

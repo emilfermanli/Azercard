@@ -5,6 +5,7 @@ import { BitmapLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers';
 import { TileLayer } from '@deck.gl/geo-layers';
 import { FlyToInterpolator } from '@deck.gl/core';
 import type { MapViewState, ViewStateChangeParameters } from '@deck.gl/core';
+import { BASE_MAP_TILE_URL, type BaseMapStyle } from '@/utils/basemap-tiles';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
   BarChart3,
@@ -45,7 +46,6 @@ import {
 } from '../_data-page-ui';
 
 type MapMode = 'points' | 'heatmap';
-type BaseMapStyle = 'dark' | 'light' | 'voyager' | 'minimal';
 
 type SelectOption = {
   label: string;
@@ -79,12 +79,6 @@ const MAP_MIN_ZOOM = 5;
 const MAP_MAX_ZOOM = 10;
 const PAGE_SIZE = 10;
 
-const BASE_MAP_TILE_URL: Record<BaseMapStyle, string> = {
-  dark: 'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
-  light: 'https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}@2x.png',
-  voyager: 'https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png',
-  minimal: 'https://a.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}@2x.png',
-};
 const BASE_MAP_OPTIONS: { label: string; value: BaseMapStyle }[] = [
   { label: 'Qara', value: 'dark' },
   { label: 'Açıq', value: 'light' },

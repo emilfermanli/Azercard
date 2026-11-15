@@ -17,7 +17,12 @@ export function ParameterRail({ visible, onToggle }: ParameterRailProps) {
 
   return (
     <div className="flex w-28 shrink-0 flex-col gap-2">
-      <p className={['px-1 text-[11px] font-bold uppercase tracking-wide', mutedText(isDark)].join(' ')}>
+      <p
+        className={[
+          'px-1 text-[11px] font-bold uppercase tracking-wide',
+          mutedText(isDark),
+        ].join(' ')}
+      >
         Parametrlər
       </p>
       {COLUMNS.map((col) => (

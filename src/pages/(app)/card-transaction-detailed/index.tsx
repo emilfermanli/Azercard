@@ -57,9 +57,10 @@ const CardTransactionDetailedPage: React.FC = () => {
 
         {shownColumns.length === 0 ? (
           <div
-            className={['flex flex-1 items-center justify-center rounded-xl border border-dashed py-16 text-sm', mutedText(isDark)].join(
-              ' '
-            )}
+            className={[
+              'flex flex-1 items-center justify-center rounded-xl border border-dashed py-16 text-sm',
+              mutedText(isDark),
+            ].join(' ')}
           >
             Soldan ən azı bir parametr seçin
           </div>

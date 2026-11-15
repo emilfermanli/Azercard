@@ -62,7 +62,12 @@ export function BreakdownDonut({ title, subtitle, data }: BreakdownDonutProps) {
   );
 
   return (
-    <ChartCard title={title} subtitle={subtitle} action={toggle} empty={data.length === 0}>
+    <ChartCard
+      title={title}
+      subtitle={subtitle}
+      action={toggle}
+      empty={data.length === 0}
+    >
       <div className="flex flex-col items-center gap-4 sm:flex-row">
         <div className="h-44 w-44 shrink-0">
           <ResponsiveContainer width="100%" height="100%">
@@ -101,7 +106,12 @@ export function BreakdownDonut({ title, subtitle, data }: BreakdownDonutProps) {
                   {item.name}
                 </span>
               </span>
-              <span className={['shrink-0 tabular-nums font-semibold', mutedText(isDark)].join(' ')}>
+              <span
+                className={[
+                  'shrink-0 tabular-nums font-semibold',
+                  mutedText(isDark),
+                ].join(' ')}
+              >
                 {mode === 'pct' ? formatPct(item.pct) : item.valueLabel}
               </span>
             </li>

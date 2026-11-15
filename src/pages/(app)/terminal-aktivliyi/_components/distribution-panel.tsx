@@ -189,8 +189,6 @@ export function DistributionPanel({
           </div>
         )}
       </div>
-
-
     </aside>
   );
 }

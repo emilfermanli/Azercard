@@ -34,15 +34,27 @@ export const cardsApi = createApi({
     }),
     // Yuxarı kartlar — seçilmiş ölçü (dimension) üzrə bölgü (tam massiv qaytarır).
     getCardTopCards: builder.query<CardTopCardItem[], CardTopCardsArgs>({
-      query: (args) => ({ url: 'cards/top-cards', method: 'GET', params: cleanParams(args) }),
+      query: (args) => ({
+        url: 'cards/top-cards',
+        method: 'GET',
+        params: cleanParams(args),
+      }),
     }),
     // Donut — seçilmiş ölçü üzrə pay bölgüsü.
     getCardPayChart: builder.query<CardPayChart, CardPayChartArgs>({
-      query: (args) => ({ url: 'cards/pay-chart', method: 'GET', params: cleanParams(args) }),
+      query: (args) => ({
+        url: 'cards/pay-chart',
+        method: 'GET',
+        params: cleanParams(args),
+      }),
     }),
     // Matris — X×Y ölçü cədvəli.
     getCardXyChart: builder.query<CardXyChart, CardXyChartArgs>({
-      query: (args) => ({ url: 'cards/xy-chart', method: 'GET', params: cleanParams(args) }),
+      query: (args) => ({
+        url: 'cards/xy-chart',
+        method: 'GET',
+        params: cleanParams(args),
+      }),
     }),
     // Trend — seçilmiş ölçü/dəyər üzrə vaxt seriyası.
     getCardTrend: builder.query<CardTrend, CardTrendArgs>({

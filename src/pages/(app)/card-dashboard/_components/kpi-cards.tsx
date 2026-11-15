@@ -1,10 +1,4 @@
-import {
-  ArrowRightLeft,
-  Scale,
-  TrendingUp,
-  Wallet,
-  type LucideIcon,
-} from 'lucide-react';
+import { ArrowRightLeft, Scale, TrendingUp, Wallet, type LucideIcon } from 'lucide-react';
 
 import type { KpiCard, Metric } from '../_types';
 

@@ -313,7 +313,6 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
               <DateInput
                 className={inputClass}
                 value={draftDateFromInput}
-                max={draftDateToInput || undefined}
                 onChange={setDraftDateFromInput}
               />
             </label>
@@ -322,7 +321,6 @@ export function FiltersDrawer({ filters }: { filters: DeviceFiltersController })
               <DateInput
                 className={inputClass}
                 value={draftDateToInput}
-                min={draftDateFromInput || undefined}
                 onChange={setDraftDateToInput}
               />
             </label>

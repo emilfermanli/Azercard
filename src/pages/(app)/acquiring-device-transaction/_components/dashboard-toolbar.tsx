@@ -1,9 +1,5 @@
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
-import {
-  AMOUNT_UNITS,
-  GRANULARITY_OPTIONS,
-  METRIC_OPTIONS,
-} from '../_constants';
+import { AMOUNT_UNITS, GRANULARITY_OPTIONS, METRIC_OPTIONS } from '../_constants';
 import type { AmountUnit, Metric } from '../_types';
 import { mutedText, panelClass } from '../_utils';
 
@@ -73,8 +69,7 @@ export function DashboardToolbar({
 }: ToolbarProps) {
   const isDark = useShellTheme();
   const isCount = metric === 'count';
-  const metricLabel =
-    METRIC_OPTIONS.find((m) => m.value === metric)?.label ?? '';
+  const metricLabel = METRIC_OPTIONS.find((m) => m.value === metric)?.label ?? '';
 
   return (
     <section

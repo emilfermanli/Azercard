@@ -41,11 +41,7 @@ const amountDivisor = (unit: AmountUnit): number =>
   AMOUNT_UNITS.find((u) => u.value === unit)?.divisor ?? 1;
 
 /** Göstəricini kateqoriya/məbləğ vahidinə uyğun formatlayır. */
-export function formatMetric(
-  value: number,
-  metric: Metric,
-  unit: AmountUnit
-): string {
+export function formatMetric(value: number, metric: Metric, unit: AmountUnit): string {
   if (metric === 'count') {
     return Math.round(value).toLocaleString('az-AZ');
   }

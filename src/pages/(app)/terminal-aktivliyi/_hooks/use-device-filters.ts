@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import {
   useGetDevicesFiltersQuery,
-  // useGetDevicesLatestMonthQuery,
+  useGetDevicesLatestMonthQuery,
 } from '@/services/devices.service';
 import type { DeviceBaseFilters } from '@/types/devices.type';
 import {
@@ -31,9 +31,8 @@ function toOptions(values: string[] = []): SelectOption[] {
  * Data layer üçün `reportMonth`, `prevMonth`, tarix aralığı və `queryFilters` verir.
  */
 export function useDeviceFilters() {
-  // const { data: latestMonth } = useGetDevicesLatestMonthQuery();
-  //latestMonth?.reportMonth ?? '2004-04-01';
-  const latestReportMonth = '2004-04-01';
+  const { data: latestMonth } = useGetDevicesLatestMonthQuery();
+  const latestReportMonth = latestMonth?.reportMonth;
   const { data: filtersData } = useGetDevicesFiltersQuery();
 
   const [isOpen, setOpen] = useState(false);
@@ -44,8 +43,9 @@ export function useDeviceFilters() {
   const [mccNames, setMccNames] = useState<string[]>([]);
   const [retailCategories, setRetailCategories] = useState<string[]>([]);
   // "Bölgü" — share endpointinin `dimension`-ı (tək seçim, default Terminal).
-  const [shareDimension, setShareDimension] =
-    useState<ShareDimensionValue>(SHARE_DIMENSION_DEFAULT);
+  const [shareDimension, setShareDimension] = useState<ShareDimensionValue>(
+    SHARE_DIMENSION_DEFAULT
+  );
   // Matris tarix aralığı — boş = ən son ay; Son həm də reportMonth mənbəyidir.
   const [dateFromInput, setDateFromInput] = useState('');
   const [dateToInput, setDateToInput] = useState('');
@@ -55,8 +55,9 @@ export function useDeviceFilters() {
   const [draftRegionNames, setDraftRegionNames] = useState<string[]>([]);
   const [draftMccNames, setDraftMccNames] = useState<string[]>([]);
   const [draftRetailCategories, setDraftRetailCategories] = useState<string[]>([]);
-  const [draftShareDimension, setDraftShareDimension] =
-    useState<ShareDimensionValue>(SHARE_DIMENSION_DEFAULT);
+  const [draftShareDimension, setDraftShareDimension] = useState<ShareDimensionValue>(
+    SHARE_DIMENSION_DEFAULT
+  );
   const [draftDateFromInput, setDraftDateFromInput] = useState('');
   const [draftDateToInput, setDraftDateToInput] = useState('');
 
@@ -69,7 +70,7 @@ export function useDeviceFilters() {
   const xyDateTo = effectiveDateTo ? toDateTime(effectiveDateTo) : undefined;
 
   // Cəmi, kartlar və trend — matrisin Son tarixinin ayı.
-  const reportMonth = toReportMonth(effectiveDateTo);
+  const reportMonth = effectiveDateTo ? toReportMonth(effectiveDateTo) : undefined;
   const prevMonth = reportMonth ? shiftMonth(reportMonth, -1) : undefined;
 
   // Matris (xy-analysis) üçün filtrlər — çox seçimli massivlər (boşları atılır).
@@ -151,8 +152,13 @@ export function useDeviceFilters() {
     setMccNames(draftMccNames);
     setRetailCategories(draftRetailCategories);
     setShareDimension(draftShareDimension);
-    setDateFromInput(draftDateFromInput !== latestInput ? draftDateFromInput : '');
-    setDateToInput(draftDateToInput !== latestInput ? draftDateToInput : '');
+    // Tarixlər sərbəst seçilir; tərs aralıq (başlanğıc > son) yerini dəyişir.
+    const [from, to] =
+      draftDateFromInput && draftDateToInput && draftDateFromInput > draftDateToInput
+        ? [draftDateToInput, draftDateFromInput]
+        : [draftDateFromInput, draftDateToInput];
+    setDateFromInput(from !== latestInput ? from : '');
+    setDateToInput(to !== latestInput ? to : '');
     setOpen(false);
   };
 

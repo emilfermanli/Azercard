@@ -26,9 +26,10 @@ type TrendChartProps = {
 };
 
 const compact = (value: number) =>
-  new Intl.NumberFormat('az-AZ', { notation: 'compact', maximumFractionDigits: 1 }).format(
-    value
-  );
+  new Intl.NumberFormat('az-AZ', {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(value);
 
 function TrendTooltip({
   active,
@@ -167,7 +168,9 @@ export function TrendChart({
           Proqnoz (aşağı–yuxarı hədd)
         </span>
         {!hasForecast && (
-          <span className={mutedText(isDark)}>(proqnoz üçün kifayət qədər tarixçə yoxdur)</span>
+          <span className={mutedText(isDark)}>
+            (proqnoz üçün kifayət qədər tarixçə yoxdur)
+          </span>
         )}
       </div>
     </ChartCard>

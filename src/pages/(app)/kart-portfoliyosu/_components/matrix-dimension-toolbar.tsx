@@ -88,7 +88,9 @@ function DimensionPicker({
               disabled={isExcluded}
               onClick={() => onPick(tab.value)}
               title={
-                isExcluded ? `Bu ölçü artıq ${excludedHint.toLowerCase()} istifadə olunur` : tab.label
+                isExcluded
+                  ? `Bu ölçü artıq ${excludedHint.toLowerCase()} istifadə olunur`
+                  : tab.label
               }
               className={[
                 'flex h-9 items-center gap-1.5 rounded-md px-2.5 text-xs font-semibold transition-colors',
@@ -136,7 +138,9 @@ export function MatrixDimensionToolbar({
 
   return (
     <div
-      className={['mt-5 rounded-xl border p-3 sm:p-4', subtlePanelClass(isDark)].join(' ')}
+      className={['mt-5 rounded-xl border p-3 sm:p-4', subtlePanelClass(isDark)].join(
+        ' '
+      )}
     >
       <div className="flex flex-col items-stretch gap-4 lg:flex-row lg:items-start">
         <DimensionPicker

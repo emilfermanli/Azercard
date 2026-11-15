@@ -2,10 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useGetAcquiringFilterOptionsQuery } from '@/services/acquiring-device.service';
 import type { AcquiringApiFilters } from '@/types/acquiring-device.type';
-import {
-  FILTER_FIELDS,
-  type AcquiringFilterKey,
-} from '../_constants';
+import { FILTER_FIELDS, type AcquiringFilterKey } from '../_constants';
 import type { SelectOption } from '../_types';
 import { toApiDate, toDateInput } from '../_utils';
 

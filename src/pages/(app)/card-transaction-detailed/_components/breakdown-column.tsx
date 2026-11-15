@@ -39,9 +39,10 @@ export function BreakdownColumn({
 
   return (
     <section
-      className={['flex min-w-0 flex-col rounded-xl border p-3 shadow-lg', panelClass(isDark)].join(
-        ' '
-      )}
+      className={[
+        'flex min-w-0 flex-col rounded-xl border p-3 shadow-lg',
+        panelClass(isDark),
+      ].join(' ')}
     >
       <div className="mb-2 px-1">
         <h2 className="text-sm font-bold">{title}</h2>
@@ -50,9 +51,10 @@ export function BreakdownColumn({
 
       {rows.length === 0 ? (
         <div
-          className={['flex flex-1 items-center justify-center px-2 py-8 text-center text-xs', mutedText(isDark)].join(
-            ' '
-          )}
+          className={[
+            'flex flex-1 items-center justify-center px-2 py-8 text-center text-xs',
+            mutedText(isDark),
+          ].join(' ')}
         >
           {hint ?? 'Məlumat yoxdur'}
         </div>

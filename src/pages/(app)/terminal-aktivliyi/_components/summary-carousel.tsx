@@ -14,8 +14,7 @@ type SummaryCarouselProps = {
 };
 
 function CarouselCard({ card }: { card: SummaryCard }) {
-
-  console.log(card)
+  console.log(card);
   return (
     <article
       className={[
@@ -66,7 +65,7 @@ export function SummaryCarousel({
       : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-950',
   ].join(' ');
 
-  console.log(cards, "asdasd")
+  console.log(cards, 'asdasd');
 
   return (
     <section className="space-y-3">

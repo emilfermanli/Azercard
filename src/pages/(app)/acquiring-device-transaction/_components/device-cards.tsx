@@ -25,7 +25,9 @@ export function DeviceCards({ cards, metricLabel, onToggle }: DeviceCardsProps) 
     >
       <div className="flex items-baseline justify-between px-1">
         <h2 className="text-sm font-bold">Qurğu tipləri</h2>
-        <span className={['text-[11px]', mutedText(isDark)].join(' ')}>{metricLabel}</span>
+        <span className={['text-[11px]', mutedText(isDark)].join(' ')}>
+          {metricLabel}
+        </span>
       </div>
 
       {cards.length === 0 && (

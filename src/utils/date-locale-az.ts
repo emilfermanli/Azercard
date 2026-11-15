@@ -13,4 +13,12 @@ export const MONTHS_AZ_FULL = [
   'Dekabr',
 ] as const;
 
-export const WEEKDAYS_AZ_SHORT = ['B.e.', 'Ç.a.', 'Ç.', 'C.a.', 'C.', 'Ş.', 'B.'] as const;
+export const WEEKDAYS_AZ_SHORT = [
+  'B.e.',
+  'Ç.a.',
+  'Ç.',
+  'C.a.',
+  'C.',
+  'Ş.',
+  'B.',
+] as const;

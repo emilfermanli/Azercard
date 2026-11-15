@@ -52,12 +52,16 @@ export function DistributionPanel({
 
   return (
     <aside
-      className={['min-w-0 rounded-xl border p-4 shadow-lg', panelClass(isDark)].join(' ')}
+      className={['min-w-0 rounded-xl border p-4 shadow-lg', panelClass(isDark)].join(
+        ' '
+      )}
       style={style}
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold">{mode === 'share' ? 'Pay bölgüsü' : 'Trend'}</h2>
+          <h2 className="text-xl font-bold">
+            {mode === 'share' ? 'Pay bölgüsü' : 'Trend'}
+          </h2>
           <p className={['mt-1 text-sm', muted].join(' ')}>
             {mode === 'share'
               ? 'Ödəniş sistemləri üzrə kart payları'
@@ -152,7 +156,10 @@ export function DistributionPanel({
         ) : (
           <div className="h-64 xl:h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trendChartData} margin={{ top: 8, right: 12, left: -8, bottom: 0 }}>
+              <LineChart
+                data={trendChartData}
+                margin={{ top: 8, right: 12, left: -8, bottom: 0 }}
+              >
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke={isDark ? '#1e293b' : '#e2e8f0'}

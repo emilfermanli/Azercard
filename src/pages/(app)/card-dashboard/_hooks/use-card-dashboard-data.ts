@@ -31,7 +31,8 @@ const isMonetary = (metric: Metric) =>
 /** Bölgü elementindən aktiv göstərici üzrə mütləq dəyər. */
 function breakdownValue(item: CardBreakdownItem, metric: Metric): number {
   if (metric === 'count') return item.totalTxCount;
-  if (metric === 'avg') return item.totalTxCount ? item.totalAmount / item.totalTxCount : 0;
+  if (metric === 'avg')
+    return item.totalTxCount ? item.totalAmount / item.totalTxCount : 0;
   return item.totalAmount; // amount, max (max bölgü mövcud deyil → məbləğ)
 }
 

@@ -43,7 +43,12 @@ const SummaryTransactionPage: React.FC = () => {
       ) : isError ? (
         <PageError />
       ) : (
-        <div className={['space-y-5 transition-opacity', isFetching ? 'opacity-60' : ''].join(' ')}>
+        <div
+          className={[
+            'space-y-5 transition-opacity',
+            isFetching ? 'opacity-60' : '',
+          ].join(' ')}
+        >
           {/* 1 — Total AZC transaction (hero) */}
           <div
             className={[
@@ -59,10 +64,19 @@ const SummaryTransactionPage: React.FC = () => {
                   1
                 </span>
                 <div>
-                  <h2 className={['text-base font-semibold', isDark ? 'text-white' : 'text-slate-950'].join(' ')}>
+                  <h2
+                    className={[
+                      'text-base font-semibold',
+                      isDark ? 'text-white' : 'text-slate-950',
+                    ].join(' ')}
+                  >
                     Ümumi AZC əməliyyatları
                   </h2>
-                  <p className={['mt-0.5 text-xs font-medium', mutedText(isDark)].join(' ')}>
+                  <p
+                    className={['mt-0.5 text-xs font-medium', mutedText(isDark)].join(
+                      ' '
+                    )}
+                  >
                     Total AZC transaction — şərtsiz cəm
                   </p>
                 </div>
@@ -70,7 +84,12 @@ const SummaryTransactionPage: React.FC = () => {
 
               <div className="flex flex-wrap items-center gap-8">
                 <div>
-                  <p className={['text-[11px] font-semibold uppercase', mutedText(isDark)].join(' ')}>
+                  <p
+                    className={[
+                      'text-[11px] font-semibold uppercase',
+                      mutedText(isDark),
+                    ].join(' ')}
+                  >
                     Məbləğ
                   </p>
                   <p className="mt-0.5 text-3xl font-bold tabular-nums">
@@ -79,7 +98,12 @@ const SummaryTransactionPage: React.FC = () => {
                   </p>
                 </div>
                 <div>
-                  <p className={['text-[11px] font-semibold uppercase', mutedText(isDark)].join(' ')}>
+                  <p
+                    className={[
+                      'text-[11px] font-semibold uppercase',
+                      mutedText(isDark),
+                    ].join(' ')}
+                  >
                     Say
                   </p>
                   <p className="mt-0.5 text-3xl font-bold tabular-nums">

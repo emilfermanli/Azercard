@@ -34,9 +34,10 @@ export function ChartCard({
       </div>
       {empty ? (
         <div
-          className={['flex flex-1 items-center justify-center py-10 text-sm', mutedText(isDark)].join(
-            ' '
-          )}
+          className={[
+            'flex flex-1 items-center justify-center py-10 text-sm',
+            mutedText(isDark),
+          ].join(' ')}
         >
           Məlumat yoxdur
         </div>

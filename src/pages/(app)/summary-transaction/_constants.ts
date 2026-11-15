@@ -1,4 +1,7 @@
-import type { AmountScale, SummaryTransactionArgs } from '@/types/summary-transaction.type';
+import type {
+  AmountScale,
+  SummaryTransactionArgs,
+} from '@/types/summary-transaction.type';
 import type { GroupKey } from './_types';
 
 // Məbləğ miqyası (AmountScale) — toolbar seqmenti.
@@ -88,13 +91,55 @@ export type SummaryFilterField = {
 type SelectStaticOption = { label: string; value: string };
 
 export const FILTER_FIELDS: SummaryFilterField[] = [
-  { key: 'targetBank', apiKey: 'TargetBankName', optionsKey: 'targetBankNames', label: 'Target bank', placeholder: 'Bütün banklar' },
-  { key: 'sourceBank', apiKey: 'SourceBankName', optionsKey: 'targetBankNames', label: 'Source bank', placeholder: 'Bütün banklar' },
-  { key: 'cardProductType', apiKey: 'CardProductType', optionsKey: 'cardTypeCategories', label: 'Kart məhsul tipi', placeholder: 'Bütün tiplər' },
-  { key: 'paymentSystem', apiKey: 'PaymentSystem', optionsKey: 'paymentSystems', label: 'Ödəniş sistemi', placeholder: 'Bütün sistemlər' },
-  { key: 'transGroup', apiKey: 'TransGroup', optionsKey: 'transGroups', label: 'Əməliyyat qrupu', placeholder: 'Bütün qruplar' },
-  { key: 'operationType', apiKey: 'OperationType', optionsKey: 'operationTypes', label: 'Əməliyyat tipi', placeholder: 'Bütün tiplər' },
-  { key: 'tokenStatus', apiKey: 'TokenStatus', optionsKey: 'tokenStatuses', label: 'Token statusu', placeholder: 'Hamısı' },
+  {
+    key: 'targetBank',
+    apiKey: 'TargetBankName',
+    optionsKey: 'targetBankNames',
+    label: 'Target bank',
+    placeholder: 'Bütün banklar',
+  },
+  {
+    key: 'sourceBank',
+    apiKey: 'SourceBankName',
+    optionsKey: 'targetBankNames',
+    label: 'Source bank',
+    placeholder: 'Bütün banklar',
+  },
+  {
+    key: 'cardProductType',
+    apiKey: 'CardProductType',
+    optionsKey: 'cardTypeCategories',
+    label: 'Kart məhsul tipi',
+    placeholder: 'Bütün tiplər',
+  },
+  {
+    key: 'paymentSystem',
+    apiKey: 'PaymentSystem',
+    optionsKey: 'paymentSystems',
+    label: 'Ödəniş sistemi',
+    placeholder: 'Bütün sistemlər',
+  },
+  {
+    key: 'transGroup',
+    apiKey: 'TransGroup',
+    optionsKey: 'transGroups',
+    label: 'Əməliyyat qrupu',
+    placeholder: 'Bütün qruplar',
+  },
+  {
+    key: 'operationType',
+    apiKey: 'OperationType',
+    optionsKey: 'operationTypes',
+    label: 'Əməliyyat tipi',
+    placeholder: 'Bütün tiplər',
+  },
+  {
+    key: 'tokenStatus',
+    apiKey: 'TokenStatus',
+    optionsKey: 'tokenStatuses',
+    label: 'Token statusu',
+    placeholder: 'Hamısı',
+  },
   {
     key: 'isContactless',
     apiKey: 'IsContactless',

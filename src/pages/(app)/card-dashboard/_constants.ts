@@ -1,4 +1,7 @@
-import type { CardDashboardArgs, CardDashboardResponse } from '@/types/card-dashboard.type';
+import type {
+  CardDashboardArgs,
+  CardDashboardResponse,
+} from '@/types/card-dashboard.type';
 import type { Metric } from './_types';
 
 // Yuxarı 4 KPI pəncərəsi — kliklə aktiv göstərici seçilir (trend + bölgüləri idarə edir).
@@ -53,9 +56,17 @@ export const BREAKDOWN_CHARTS: Array<{
   title: string;
   subtitle: string;
 }> = [
-  { key: 'productBreakdown', title: 'Kart məhsul tipi', subtitle: 'CARD_PRODUCT_TYPE_CATEGORY üzrə' },
+  {
+    key: 'productBreakdown',
+    title: 'Kart məhsul tipi',
+    subtitle: 'CARD_PRODUCT_TYPE_CATEGORY üzrə',
+  },
   { key: 'paymentSystem', title: 'Ödəniş sistemi', subtitle: 'PAYMENT_SYSTEM üzrə' },
-  { key: 'paymentType', title: 'Ödəniş tipi (On-us / Off-us)', subtitle: 'IS_ISSUING_CATEGORY üzrə' },
+  {
+    key: 'paymentType',
+    title: 'Ödəniş tipi (On-us / Off-us)',
+    subtitle: 'IS_ISSUING_CATEGORY üzrə',
+  },
   { key: 'cashNonCash', title: 'Cash / Non-cash', subtitle: 'OPERATION_TYPE üzrə' },
 ];
 
@@ -87,13 +98,55 @@ export type CardDashFilterField = {
 };
 
 export const FILTER_FIELDS: CardDashFilterField[] = [
-  { key: 'targetBankName', apiKey: 'TargetBankName', optionsKey: 'targetBankNames', label: 'Target bank', placeholder: 'Bütün banklar' },
-  { key: 'transGroup', apiKey: 'TransGroup', optionsKey: 'transGroups', label: 'Əməliyyat qrupu', placeholder: 'Bütün qruplar' },
-  { key: 'cardTypeCategory', apiKey: 'CardTypeCategory', optionsKey: 'cardTypeCategories', label: 'Kart tipi kateqoriyası', placeholder: 'Bütün kateqoriyalar' },
-  { key: 'paymentSystem', apiKey: 'PaymentSystem', optionsKey: 'paymentSystems', label: 'Ödəniş sistemi', placeholder: 'Bütün sistemlər' },
-  { key: 'paymentType', apiKey: 'PaymentType', optionsKey: 'paymentTypes', label: 'Ödəniş tipi', placeholder: 'Bütün tiplər' },
-  { key: 'operationType', apiKey: 'OperationType', optionsKey: 'operationTypes', label: 'Əməliyyat tipi', placeholder: 'Bütün tiplər' },
-  { key: 'tokenStatus', apiKey: 'TokenStatus', optionsKey: 'tokenStatuses', label: 'Token statusu', placeholder: 'Hamısı' },
+  {
+    key: 'targetBankName',
+    apiKey: 'TargetBankName',
+    optionsKey: 'targetBankNames',
+    label: 'Target bank',
+    placeholder: 'Bütün banklar',
+  },
+  {
+    key: 'transGroup',
+    apiKey: 'TransGroup',
+    optionsKey: 'transGroups',
+    label: 'Əməliyyat qrupu',
+    placeholder: 'Bütün qruplar',
+  },
+  {
+    key: 'cardTypeCategory',
+    apiKey: 'CardTypeCategory',
+    optionsKey: 'cardTypeCategories',
+    label: 'Kart tipi kateqoriyası',
+    placeholder: 'Bütün kateqoriyalar',
+  },
+  {
+    key: 'paymentSystem',
+    apiKey: 'PaymentSystem',
+    optionsKey: 'paymentSystems',
+    label: 'Ödəniş sistemi',
+    placeholder: 'Bütün sistemlər',
+  },
+  {
+    key: 'paymentType',
+    apiKey: 'PaymentType',
+    optionsKey: 'paymentTypes',
+    label: 'Ödəniş tipi',
+    placeholder: 'Bütün tiplər',
+  },
+  {
+    key: 'operationType',
+    apiKey: 'OperationType',
+    optionsKey: 'operationTypes',
+    label: 'Əməliyyat tipi',
+    placeholder: 'Bütün tiplər',
+  },
+  {
+    key: 'tokenStatus',
+    apiKey: 'TokenStatus',
+    optionsKey: 'tokenStatuses',
+    label: 'Token statusu',
+    placeholder: 'Hamısı',
+  },
 ];
 
 // IsContactless üçün 3 vəziyyətli seçim.

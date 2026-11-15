@@ -2,20 +2,13 @@ import type {
   MeasureType,
   TransactionDetailedArgs,
 } from '@/types/card-transaction-detailed.type';
-import type { ColumnKey, DisplayMode, Measure } from './_types';
+import type { ColumnKey, Measure } from './_types';
 
 // Göstərici: AZN (LOCAL_AMOUNT cəmi) / SAY (əməliyyat sayı).
 export const MEASURE_OPTIONS: Array<{ value: Measure; label: string; hint: string }> = [
   { value: 'amount', label: 'AZN', hint: 'Dövriyyə — LOCAL_AMOUNT cəmi (manatla)' },
   { value: 'count', label: 'SAY', hint: 'Əməliyyat sayı' },
 ];
-
-// Göstərmə: % (faiz nisbəti) / r (mütləq dəyər = rəqəm).
-export const DISPLAY_OPTIONS: Array<{ value: DisplayMode; label: string; hint: string }> =
-  [
-    { value: 'pct', label: '%', hint: 'Faiz — sütun üzrə pay nisbəti' },
-    { value: 'value', label: 'r', hint: 'Rəqəm — mütləq dəyər (məbləğ və ya say)' },
-  ];
 
 // Measure → API MeasureType (faiz hesablama bazası).
 export const MEASURE_API: Record<Measure, MeasureType> = {

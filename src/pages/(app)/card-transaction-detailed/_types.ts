@@ -1,5 +1,4 @@
 export type Measure = 'amount' | 'count';
-export type DisplayMode = 'pct' | 'value';
 
 export type ColumnKey = 'bank' | 'device' | 'issuing' | 'targetBank';
 

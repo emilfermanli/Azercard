@@ -25,13 +25,7 @@ import {
 } from 'lucide-react';
 import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
-import {
-  Button,
-  DataPagination,
-  DataTable,
-  DateInput,
-  LoadingSpinner,
-} from '@/components';
+import { Button, DataTable, DateInput, LoadingSpinner } from '@/components';
 import { useGetGeneralBanksQuery } from '@/services/general.service';
 import {
   useGetWorldmapFilterQuery,
@@ -113,7 +107,6 @@ const INITIAL_VIEW_STATE = {
 
 const MAP_MIN_ZOOM = 0.8;
 const MAP_MAX_ZOOM = 6;
-const PAGE_SIZE = 10;
 const FLAG_OPTIONS: BooleanOption[] = [
   { label: 'Bəli', value: true },
   { label: 'Xeyr', value: false },
@@ -353,7 +346,6 @@ const WorldmapPage: React.FC = () => {
   const [draftReportMonth, setDraftReportMonth] = useState('');
   const [isApplyingFilters, setIsApplyingFilters] = useState(false);
   const [hasStartedApplyFetch, setHasStartedApplyFetch] = useState(false);
-  const [page, setPage] = useState(1);
   const [sourceCountryOptionCache, setSourceCountryOptionCache] = useState<
     SelectOption[]
   >([]);
@@ -391,8 +383,6 @@ const WorldmapPage: React.FC = () => {
     ...(sourceLongitudeNumber != null ? { SourceLongitude: sourceLongitudeNumber } : {}),
     ...(targetLatitudeNumber != null ? { TargetLatitude: targetLatitudeNumber } : {}),
     ...(targetLongitudeNumber != null ? { TargetLongitude: targetLongitudeNumber } : {}),
-    Page: page,
-    PageSize: PAGE_SIZE,
   });
   const {
     data: heatmapData,
@@ -403,26 +393,6 @@ const WorldmapPage: React.FC = () => {
     ...(reportMonth ? { month: reportMonth } : {}),
   });
   const rows = useMemo(() => data?.items ?? [], [data?.items]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [
-    bankId,
-    sourceCountry,
-    sourceCountryCategory,
-    targetCountry,
-    targetCountryCategory,
-    paymentSystem,
-    isIssuing,
-    isAcquiring,
-    totalAmountFilter,
-    totalCountFilter,
-    sourceLatitudeFilter,
-    sourceLongitudeFilter,
-    targetLatitudeFilter,
-    targetLongitudeFilter,
-    reportMonth,
-  ]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -1160,7 +1130,6 @@ const WorldmapPage: React.FC = () => {
     setDraftTargetLatitudeFilter('');
     setDraftTargetLongitudeFilter('');
     setDraftReportMonth('');
-    setPage(1);
   };
 
   const applyDraftFilters = () => {
@@ -1203,7 +1172,6 @@ const WorldmapPage: React.FC = () => {
     setTargetLatitudeFilter(draftTargetLatitudeFilter);
     setTargetLongitudeFilter(draftTargetLongitudeFilter);
     setReportMonth(draftReportMonth);
-    setPage(1);
     setFilterDrawerOpen(false);
   };
 
@@ -1934,16 +1902,6 @@ const WorldmapPage: React.FC = () => {
           </section>
 
           <DataTable columns={columns} data={rows} />
-          <DataPagination
-            hasNext={data?.hasNext ?? false}
-            hasPrev={data?.hasPrev ?? page > 1}
-            isFetching={isFetching}
-            onPageChange={setPage}
-            page={data?.page ?? page}
-            pageSize={PAGE_SIZE}
-            totalCount={data?.totalCount ?? rows.length}
-            totalPages={data?.totalPages ?? 1}
-          />
         </>
       )}
     </div>

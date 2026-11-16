@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
-import { Button, DataPagination, DataTable, DateInput } from '@/components';
+import { Button, DataTable, DateInput } from '@/components';
 import {
   useGetAzmapBanksQuery,
   useGetAzmapCitiesQuery,
@@ -77,7 +77,6 @@ const INITIAL_VIEW_STATE: MapViewState = {
 
 const MAP_MIN_ZOOM = 5;
 const MAP_MAX_ZOOM = 10;
-const PAGE_SIZE = 10;
 
 const BASE_MAP_OPTIONS: { label: string; value: BaseMapStyle }[] = [
   { label: 'Qara', value: 'dark' },
@@ -164,7 +163,6 @@ const AzmapPage: React.FC = () => {
   const [sourceCity, setSourceCity] = useState('');
   const [sourceCityClean, setSourceCityClean] = useState('');
   const [reportMonth, setReportMonth] = useState('');
-  const [page, setPage] = useState(1);
   const [draftBankName, setDraftBankName] = useState('');
   const [draftSourceCity, setDraftSourceCity] = useState('');
   const [draftSourceCityClean, setDraftSourceCityClean] = useState('');
@@ -184,13 +182,11 @@ const AzmapPage: React.FC = () => {
   const { data: cities = [], isLoading: citiesLoading } = useGetAzmapCitiesQuery();
   const { data: regions = [], isLoading: regionsLoading } = useGetAzmapRegionsQuery();
   const queryMonth = reportMonth;
-  const { data, isLoading, isError, isFetching } = useGetAzmapFilterQuery({
+  const { data, isLoading, isError } = useGetAzmapFilterQuery({
     ...(bankName ? { BankName: bankName } : {}),
     ...(sourceCity ? { SourceCity: sourceCity } : {}),
     ...(sourceCityClean ? { SourceCityClean: sourceCityClean } : {}),
     ...(queryMonth ? { ReportMonth: queryMonth } : {}),
-    Page: page,
-    PageSize: PAGE_SIZE,
   });
   const {
     data: heatmapData,
@@ -202,10 +198,6 @@ const AzmapPage: React.FC = () => {
     ...(queryMonth ? { month: queryMonth } : {}),
   });
   const rows = data?.items ?? [];
-
-  useEffect(() => {
-    setPage(1);
-  }, [bankName, sourceCity, sourceCityClean, reportMonth]);
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -663,7 +655,6 @@ const AzmapPage: React.FC = () => {
     setDraftSourceCity('');
     setDraftSourceCityClean('');
     setDraftReportMonth('');
-    setPage(1);
     setFilterDrawerOpen(false);
   };
 
@@ -672,7 +663,6 @@ const AzmapPage: React.FC = () => {
     setSourceCity(draftSourceCity);
     setSourceCityClean(draftSourceCityClean);
     setReportMonth(draftReportMonth);
-    setPage(1);
     setFilterDrawerOpen(false);
   };
 
@@ -1164,16 +1154,6 @@ const AzmapPage: React.FC = () => {
           </section>
 
           <DataTable columns={columns} data={rows} />
-          <DataPagination
-            hasNext={data?.hasNext ?? false}
-            hasPrev={data?.hasPrev ?? page > 1}
-            isFetching={isFetching}
-            onPageChange={setPage}
-            page={data?.page ?? page}
-            pageSize={PAGE_SIZE}
-            totalCount={data?.totalCount ?? rows.length}
-            totalPages={data?.totalPages ?? 1}
-          />
         </>
       )}
     </div>

@@ -12,7 +12,7 @@ import {
 
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import type { AlertItem, TrendDatum } from '../_types';
-import { formatMetricValue, formatPct, mutedText } from '../_utils';
+import { formatCompactNumber, formatMetricValue, formatPct, mutedText } from '../_utils';
 import { ChartCard } from './chart-card';
 
 type TrendChartProps = {
@@ -24,12 +24,6 @@ type TrendChartProps = {
   hasForecast: boolean;
   className?: string;
 };
-
-const compact = (value: number) =>
-  new Intl.NumberFormat('az-AZ', {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(value);
 
 function TrendTooltip({
   active,
@@ -116,11 +110,11 @@ export function TrendChart({
               tick={{ fontSize: 12, fill: axisColor }}
             />
             <YAxis
-              width={56}
+              width={68}
               tickLine={false}
               axisLine={false}
               tick={{ fontSize: 12, fill: axisColor }}
-              tickFormatter={(value: number) => compact(value)}
+              tickFormatter={(value: number) => formatCompactNumber(value, 1)}
             />
             <Tooltip content={<TrendTooltip monetary={monetary} roundTo={roundTo} />} />
             {/* Proqnoz güvən zolağı (aşağı–yuxarı hədd). */}

@@ -11,7 +11,7 @@ import {
 
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import type { DisplayMode, DonutDatum } from '../_types';
-import { formatPct } from '../_utils';
+import { formatCompactNumber, formatPct } from '../_utils';
 import { ChartCard } from './chart-card';
 
 type BreakdownBarProps = {
@@ -23,12 +23,6 @@ type BreakdownBarProps = {
 
 const truncate = (text: string, max = 16) =>
   text.length > max ? `${text.slice(0, max)}…` : text;
-
-const compact = (value: number) =>
-  new Intl.NumberFormat('az-AZ', {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(value);
 
 function BarTooltip({
   active,
@@ -106,7 +100,7 @@ export function BreakdownBar({ title, subtitle, data, maxRows = 12 }: BreakdownB
               axisLine={false}
               tick={{ fontSize: 11, fill: axisColor }}
               tickFormatter={(v: number) =>
-                mode === 'pct' ? `${Math.round(v)}%` : compact(v)
+                mode === 'pct' ? `${Math.round(v)}%` : formatCompactNumber(v, 1)
               }
             />
             <YAxis

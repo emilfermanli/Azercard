@@ -193,7 +193,16 @@ function getTotalCount(data: SectorSpendResponse | undefined, rows: SectorSpendI
 function groupRows(rows: SectorSpendItem[], getLabel: (row: SectorSpendItem) => string) {
   const map = new Map<
     string,
-    SummaryItem & { avgTicketValues: number[]; ratios: number[]; shares: number[] }
+    {
+      label: string;
+      amount: number;
+      count: number;
+      localAmount: number;
+      avgTicketSum: number;
+      ratioSum: number;
+      marketShare: number;
+      rowCount: number;
+    }
   >();
 
   rows.forEach((row) => {
@@ -204,12 +213,12 @@ function groupRows(rows: SectorSpendItem[], getLabel: (row: SectorSpendItem) => 
       current.amount += row.totalAmount;
       current.count += row.totalCount;
       current.localAmount += row.totalLocalAmount;
-      current.avgTicketValues.push(row.avgTicket);
-      current.ratios.push(row.localRatioPct);
-      current.shares.push(row.sectorMarketSharePct);
-      current.avgTicket = average(current.avgTicketValues);
-      current.localRatio = average(current.ratios);
-      current.marketShare = Math.max(...current.shares);
+      current.avgTicketSum += row.avgTicket;
+      current.ratioSum += row.localRatioPct;
+      if (row.sectorMarketSharePct > current.marketShare) {
+        current.marketShare = row.sectorMarketSharePct;
+      }
+      current.rowCount += 1;
       return;
     }
 
@@ -218,12 +227,10 @@ function groupRows(rows: SectorSpendItem[], getLabel: (row: SectorSpendItem) => 
       amount: row.totalAmount,
       count: row.totalCount,
       localAmount: row.totalLocalAmount,
-      avgTicket: row.avgTicket,
-      localRatio: row.localRatioPct,
+      avgTicketSum: row.avgTicket,
+      ratioSum: row.localRatioPct,
       marketShare: row.sectorMarketSharePct,
-      avgTicketValues: [row.avgTicket],
-      ratios: [row.localRatioPct],
-      shares: [row.sectorMarketSharePct],
+      rowCount: 1,
     });
   });
 
@@ -233,8 +240,8 @@ function groupRows(rows: SectorSpendItem[], getLabel: (row: SectorSpendItem) => 
       amount: item.amount,
       count: item.count,
       localAmount: item.localAmount,
-      avgTicket: item.avgTicket,
-      localRatio: item.localRatio,
+      avgTicket: item.rowCount > 0 ? item.avgTicketSum / item.rowCount : 0,
+      localRatio: item.rowCount > 0 ? item.ratioSum / item.rowCount : 0,
       marketShare: item.marketShare,
       name: item.label,
       value: item.amount,
@@ -446,7 +453,7 @@ function LocalRatioScatter({ data }: { data: ScatterPoint[] }) {
           />
           <ZAxis dataKey="amount" range={[60, 520]} />
           <Tooltip content={<ScatterTooltip />} cursor={{ strokeDasharray: '3 3' }} />
-          <Scatter data={data.slice(0, 80)} fill="#f59e0b" fillOpacity={0.78} />
+          <Scatter data={data} fill="#f59e0b" fillOpacity={0.78} />
         </ScatterChart>
       </ResponsiveContainer>
     </div>
@@ -526,16 +533,18 @@ const SectorSpendPage: React.FC = () => {
     ...(isAcquiring != null ? { isAcquiring } : {}),
     ...(isIssuing != null ? { isIssuing } : {}),
     ...(reportMonth ? { month: reportMonth } : {}),
-    page,
-    pageSize: PAGE_SIZE,
   });
   const response = data as SectorSpendResponse | undefined;
   const rows = useMemo(() => getRows(response), [response]);
-  const currentPage = !response || Array.isArray(response) ? page : response.page;
   const recordCount = getTotalCount(response, rows);
-  const totalPages = !response || Array.isArray(response) ? 1 : response.totalPages;
-  const hasNext = !response || Array.isArray(response) ? false : response.hasNext;
-  const hasPrev = !response || Array.isArray(response) ? page > 1 : response.hasPrev;
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedRows = useMemo(
+    () => rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [rows, currentPage]
+  );
+  const hasNext = currentPage < totalPages;
+  const hasPrev = currentPage > 1;
 
   useEffect(() => {
     setPage(1);
@@ -678,18 +687,52 @@ const SectorSpendPage: React.FC = () => {
       groupRows(rows, (row) => translateCategory(row.operationType, 'Naməlum əməliyyat')),
     [rows]
   );
-  const scatterData = useMemo<ScatterPoint[]>(
-    () =>
-      rows.map((row) => ({
-        city: cleanText(row.sourceCity, 'Naməlum şəhər'),
-        channel: translateCategory(row.sourceChannel, 'Naməlum kanal'),
+  const scatterData = useMemo<ScatterPoint[]>(() => {
+    const grandTotalAmount = rows.reduce((sum, row) => sum + row.totalAmount, 0);
+    const map = new Map<
+      string,
+      {
+        city: string;
+        channel: string;
+        amount: number;
+        count: number;
+        localAmount: number;
+      }
+    >();
+
+    rows.forEach((row) => {
+      const city = cleanText(row.sourceCity, 'Naməlum şəhər');
+      const channel = translateCategory(row.sourceChannel, 'Naməlum kanal');
+      const key = `${city}|${channel}`;
+      const current = map.get(key);
+
+      if (current) {
+        current.amount += row.totalAmount;
+        current.count += row.totalCount;
+        current.localAmount += row.totalLocalAmount;
+        return;
+      }
+
+      map.set(key, {
+        city,
+        channel,
         amount: row.totalAmount,
-        avgTicket: row.avgTicket,
-        localRatio: row.localRatioPct,
-        marketShare: row.sectorMarketSharePct,
-      })),
-    [rows]
-  );
+        count: row.totalCount,
+        localAmount: row.totalLocalAmount,
+      });
+    });
+
+    return Array.from(map.values())
+      .map((item) => ({
+        city: item.city,
+        channel: item.channel,
+        amount: item.amount,
+        avgTicket: item.count > 0 ? item.amount / item.count : 0,
+        localRatio: item.amount > 0 ? (item.localAmount / item.amount) * 100 : 0,
+        marketShare: grandTotalAmount > 0 ? (item.amount / grandTotalAmount) * 100 : 0,
+      }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [rows]);
   const bankOptions = useMemo<SelectOption[]>(
     () =>
       banks
@@ -1265,7 +1308,7 @@ const SectorSpendPage: React.FC = () => {
             </Panel>
           </section>
 
-          <DataTable columns={columns} data={rows} />
+          <DataTable columns={columns} data={pagedRows} />
           <DataPagination
             hasNext={hasNext}
             hasPrev={hasPrev}
@@ -1273,7 +1316,7 @@ const SectorSpendPage: React.FC = () => {
             onPageChange={setPage}
             page={currentPage}
             pageSize={PAGE_SIZE}
-            totalCount={recordCount}
+            totalCount={rows.length}
             totalPages={totalPages}
           />
         </>

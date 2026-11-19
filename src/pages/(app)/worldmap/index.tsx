@@ -618,6 +618,7 @@ const WorldmapPage: React.FC = () => {
         });
       }
 
+      const seenPointKeys = new Set<string>();
       [
         {
           country: sourceCountry,
@@ -631,6 +632,9 @@ const WorldmapPage: React.FC = () => {
         },
       ].forEach((point) => {
         const pointKey = `${point.country}|${point.position.join(',')}`;
+        if (seenPointKeys.has(pointKey)) return;
+        seenPointKeys.add(pointKey);
+
         const existingPoint = countryMap.get(pointKey);
 
         if (existingPoint) {
@@ -669,8 +673,12 @@ const WorldmapPage: React.FC = () => {
       (a, b) => b.totalAmount - a.totalAmount
     );
     const maxAmount = Math.max(...flows.map((flow) => flow.totalAmount), 1);
+    const maxCountryAmount = Math.max(
+      ...countryPoints.map((point) => point.totalAmount),
+      1
+    );
 
-    return { countryPoints, flows, maxAmount, paymentSummary };
+    return { countryPoints, flows, maxAmount, maxCountryAmount, paymentSummary };
   }, [rows]);
 
   const totalAmount = useMemo(
@@ -950,9 +958,12 @@ const WorldmapPage: React.FC = () => {
         id: 'worldmap-domestic-flows',
         data: mapData.flows.filter((flow) => flow.isDomestic),
         getPosition: (flow) => flow.targetPosition,
-        getRadius: (flow) => 90_000 + (flow.totalAmount / mapData.maxAmount) * 450_000,
+        getRadius: (flow) =>
+          95_000 + Math.sqrt(flow.totalAmount / mapData.maxAmount) * 255_000,
         getFillColor: domesticColor,
-        getLineColor: [255, 255, 255, 210],
+        getLineColor: [255, 255, 255, 190],
+        radiusMinPixels: 8,
+        radiusMaxPixels: 26,
         lineWidthMinPixels: 1,
         stroked: true,
         pickable: true,
@@ -961,10 +972,13 @@ const WorldmapPage: React.FC = () => {
         id: 'worldmap-country-points',
         data: mapData.countryPoints,
         getPosition: (point) => point.position,
-        getRadius: (point) => 70_000 + (point.totalAmount / mapData.maxAmount) * 240_000,
+        getRadius: (point) =>
+          50_000 + Math.sqrt(point.totalAmount / mapData.maxCountryAmount) * 165_000,
         getFillColor: (point) =>
           point.category === 'Daxili' ? domesticPointColor : foreignPointColor,
         getLineColor: [255, 255, 255, 240],
+        radiusMinPixels: 5,
+        radiusMaxPixels: 18,
         lineWidthMinPixels: 1,
         stroked: true,
         pickable: true,
@@ -976,7 +990,7 @@ const WorldmapPage: React.FC = () => {
         getText: (point) => point.country,
         getSize: 12,
         getColor: isDark ? [226, 232, 240, 230] : [15, 23, 42, 230],
-        getPixelOffset: [0, 20],
+        getPixelOffset: (point) => (point.category === 'Daxili' ? [0, -20] : [0, 18]),
         background: true,
         getBackgroundColor: isDark ? [15, 23, 42, 185] : [255, 255, 255, 210],
         backgroundPadding: [6, 3],

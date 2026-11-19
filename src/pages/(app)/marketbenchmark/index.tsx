@@ -378,7 +378,7 @@ function ShareScatterChart({ data }: { data: BenchmarkScatterPoint[] }) {
           />
           <ZAxis dataKey="amount" range={[70, 520]} />
           <Tooltip content={<ScatterTooltip />} cursor={{ strokeDasharray: '3 3' }} />
-          <Scatter data={data.slice(0, 70)} fill="#2563eb" fillOpacity={0.78} />
+          <Scatter data={data} fill="#2563eb" fillOpacity={0.78} />
         </ScatterChart>
       </ResponsiveContainer>
     </div>
@@ -427,10 +427,14 @@ const MarketBenchmarkPage: React.FC = () => {
     ...(cardBrandName ? { CardBrandName: cardBrandName } : {}),
     ...(productType ? { ProductType: productType } : {}),
     ...(reportMonth ? { ReportMonth: reportMonth } : {}),
-    Page: page,
-    PageSize: PAGE_SIZE,
   });
   const rows = useMemo(() => data?.items ?? [], [data?.items]);
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pagedRows = useMemo(
+    () => rows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
+    [rows, safePage]
+  );
 
   useEffect(() => {
     setPage(1);
@@ -507,18 +511,82 @@ const MarketBenchmarkPage: React.FC = () => {
   const regionChartData = useMemo(() => toChartItems(topRegions), [topRegions]);
   const productChartData = useMemo(() => toChartItems(productMix), [productMix]);
   const brandChartData = useMemo(() => toChartItems(brandMix), [brandMix]);
-  const scatterData = useMemo<BenchmarkScatterPoint[]>(
-    () =>
-      rows.map((row) => ({
-        bank: row.bankName ?? 'Naməlum bank',
-        region: row.regionNameClean ?? 'Naməlum region',
-        brand: cleanBrand(row.cardBrandName),
-        marketShare: row.marketSharePct,
-        cardShare: row.cardSharePct,
-        amount: row.bankTransAmount,
-      })),
-    [rows]
-  );
+  const scatterData = useMemo<BenchmarkScatterPoint[]>(() => {
+    const map = new Map<
+      string,
+      {
+        bank: string;
+        region: string;
+        brand: string;
+        months: Map<
+          string,
+          {
+            bankAmount: number;
+            marketAmount: number;
+            cardCount: number;
+            marketCards: number;
+          }
+        >;
+      }
+    >();
+
+    rows.forEach((row) => {
+      const bank = row.bankName ?? 'Naməlum bank';
+      const region = row.regionNameClean ?? 'Naməlum region';
+      const brand = cleanBrand(row.cardBrandName);
+      const month = row.reportMonth ?? '';
+      const key = `${bank}|${region}|${brand}`;
+      let bucket = map.get(key);
+
+      if (!bucket) {
+        bucket = { bank, region, brand, months: new Map() };
+        map.set(key, bucket);
+      }
+
+      const monthEntry = bucket.months.get(month);
+      if (monthEntry) {
+        monthEntry.bankAmount = Math.max(monthEntry.bankAmount, row.bankTransAmount);
+        monthEntry.marketAmount = Math.max(
+          monthEntry.marketAmount,
+          row.marketTotalAmount
+        );
+        monthEntry.cardCount += row.bankCardCount;
+        monthEntry.marketCards = Math.max(monthEntry.marketCards, row.marketTotalCards);
+      } else {
+        bucket.months.set(month, {
+          bankAmount: row.bankTransAmount,
+          marketAmount: row.marketTotalAmount,
+          cardCount: row.bankCardCount,
+          marketCards: row.marketTotalCards,
+        });
+      }
+    });
+
+    return Array.from(map.values())
+      .map((bucket) => {
+        let bankAmount = 0;
+        let marketAmount = 0;
+        let cardCount = 0;
+        let marketCards = 0;
+
+        bucket.months.forEach((m) => {
+          bankAmount += m.bankAmount;
+          marketAmount += m.marketAmount;
+          cardCount += m.cardCount;
+          marketCards += m.marketCards;
+        });
+
+        return {
+          bank: bucket.bank,
+          region: bucket.region,
+          brand: bucket.brand,
+          marketShare: marketAmount > 0 ? (bankAmount / marketAmount) * 100 : 0,
+          cardShare: marketCards > 0 ? (cardCount / marketCards) * 100 : 0,
+          amount: bankAmount,
+        };
+      })
+      .sort((a, b) => b.amount - a.amount);
+  }, [rows]);
   const bankOptions = useMemo<SelectOption[]>(
     () =>
       banks
@@ -965,16 +1033,16 @@ const MarketBenchmarkPage: React.FC = () => {
             </BenchmarkPanel>
           </section>
 
-          <DataTable columns={columns} data={rows} />
+          <DataTable columns={columns} data={pagedRows} />
           <DataPagination
-            hasNext={data?.hasNext ?? false}
-            hasPrev={data?.hasPrev ?? page > 1}
+            hasNext={safePage < totalPages}
+            hasPrev={safePage > 1}
             isFetching={isFetching}
             onPageChange={setPage}
-            page={data?.page ?? page}
+            page={safePage}
             pageSize={PAGE_SIZE}
-            totalCount={data?.totalCount ?? rows.length}
-            totalPages={data?.totalPages ?? 1}
+            totalCount={rows.length}
+            totalPages={totalPages}
           />
         </>
       )}

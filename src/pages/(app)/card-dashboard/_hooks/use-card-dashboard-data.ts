@@ -68,7 +68,7 @@ export function useCardDashboardData({
       key: m.key,
       label: m.label,
       // Kartda qısa dəyər, hover-da tam dəyər.
-      value: kpi ? formatCompact(kpi[m.kpiField], m.monetary) : '—',
+      value: kpi ? formatCompact(kpi[m.kpiField], m.monetary, roundTo) : '—',
       fullValue: kpi ? formatMetricValue(kpi[m.kpiField], m.monetary, roundTo) : '—',
       active: m.key === metric,
       monetary: m.monetary,

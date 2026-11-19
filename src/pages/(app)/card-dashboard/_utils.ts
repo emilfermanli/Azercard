@@ -21,8 +21,24 @@ export function roundSuffix(roundTo: number): string {
   return ROUND_TO_OPTIONS.find((o) => o.value === roundTo)?.suffix ?? '';
 }
 
+/** Qısa (kompakt) ədəd formatı — K/M/G əvəzinə "min / mln / mlrd" işlədir. */
+export function formatCompactNumber(value: number, fractionDigits = 1): string {
+  const num = Number(value ?? 0);
+  const abs = Math.abs(num);
+  if (abs >= 1_000_000_000) {
+    return `${formatNumber(num / 1_000_000_000, fractionDigits)} mlrd`;
+  }
+  if (abs >= 1_000_000) {
+    return `${formatNumber(num / 1_000_000, fractionDigits)} mln`;
+  }
+  if (abs >= 1_000) {
+    return `${formatNumber(num / 1_000, fractionDigits)} min`;
+  }
+  return formatNumber(num, fractionDigits);
+}
+
 /**
- * Göstəricini formatlayır: monetar → vahid sonluğu ilə, say → tam rəqəm.
+ * Göstəricini formatlayır: monetar → vahid sonluğu və ₼ ilə, say → tam rəqəm.
  * Dəyərlər server tərəfdə artıq RoundTo-ya görə yuvarlaqlaşdırılıb.
  */
 export function formatMetricValue(
@@ -32,19 +48,26 @@ export function formatMetricValue(
 ): string {
   if (!monetary) return formatInt(value);
   const suffix = roundSuffix(roundTo);
-  return suffix ? `${formatNumber(value)} ${suffix}` : formatNumber(value);
+  return suffix ? `${formatNumber(value)} ${suffix} ₼` : `${formatNumber(value)} ₼`;
 }
 
 /**
- * Qısa (kompakt) format — böyük rəqəmləri "1,44 mlrd", "236,33 mln" kimi yazır.
- * az-AZ lokalı kompakt notasiyada "min / mln / mlrd" işlədir.
+ * KPI kartları üçün qısa format:
+ * - Say (monetary=false): "314,43 min", "1,2 mln" və s.
+ * - Monetar + RoundTo > 0 (Min/Mln/Mlrd): server artıq həmin vahidə böldüyü üçün
+ *   təkrar 1000-ə bölmədən seçilmiş vahidlə göstərir ("54 200 min ₼", "54,2 mln ₼").
+ * - Monetar + RoundTo === 0 (Tam): "54,2 mln ₼", "1,44 mlrd ₼" kimi kompakt Azərbaycan vahidi ilə göstərir.
  */
-export function formatCompact(value: number, monetary: boolean): string {
-  const short = new Intl.NumberFormat('az-AZ', {
-    notation: 'compact',
-    maximumFractionDigits: 2,
-  }).format(value);
-  return monetary ? `${short} ₼` : short;
+export function formatCompact(value: number, monetary: boolean, roundTo = 0): string {
+  if (!monetary) {
+    const num = Number(value ?? 0);
+    return Math.abs(num) >= 1_000 ? formatCompactNumber(num, 2) : formatInt(num);
+  }
+  const suffix = roundSuffix(roundTo);
+  if (suffix) {
+    return `${formatNumber(value, 2)} ${suffix} ₼`;
+  }
+  return `${formatCompactNumber(value, 2)} ₼`;
 }
 
 /** Faiz formatı. */

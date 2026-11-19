@@ -58,10 +58,17 @@ export function scaleForAxis(value: number, metric: Metric, unit: AmountUnit): n
 /** Qrafik oxu üçün qısa (kompakt) etiket — vahidə bölünmüş. */
 export function formatAxisTick(value: number, metric: Metric, unit: AmountUnit): string {
   const scaled = scaleForAxis(value, metric, unit);
-  return new Intl.NumberFormat('az-AZ', {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  }).format(scaled);
+  const abs = Math.abs(scaled);
+  if (abs >= 1_000_000_000) {
+    return `${(scaled / 1_000_000_000).toLocaleString('az-AZ', { maximumFractionDigits: 1 })} mlrd`;
+  }
+  if (abs >= 1_000_000) {
+    return `${(scaled / 1_000_000).toLocaleString('az-AZ', { maximumFractionDigits: 1 })} mln`;
+  }
+  if (abs >= 1_000) {
+    return `${(scaled / 1_000).toLocaleString('az-AZ', { maximumFractionDigits: 1 })} min`;
+  }
+  return scaled.toLocaleString('az-AZ', { maximumFractionDigits: 1 });
 }
 
 /** Trend nöqtəsinin period dəyərini qranulyarlığa görə qısa etiketə çevirir. */

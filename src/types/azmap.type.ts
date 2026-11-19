@@ -26,9 +26,34 @@ export interface AzmapFilterParams {
   SourceCity?: string;
   SourceCityClean?: string;
   SourceCityCategory?: string;
+  AcquiringDeviceType?: string;
+  TransGroup?: string;
+  OperationType?: string;
+  TokenStatus?: string;
+  Mcc?: string;
+  IsAcquiringCategory?: string;
+  TargetBankName?: string;
+  SourceBankName?: string;
+  TargetCity?: string;
+  PaymentSystem?: string;
   ReportMonth?: string | Date;
+  StartDate?: string | Date;
+  EndDate?: string | Date;
   Page?: number;
   PageSize?: number;
+}
+
+export interface AzmapFilterOptionsResponse {
+  acquiringDeviceTypes: string[];
+  transGroups: string[];
+  operationTypes: string[];
+  tokenStatuses: string[];
+  mccs: string[];
+  isAcquiringCategories: string[];
+  targetBankNames: string[];
+  sourceBankNames: string[];
+  targetCities: string[];
+  paymentSystems: string[];
 }
 
 export interface AzmapHeatmapParams {

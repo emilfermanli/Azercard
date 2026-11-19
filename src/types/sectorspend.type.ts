@@ -31,6 +31,8 @@ export interface SectorSpendPaginatedResponse {
 export interface SectorSpendFilterParams {
   bankName?: string;
   month?: string | Date;
+  startDate?: string | Date;
+  endDate?: string | Date;
   mccGroup?: string;
   sourceChannel?: string;
   operationType?: string;

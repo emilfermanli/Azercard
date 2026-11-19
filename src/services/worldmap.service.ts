@@ -1,4 +1,5 @@
 import type {
+  WorldmapFilterOptionsResponse,
   WorldmapFilterParams,
   WorldmapHeatmapParams,
   WorldmapHeatmapResponse,
@@ -28,6 +29,12 @@ export const worldmapApi = createApi({
               ...(params.ReportMonth != null
                 ? { ReportMonth: toQueryDate(params.ReportMonth) }
                 : {}),
+              ...(params.StartDate != null
+                ? { StartDate: toQueryDate(params.StartDate) }
+                : {}),
+              ...(params.EndDate != null
+                ? { EndDate: toQueryDate(params.EndDate) }
+                : {}),
             }
           : undefined,
       }),
@@ -47,7 +54,17 @@ export const worldmapApi = createApi({
           : undefined,
       }),
     }),
+    getWorldmapFilterOptions: builder.query<WorldmapFilterOptionsResponse, void>({
+      query: () => ({
+        url: 'WorldMap/filter-options',
+        method: 'GET',
+      }),
+    }),
   }),
 });
 
-export const { useGetWorldmapFilterQuery, useGetWorldmapHeatmapQuery } = worldmapApi;
+export const {
+  useGetWorldmapFilterQuery,
+  useGetWorldmapHeatmapQuery,
+  useGetWorldmapFilterOptionsQuery,
+} = worldmapApi;

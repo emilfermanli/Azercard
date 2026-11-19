@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { ColumnDef } from '@tanstack/react-table';
 import {
   Activity,
   BarChart3,
@@ -30,7 +29,7 @@ import {
 } from 'recharts';
 import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
-import { Button, DataPagination, DataTable, DateInput } from '@/components';
+import { Button, DateInput } from '@/components';
 import {
   useGetGeneralBanksQuery,
   useGetGeneralMccGroupsQuery,
@@ -45,7 +44,6 @@ import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import {
   DataPageHeader,
   formatAmount,
-  formatDate,
   formatNumber,
   PageError,
   PageLoading,
@@ -62,6 +60,8 @@ type SummaryItem = {
   avgTicket: number;
   localRatio: number;
   marketShare: number;
+  sharePct: number;
+  topSector: string;
 };
 
 type ChartItem = SummaryItem & {
@@ -90,7 +90,6 @@ type NumberOption = {
 };
 
 const CHART_COLORS = ['#f59e0b', '#2563eb', '#10b981', '#06b6d4', '#ef4444', '#8b5cf6'];
-const PAGE_SIZE = 10;
 const FLAG_OPTIONS: NumberOption[] = [
   { label: 'Bəli', value: 1 },
   { label: 'Xeyr', value: 0 },
@@ -105,11 +104,6 @@ function formatShortAmount(value: number) {
   if (value >= 1_000_000) return `${formatAmount(value / 1_000_000)} mln`;
   if (value >= 1_000) return `${formatAmount(value / 1_000)} min`;
   return formatAmount(value);
-}
-
-function average(values: number[]) {
-  if (!values.length) return 0;
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 function cleanText(value: string | null | undefined, fallback: string) {
@@ -185,12 +179,8 @@ function getRows(data: SectorSpendResponse | undefined) {
   return Array.isArray(data) ? data : data.items;
 }
 
-function getTotalCount(data: SectorSpendResponse | undefined, rows: SectorSpendItem[]) {
-  if (!data || Array.isArray(data)) return rows.length;
-  return data.totalCount;
-}
-
 function groupRows(rows: SectorSpendItem[], getLabel: (row: SectorSpendItem) => string) {
+  const grandTotalAmount = rows.reduce((sum, r) => sum + r.totalAmount, 0);
   const map = new Map<
     string,
     {
@@ -198,25 +188,26 @@ function groupRows(rows: SectorSpendItem[], getLabel: (row: SectorSpendItem) => 
       amount: number;
       count: number;
       localAmount: number;
-      avgTicketSum: number;
       ratioSum: number;
       marketShare: number;
+      topSector: string;
       rowCount: number;
     }
   >();
 
   rows.forEach((row) => {
     const label = getLabel(row);
+    const sectorLabel = cleanText(row.mccGroup, 'Naməlum sektor');
     const current = map.get(label);
 
     if (current) {
       current.amount += row.totalAmount;
       current.count += row.totalCount;
       current.localAmount += row.totalLocalAmount;
-      current.avgTicketSum += row.avgTicket;
       current.ratioSum += row.localRatioPct;
       if (row.sectorMarketSharePct > current.marketShare) {
         current.marketShare = row.sectorMarketSharePct;
+        current.topSector = sectorLabel;
       }
       current.rowCount += 1;
       return;
@@ -227,9 +218,9 @@ function groupRows(rows: SectorSpendItem[], getLabel: (row: SectorSpendItem) => 
       amount: row.totalAmount,
       count: row.totalCount,
       localAmount: row.totalLocalAmount,
-      avgTicketSum: row.avgTicket,
       ratioSum: row.localRatioPct,
       marketShare: row.sectorMarketSharePct,
+      topSector: sectorLabel,
       rowCount: 1,
     });
   });
@@ -240,9 +231,11 @@ function groupRows(rows: SectorSpendItem[], getLabel: (row: SectorSpendItem) => 
       amount: item.amount,
       count: item.count,
       localAmount: item.localAmount,
-      avgTicket: item.rowCount > 0 ? item.avgTicketSum / item.rowCount : 0,
+      avgTicket: item.count > 0 ? item.amount / item.count : 0,
       localRatio: item.rowCount > 0 ? item.ratioSum / item.rowCount : 0,
       marketShare: item.marketShare,
+      sharePct: grandTotalAmount > 0 ? (item.amount / grandTotalAmount) * 100 : 0,
+      topSector: item.topSector,
       name: item.label,
       value: item.amount,
     }))
@@ -307,7 +300,7 @@ function ChartTooltip({
       <p className="mt-1">Məbləğ: {formatAmount(item.amount)}</p>
       <p>Say: {formatNumber(item.count)}</p>
       <p>Orta çek: {formatAmount(item.avgTicket)}</p>
-      <p>Sektor payı: {formatPercent(item.marketShare)}</p>
+      <p>Ümumi pay: {formatPercent(item.sharePct)}</p>
     </div>
   );
 }
@@ -329,7 +322,7 @@ function ScatterTooltip({
       <p>Məbləğ: {formatAmount(item.amount)}</p>
       <p>Orta çek: {formatAmount(item.avgTicket)}</p>
       <p>Yerli pay: {formatPercent(item.localRatio)}</p>
-      <p>Sektor payı: {formatPercent(item.marketShare)}</p>
+      <p>Ümumi pay: {formatPercent(item.marketShare)}</p>
     </div>
   );
 }
@@ -445,7 +438,7 @@ function LocalRatioScatter({ data }: { data: ScatterPoint[] }) {
           />
           <YAxis
             dataKey="marketShare"
-            name="Sektor payı"
+            name="Ümumi pay"
             tick={{ fill: isDark ? '#94a3b8' : '#64748b', fontSize: 11 }}
             tickLine={false}
             type="number"
@@ -471,8 +464,8 @@ const SectorSpendPage: React.FC = () => {
   const [sourceCountryCategory, setSourceCountryCategory] = useState('');
   const [isAcquiring, setIsAcquiring] = useState<number | null>(null);
   const [isIssuing, setIsIssuing] = useState<number | null>(null);
-  const [reportMonth, setReportMonth] = useState('');
-  const [page, setPage] = useState(1);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [draftBankName, setDraftBankName] = useState('');
   const [draftMccGroup, setDraftMccGroup] = useState('');
   const [draftSourceChannel, setDraftSourceChannel] = useState('');
@@ -481,7 +474,8 @@ const SectorSpendPage: React.FC = () => {
   const [draftSourceCountryCategory, setDraftSourceCountryCategory] = useState('');
   const [draftIsAcquiring, setDraftIsAcquiring] = useState<number | null>(null);
   const [draftIsIssuing, setDraftIsIssuing] = useState<number | null>(null);
-  const [draftReportMonth, setDraftReportMonth] = useState('');
+  const [draftStartDate, setDraftStartDate] = useState('');
+  const [draftEndDate, setDraftEndDate] = useState('');
 
   useEffect(() => {
     if (filterDrawerOpen) {
@@ -493,7 +487,8 @@ const SectorSpendPage: React.FC = () => {
       setDraftSourceCountryCategory(sourceCountryCategory);
       setDraftIsAcquiring(isAcquiring);
       setDraftIsIssuing(isIssuing);
-      setDraftReportMonth(reportMonth);
+      setDraftStartDate(startDate);
+      setDraftEndDate(endDate);
     }
   }, [
     filterDrawerOpen,
@@ -505,7 +500,8 @@ const SectorSpendPage: React.FC = () => {
     sourceCountryCategory,
     isAcquiring,
     isIssuing,
-    reportMonth,
+    startDate,
+    endDate,
   ]);
 
   const [mccGroupOptionCache, setMccGroupOptionCache] = useState<SelectOption[]>([]);
@@ -523,7 +519,7 @@ const SectorSpendPage: React.FC = () => {
   const { data: banks = [], isLoading: banksLoading } = useGetGeneralBanksQuery();
   const { data: mccGroups = [], isLoading: mccGroupsLoading } =
     useGetGeneralMccGroupsQuery();
-  const { data, isLoading, isError, isFetching } = useGetSectorSpendFilterQuery({
+  const { data, isLoading, isError } = useGetSectorSpendFilterQuery({
     ...(bankName ? { bankName } : {}),
     ...(mccGroup ? { mccGroup } : {}),
     ...(sourceChannel ? { sourceChannel } : {}),
@@ -532,33 +528,11 @@ const SectorSpendPage: React.FC = () => {
     ...(sourceCountryCategory ? { sourceCountryCategory } : {}),
     ...(isAcquiring != null ? { isAcquiring } : {}),
     ...(isIssuing != null ? { isIssuing } : {}),
-    ...(reportMonth ? { month: reportMonth } : {}),
+    ...(startDate ? { startDate } : {}),
+    ...(endDate ? { endDate } : {}),
   });
   const response = data as SectorSpendResponse | undefined;
   const rows = useMemo(() => getRows(response), [response]);
-  const recordCount = getTotalCount(response, rows);
-  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-  const currentPage = Math.min(page, totalPages);
-  const pagedRows = useMemo(
-    () => rows.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
-    [rows, currentPage]
-  );
-  const hasNext = currentPage < totalPages;
-  const hasPrev = currentPage > 1;
-
-  useEffect(() => {
-    setPage(1);
-  }, [
-    bankName,
-    mccGroup,
-    sourceChannel,
-    operationType,
-    sourceCityCategory,
-    sourceCountryCategory,
-    isAcquiring,
-    isIssuing,
-    reportMonth,
-  ]);
 
   useEffect(() => {
     const lookupMccOptions = mccGroups
@@ -622,49 +596,6 @@ const SectorSpendPage: React.FC = () => {
       )
     );
   }, [mccGroups, rows]);
-
-  const columns = useMemo<ColumnDef<SectorSpendItem, unknown>[]>(
-    () => [
-      { accessorKey: 'bankName', header: 'Bank' },
-      { accessorKey: 'mccGroup', header: 'MCC qrup' },
-      { accessorKey: 'mcc', header: 'MCC' },
-      { accessorKey: 'sourceCity', header: 'Şəhər' },
-      { accessorKey: 'sourceCityCategory', header: 'Şəhər tipi' },
-      { accessorKey: 'sourceChannel', header: 'Kanal' },
-      { accessorKey: 'operationType', header: 'Əməliyyat tipi' },
-      {
-        accessorKey: 'reportMonth',
-        header: 'Ay',
-        cell: ({ getValue }) => formatDate(getValue() as string),
-      },
-      {
-        accessorKey: 'totalAmount',
-        header: 'Məbləğ',
-        cell: ({ getValue }) => formatAmount(getValue() as number),
-      },
-      {
-        accessorKey: 'avgTicket',
-        header: 'Orta çek',
-        cell: ({ getValue }) => formatAmount(getValue() as number),
-      },
-      {
-        accessorKey: 'localRatioPct',
-        header: 'Yerli pay',
-        cell: ({ getValue }) => formatPercent(getValue() as number),
-      },
-      {
-        accessorKey: 'sectorMarketSharePct',
-        header: 'Sektor payı',
-        cell: ({ getValue }) => formatPercent(getValue() as number),
-      },
-      {
-        accessorKey: 'totalCount',
-        header: 'Say',
-        cell: ({ getValue }) => formatNumber(getValue() as number),
-      },
-    ],
-    []
-  );
 
   const sectorMix = useMemo(
     () => groupRows(rows, (row) => cleanText(row.mccGroup, 'Naməlum sektor')),
@@ -806,14 +737,14 @@ const SectorSpendPage: React.FC = () => {
       sourceCountryCategory ||
       isAcquiring != null ||
       isIssuing != null ||
-      reportMonth
+      startDate ||
+      endDate
   );
 
   const totalAmount = rows.reduce((sum, row) => sum + row.totalAmount, 0);
   const totalLocalAmount = rows.reduce((sum, row) => sum + row.totalLocalAmount, 0);
   const totalCount = rows.reduce((sum, row) => sum + row.totalCount, 0);
   const avgTicket = totalCount > 0 ? totalAmount / totalCount : 0;
-  const avgLocalRatio = average(rows.map((row) => row.localRatioPct));
   const topSector = sectorMix[0];
   const mutedText = isDark ? 'text-slate-300' : 'text-slate-500';
   const inputClass = [
@@ -883,7 +814,8 @@ const SectorSpendPage: React.FC = () => {
     setSourceCountryCategory('');
     setIsAcquiring(null);
     setIsIssuing(null);
-    setReportMonth('');
+    setStartDate('');
+    setEndDate('');
 
     setDraftBankName('');
     setDraftMccGroup('');
@@ -893,9 +825,9 @@ const SectorSpendPage: React.FC = () => {
     setDraftSourceCountryCategory('');
     setDraftIsAcquiring(null);
     setDraftIsIssuing(null);
-    setDraftReportMonth('');
+    setDraftStartDate('');
+    setDraftEndDate('');
 
-    setPage(1);
     setFilterDrawerOpen(false);
   };
 
@@ -908,8 +840,8 @@ const SectorSpendPage: React.FC = () => {
     setSourceCountryCategory(draftSourceCountryCategory);
     setIsAcquiring(draftIsAcquiring);
     setIsIssuing(draftIsIssuing);
-    setReportMonth(draftReportMonth);
-    setPage(1);
+    setStartDate(draftStartDate);
+    setEndDate(draftEndDate);
     setFilterDrawerOpen(false);
   };
 
@@ -1151,11 +1083,20 @@ const SectorSpendPage: React.FC = () => {
                   </div>
 
                   <label className="space-y-1.5 text-sm font-medium">
-                    <span className={mutedText}>Ay</span>
+                    <span className={mutedText}>Başlanğıc tarixi</span>
                     <DateInput
                       className={inputClass}
-                      value={draftReportMonth}
-                      onChange={setDraftReportMonth}
+                      value={draftStartDate}
+                      onChange={setDraftStartDate}
+                    />
+                  </label>
+
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={mutedText}>Bitmə tarixi</span>
+                    <DateInput
+                      className={inputClass}
+                      value={draftEndDate}
+                      onChange={setDraftEndDate}
                     />
                   </label>
                 </div>
@@ -1182,7 +1123,8 @@ const SectorSpendPage: React.FC = () => {
                     !draftSourceCountryCategory &&
                     draftIsAcquiring == null &&
                     draftIsIssuing == null &&
-                    !draftReportMonth
+                    !draftStartDate &&
+                    !draftEndDate
                   }
                   onClick={resetFilters}
                 >
@@ -1201,8 +1143,7 @@ const SectorSpendPage: React.FC = () => {
             </aside>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Ümumi qeyd" value={formatNumber(recordCount)} />
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <StatCard label="Ümumi məbləğ" value={formatShortAmount(totalAmount)} />
             <StatCard label="Yerli məbləğ" value={formatShortAmount(totalLocalAmount)} />
             <StatCard label="Orta çek" value={formatAmount(avgTicket)} />
@@ -1211,7 +1152,7 @@ const SectorSpendPage: React.FC = () => {
           <section className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)]">
             <Panel
               icon={Activity}
-              title="Yerli pay və sektor payı"
+              title="Yerli pay və ümumi pay"
               subtitle="Nöqtə ölçüsü ümumi məbləğə görədir"
             >
               <LocalRatioScatter data={scatterData} />
@@ -1241,14 +1182,14 @@ const SectorSpendPage: React.FC = () => {
                         Sektor payı
                       </p>
                       <p className="font-semibold">
-                        {formatPercent(topSector.marketShare)}
+                        {formatPercent(topSector.sharePct)}
                       </p>
                     </div>
                     <div>
                       <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>
                         Yerli pay
                       </p>
-                      <p className="font-semibold">{formatPercent(avgLocalRatio)}</p>
+                      <p className="font-semibold">{formatPercent(topSector.localRatio)}</p>
                     </div>
                     <div>
                       <p className={isDark ? 'text-slate-400' : 'text-slate-500'}>
@@ -1307,18 +1248,6 @@ const SectorSpendPage: React.FC = () => {
               <HorizontalChart color="#10b981" data={operationMix} />
             </Panel>
           </section>
-
-          <DataTable columns={columns} data={pagedRows} />
-          <DataPagination
-            hasNext={hasNext}
-            hasPrev={hasPrev}
-            isFetching={isFetching}
-            onPageChange={setPage}
-            page={currentPage}
-            pageSize={PAGE_SIZE}
-            totalCount={rows.length}
-            totalPages={totalPages}
-          />
         </>
       )}
     </div>

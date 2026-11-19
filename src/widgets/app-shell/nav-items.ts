@@ -11,7 +11,6 @@ import {
   Network,
   Shield,
   Smartphone,
-  TrendingUp,
   Users,
   Wallet,
   WalletCards,
@@ -93,10 +92,5 @@ export const navLinks: NavLinkItem[] = [
     path: '/summary-transaction',
     label: 'Tranzaksiya xülasəsi',
     icon: Layers,
-  },
-  {
-    path: '/forecasting',
-    label: 'Proqnozlaşdırma',
-    icon: TrendingUp,
   },
 ];

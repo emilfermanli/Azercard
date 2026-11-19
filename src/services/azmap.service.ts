@@ -1,4 +1,5 @@
 import type {
+  AzmapFilterOptionsResponse,
   AzmapFilterParams,
   AzmapFilterResponse,
   AzmapHeatmapParams,
@@ -24,6 +25,12 @@ export const azmapApi = createApi({
               ...params,
               ...(params.ReportMonth != null
                 ? { ReportMonth: toQueryDate(params.ReportMonth) }
+                : {}),
+              ...(params.StartDate != null
+                ? { StartDate: toQueryDate(params.StartDate) }
+                : {}),
+              ...(params.EndDate != null
+                ? { EndDate: toQueryDate(params.EndDate) }
                 : {}),
             }
           : undefined,
@@ -59,6 +66,12 @@ export const azmapApi = createApi({
         method: 'GET',
       }),
     }),
+    getAzmapFilterOptions: builder.query<AzmapFilterOptionsResponse, void>({
+      query: () => ({
+        url: 'AzMap/filter-options',
+        method: 'GET',
+      }),
+    }),
   }),
 });
 
@@ -68,4 +81,5 @@ export const {
   useGetAzmapCitiesQuery,
   useGetAzmapRegionsQuery,
   useGetAzmapBanksQuery,
+  useGetAzmapFilterOptionsQuery,
 } = azmapApi;

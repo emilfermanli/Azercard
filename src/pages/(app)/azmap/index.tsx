@@ -6,7 +6,6 @@ import { TileLayer } from '@deck.gl/geo-layers';
 import { FlyToInterpolator } from '@deck.gl/core';
 import type { MapViewState, ViewStateChangeParameters } from '@deck.gl/core';
 import { BASE_MAP_TILE_URL, type BaseMapStyle } from '@/utils/basemap-tiles';
-import type { ColumnDef } from '@tanstack/react-table';
 import {
   BarChart3,
   Filter,
@@ -24,21 +23,21 @@ import {
 } from 'lucide-react';
 import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
-import { Button, DataTable, DateInput } from '@/components';
+import { Button, DateInput } from '@/components';
 import {
   useGetAzmapBanksQuery,
   useGetAzmapCitiesQuery,
+  useGetAzmapFilterOptionsQuery,
   useGetAzmapFilterQuery,
   useGetAzmapHeatmapQuery,
   useGetAzmapRegionsQuery,
 } from '@/services/azmap.service';
-import type { AzmapItem } from '@/types/azmap.type';
+import type { AzmapFilterOptionsResponse, AzmapItem } from '@/types/azmap.type';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 
 import {
   DataPageHeader,
   formatAmount,
-  formatDate,
   formatNumber,
   PageError,
   PageLoading,
@@ -46,6 +45,25 @@ import {
 } from '../_data-page-ui';
 
 type MapMode = 'points' | 'heatmap';
+type Metric = 'turnover' | 'count' | 'average';
+type AmountUnit = 'Min' | 'Mln' | 'Mlrd';
+
+const METRIC_OPTIONS: Array<{ value: Metric; label: string }> = [
+  { value: 'turnover', label: 'Dövriyyə' },
+  { value: 'count', label: 'Əməliyyat sayı' },
+  { value: 'average', label: 'Ortalama məbləğ' },
+];
+
+const AMOUNT_UNITS: Array<{
+  value: AmountUnit;
+  label: string;
+  divisor: number;
+  suffix: string;
+}> = [
+  { value: 'Min', label: 'Min (₼)', divisor: 1_000, suffix: 'min ₼' },
+  { value: 'Mln', label: 'Mln (₼)', divisor: 1_000_000, suffix: 'mln ₼' },
+  { value: 'Mlrd', label: 'Mlrd (₼)', divisor: 1_000_000_000, suffix: 'mlrd ₼' },
+];
 
 type SelectOption = {
   label: string;
@@ -97,11 +115,22 @@ function getCityName(item: AzmapItem) {
   return city || clean || raw || 'Naməlum';
 }
 
-function formatShortAmount(value: number) {
-  if (value >= 1_000_000_000) return `${formatAmount(value / 1_000_000_000)} mlrd`;
-  if (value >= 1_000_000) return `${formatAmount(value / 1_000_000)} mln`;
-  if (value >= 1_000) return `${formatAmount(value / 1_000)} min`;
-  return formatAmount(value);
+function getPointMetric(
+  point: { totalAmount: number; totalCount: number },
+  metric: Metric
+) {
+  if (metric === 'count') return point.totalCount;
+  if (metric === 'average') {
+    return point.totalCount > 0 ? point.totalAmount / point.totalCount : 0;
+  }
+  return point.totalAmount;
+}
+
+function formatMetricValue(value: number, metric: Metric, unit: AmountUnit) {
+  if (metric === 'count') return formatNumber(value);
+  if (metric === 'average') return `${formatAmount(value)} ₼`;
+  const unitInfo = AMOUNT_UNITS.find((u) => u.value === unit) ?? AMOUNT_UNITS[1];
+  return `${formatAmount(value / unitInfo.divisor)} ${unitInfo.suffix}`;
 }
 
 function buildCityPoints(items: AzmapItem[]) {
@@ -150,6 +179,21 @@ function buildCityPoints(items: AzmapItem[]) {
     .sort((a, b) => b.totalAmount - a.totalAmount);
 }
 
+const AZ_EXTRA_FILTER_FIELDS = [
+  { key: 'AcquiringDeviceType', optKey: 'acquiringDeviceTypes', label: 'Acquiring qurğu', placeholder: 'Bütün qurğular' },
+  { key: 'TransGroup', optKey: 'transGroups', label: 'Əməliyyat qrupları', placeholder: 'Bütün qruplar' },
+  { key: 'OperationType', optKey: 'operationTypes', label: 'Əməliyyat tipləri', placeholder: 'Bütün tiplər' },
+  { key: 'TokenStatus', optKey: 'tokenStatuses', label: 'Token statusu', placeholder: 'Bütün statuslar' },
+  { key: 'Mcc', optKey: 'mccs', label: 'MCC', placeholder: 'Bütün MCC-lər' },
+  { key: 'IsAcquiringCategory', optKey: 'isAcquiringCategories', label: 'Acquiring kateqoriyası', placeholder: 'Bütün kateqoriyalar' },
+  { key: 'TargetBankName', optKey: 'targetBankNames', label: 'Hədəf bank', placeholder: 'Bütün hədəf banklar' },
+  { key: 'SourceBankName', optKey: 'sourceBankNames', label: 'Mənbə bank', placeholder: 'Bütün mənbə banklar' },
+  { key: 'TargetCity', optKey: 'targetCities', label: 'Hədəf şəhər', placeholder: 'Bütün hədəf şəhərlər' },
+  { key: 'PaymentSystem', optKey: 'paymentSystems', label: 'Ödəniş sistemi', placeholder: 'Bütün ödəniş sistemləri' },
+] as const;
+
+type AzExtraKey = (typeof AZ_EXTRA_FILTER_FIELDS)[number]['key'];
+
 const AzmapPage: React.FC = () => {
   const isDark = useShellTheme();
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -158,35 +202,52 @@ const AzmapPage: React.FC = () => {
   const [baseMapStyle, setBaseMapStyle] = useState<BaseMapStyle>(
     isDark ? 'dark' : 'light'
   );
+  const [metric, setMetric] = useState<Metric>('turnover');
+  const [amountUnit, setAmountUnit] = useState<AmountUnit>('Mln');
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [bankName, setBankName] = useState('');
   const [sourceCity, setSourceCity] = useState('');
   const [sourceCityClean, setSourceCityClean] = useState('');
-  const [reportMonth, setReportMonth] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [extraFilters, setExtraFilters] = useState<Partial<Record<AzExtraKey, string>>>({});
   const [draftBankName, setDraftBankName] = useState('');
   const [draftSourceCity, setDraftSourceCity] = useState('');
   const [draftSourceCityClean, setDraftSourceCityClean] = useState('');
-  const [draftReportMonth, setDraftReportMonth] = useState('');
+  const [draftStartDate, setDraftStartDate] = useState('');
+  const [draftEndDate, setDraftEndDate] = useState('');
+  const [draftExtraFilters, setDraftExtraFilters] = useState<Partial<Record<AzExtraKey, string>>>({});
 
   useEffect(() => {
     if (filterDrawerOpen) {
       setDraftBankName(bankName);
       setDraftSourceCity(sourceCity);
       setDraftSourceCityClean(sourceCityClean);
-      setDraftReportMonth(reportMonth);
+      setDraftStartDate(startDate);
+      setDraftEndDate(endDate);
+      setDraftExtraFilters(extraFilters);
     }
-  }, [filterDrawerOpen, bankName, sourceCity, sourceCityClean, reportMonth]);
+  }, [filterDrawerOpen, bankName, sourceCity, sourceCityClean, startDate, endDate, extraFilters]);
 
   const [viewState, setViewState] = useState<MapViewState>(INITIAL_VIEW_STATE);
   const { data: banks = [], isLoading: banksLoading } = useGetAzmapBanksQuery();
   const { data: cities = [], isLoading: citiesLoading } = useGetAzmapCitiesQuery();
   const { data: regions = [], isLoading: regionsLoading } = useGetAzmapRegionsQuery();
-  const queryMonth = reportMonth;
+  const { data: filterOptionsData, isLoading: extraOptionsLoading } = useGetAzmapFilterOptionsQuery();
+  const activeExtraParams = useMemo(() => {
+    const out: Partial<Record<AzExtraKey, string>> = {};
+    for (const [k, v] of Object.entries(extraFilters)) {
+      if (v) out[k as AzExtraKey] = v;
+    }
+    return out;
+  }, [extraFilters]);
   const { data, isLoading, isError } = useGetAzmapFilterQuery({
     ...(bankName ? { BankName: bankName } : {}),
     ...(sourceCity ? { SourceCity: sourceCity } : {}),
     ...(sourceCityClean ? { SourceCityClean: sourceCityClean } : {}),
-    ...(queryMonth ? { ReportMonth: queryMonth } : {}),
+    ...(startDate ? { StartDate: startDate } : {}),
+    ...(endDate ? { EndDate: endDate } : {}),
+    ...activeExtraParams,
   });
   const {
     data: heatmapData,
@@ -195,7 +256,7 @@ const AzmapPage: React.FC = () => {
   } = useGetAzmapHeatmapQuery({
     ...(bankName ? { bankName } : {}),
     ...(sourceCity ? { sourceCity } : {}),
-    ...(queryMonth ? { month: queryMonth } : {}),
+    ...(startDate ? { month: startDate } : {}),
   });
   const rows = data?.items ?? [];
 
@@ -210,31 +271,6 @@ const AzmapPage: React.FC = () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, []);
-
-  const columns = useMemo<ColumnDef<AzmapItem, unknown>[]>(
-    () => [
-      { accessorKey: 'bankName', header: 'Bank' },
-      { accessorKey: 'sourceCity', header: 'Mənbə şəhər' },
-      { accessorKey: 'sourceCityClean', header: 'Şəhər' },
-      { accessorKey: 'sourceCityCategory', header: 'Kateqoriya' },
-      {
-        accessorKey: 'reportMonth',
-        header: 'Ay',
-        cell: ({ getValue }) => formatDate(getValue() as string),
-      },
-      {
-        accessorKey: 'totalAmount',
-        header: 'Məbləğ',
-        cell: ({ getValue }) => formatAmount(getValue() as number),
-      },
-      {
-        accessorKey: 'totalCount',
-        header: 'Say',
-        cell: ({ getValue }) => formatNumber(getValue() as number),
-      },
-    ],
-    []
-  );
 
   const cityPoints = useMemo(() => buildCityPoints(rows), [rows]);
 
@@ -356,13 +392,28 @@ const AzmapPage: React.FC = () => {
 
     return result.sort((a, b) => b.totalAmount - a.totalAmount);
   }, [heatmapPoints, viewState.zoom]);
-  const maxAmount = useMemo(
-    () => Math.max(...cityPoints.map((point) => point.totalAmount), 1),
-    [cityPoints]
+  const sortedCityPoints = useMemo(
+    () =>
+      [...cityPoints].sort(
+        (a, b) => getPointMetric(b, metric) - getPointMetric(a, metric)
+      ),
+    [cityPoints, metric]
   );
-  const maxHeatmapAmount = useMemo(
-    () => Math.max(...heatmapPoints.map((point) => point.totalAmount), 1),
-    [heatmapPoints]
+  const maxMetric = useMemo(
+    () =>
+      Math.max(
+        ...cityPoints.map((point) => getPointMetric(point, metric)),
+        1
+      ),
+    [cityPoints, metric]
+  );
+  const maxHeatmapMetric = useMemo(
+    () =>
+      Math.max(
+        ...heatmapPoints.map((point) => getPointMetric(point, metric)),
+        1
+      ),
+    [heatmapPoints, metric]
   );
   const totalAmount = useMemo(
     () => rows.reduce((sum, item) => sum + item.totalAmount, 0),
@@ -397,7 +448,12 @@ const AzmapPage: React.FC = () => {
     regionOptions.find((item) => item.value === draftSourceCityClean) ?? null;
 
   const hasActiveFilters = Boolean(
-    bankName || sourceCity || sourceCityClean || reportMonth
+    bankName ||
+      sourceCity ||
+      sourceCityClean ||
+      startDate ||
+      endDate ||
+      Object.values(extraFilters).some(Boolean)
   );
 
   const handleViewStateChange = ({
@@ -465,7 +521,7 @@ const AzmapPage: React.FC = () => {
           id: 'azmap-heatmap',
           data: heatmapPoints,
           getPosition: (point) => point.position,
-          getWeight: (point) => point.totalAmount,
+          getWeight: (point) => getPointMetric(point, metric),
           intensity: 1.2,
           radiusPixels: 80,
           threshold: 0.04,
@@ -485,7 +541,7 @@ const AzmapPage: React.FC = () => {
           getRadius: (point) =>
             point.isCluster
               ? 8_000 + point.pointCount * 1_000
-              : 2_500 + (point.totalAmount / maxHeatmapAmount) * 18_000,
+              : 2_500 + (getPointMetric(point, metric) / maxHeatmapMetric) * 18_000,
           getFillColor: (point) =>
             point.isCluster ? [255, 255, 255, 110] : [255, 255, 255, 70],
           getLineColor: (point) =>
@@ -527,7 +583,7 @@ const AzmapPage: React.FC = () => {
         getRadius: (point) =>
           point.isCluster
             ? 8_000 + point.pointCount * 1_000
-            : 3_000 + (point.totalAmount / maxAmount) * 28_000,
+            : 3_000 + (getPointMetric(point, metric) / maxMetric) * 28_000,
         getFillColor: (point) =>
           point.isCluster
             ? [99, 102, 241, 215] // Indigo color for clusters
@@ -573,8 +629,9 @@ const AzmapPage: React.FC = () => {
     heatmapPoints,
     isDark,
     mapMode,
-    maxAmount,
-    maxHeatmapAmount,
+    maxHeatmapMetric,
+    maxMetric,
+    metric,
     viewState.zoom,
   ]);
 
@@ -650,11 +707,15 @@ const AzmapPage: React.FC = () => {
     setBankName('');
     setSourceCity('');
     setSourceCityClean('');
-    setReportMonth('');
+    setStartDate('');
+    setEndDate('');
+    setExtraFilters({});
     setDraftBankName('');
     setDraftSourceCity('');
     setDraftSourceCityClean('');
-    setDraftReportMonth('');
+    setDraftStartDate('');
+    setDraftEndDate('');
+    setDraftExtraFilters({});
     setFilterDrawerOpen(false);
   };
 
@@ -662,7 +723,9 @@ const AzmapPage: React.FC = () => {
     setBankName(draftBankName);
     setSourceCity(draftSourceCity);
     setSourceCityClean(draftSourceCityClean);
-    setReportMonth(draftReportMonth);
+    setStartDate(draftStartDate);
+    setEndDate(draftEndDate);
+    setExtraFilters(draftExtraFilters);
     setFilterDrawerOpen(false);
   };
 
@@ -821,13 +884,57 @@ const AzmapPage: React.FC = () => {
                   </label>
 
                   <label className="space-y-1.5 text-sm font-medium">
-                    <span className={mutedText}>Ay</span>
+                    <span className={mutedText}>Başlanğıc tarix</span>
                     <DateInput
                       className={inputClass}
-                      value={draftReportMonth}
-                      onChange={setDraftReportMonth}
+                      value={draftStartDate}
+                      onChange={setDraftStartDate}
                     />
                   </label>
+
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={mutedText}>Bitmə tarixi</span>
+                    <DateInput
+                      className={inputClass}
+                      value={draftEndDate}
+                      onChange={setDraftEndDate}
+                    />
+                  </label>
+
+                  {AZ_EXTRA_FILTER_FIELDS.map((field) => {
+                    const rawList =
+                      filterOptionsData?.[
+                        field.optKey as keyof AzmapFilterOptionsResponse
+                      ] ?? [];
+                    const options: SelectOption[] = rawList.map((val) => ({
+                      label: val,
+                      value: val,
+                    }));
+                    const currentValue = draftExtraFilters[field.key] ?? '';
+                    const selected =
+                      options.find((opt) => opt.value === currentValue) ?? null;
+                    return (
+                      <label key={field.key} className="space-y-1.5 text-sm font-medium">
+                        <span className={mutedText}>{field.label}</span>
+                        <Select
+                          inputId={`azmap-filter-${field.key}`}
+                          isClearable
+                          isLoading={extraOptionsLoading}
+                          noOptionsMessage={() => 'Məlumat tapılmadı'}
+                          onChange={(option: SingleValue<SelectOption>) =>
+                            setDraftExtraFilters((prev) => ({
+                              ...prev,
+                              [field.key]: option?.value ?? '',
+                            }))
+                          }
+                          options={options}
+                          placeholder={field.placeholder}
+                          styles={selectStyles}
+                          value={selected}
+                        />
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -847,7 +954,9 @@ const AzmapPage: React.FC = () => {
                     !draftBankName &&
                     !draftSourceCity &&
                     !draftSourceCityClean &&
-                    !draftReportMonth
+                    !draftStartDate &&
+                    !draftEndDate &&
+                    !Object.values(draftExtraFilters).some(Boolean)
                   }
                   onClick={resetFilters}
                 >
@@ -866,9 +975,78 @@ const AzmapPage: React.FC = () => {
             </aside>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Ümumi qeyd" value={formatNumber(data?.totalCount)} />
-            <StatCard label="Ümumi məbləğ" value={formatShortAmount(totalAmount)} />
+          <div
+            className={[
+              'flex flex-wrap items-center justify-between gap-4 rounded-xl border p-4 shadow-sm',
+              panelClass,
+            ].join(' ')}
+          >
+            <div className="flex flex-wrap items-center gap-6">
+              <div className="space-y-1.5">
+                <span className={['block text-xs font-medium', mutedText].join(' ')}>
+                  Kateqoriya
+                </span>
+                <div className="inline-flex rounded-lg border border-slate-500/20 p-1">
+                  {METRIC_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setMetric(opt.value)}
+                      className={[
+                        'rounded-md px-3 py-1.5 text-xs font-semibold transition',
+                        metric === opt.value
+                          ? 'bg-emerald-600 text-white shadow'
+                          : isDark
+                            ? 'text-slate-300 hover:bg-slate-800'
+                            : 'text-slate-700 hover:bg-slate-100',
+                      ].join(' ')}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <span className={['block text-xs font-medium', mutedText].join(' ')}>
+                  Məbləğ vahidi
+                </span>
+                <div className="inline-flex rounded-lg border border-slate-500/20 p-1">
+                  {AMOUNT_UNITS.map((unit) => (
+                    <button
+                      key={unit.value}
+                      type="button"
+                      onClick={() => setAmountUnit(unit.value)}
+                      className={[
+                        'rounded-md px-3 py-1.5 text-xs font-semibold transition',
+                        amountUnit === unit.value
+                          ? 'bg-emerald-600 text-white shadow'
+                          : isDark
+                            ? 'text-slate-300 hover:bg-slate-800'
+                            : 'text-slate-700 hover:bg-slate-100',
+                      ].join(' ')}
+                    >
+                      {unit.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <StatCard
+              label={metric === 'average' ? 'Ortalama məbləğ' : 'Ümumi məbləğ'}
+              value={
+                metric === 'average'
+                  ? formatMetricValue(
+                      totalOperations > 0 ? totalAmount / totalOperations : 0,
+                      'average',
+                      amountUnit
+                    )
+                  : formatMetricValue(totalAmount, 'turnover', amountUnit)
+              }
+            />
             <StatCard label="Əməliyyat sayı" value={formatNumber(totalOperations)} />
             <StatCard label="Aktiv bank" value={formatNumber(uniqueBanks)} />
           </div>
@@ -1066,22 +1244,27 @@ const AzmapPage: React.FC = () => {
                     const point = object as ClusteredCityPoint;
 
                     if (point.isCluster) {
+                      const avg =
+                        point.totalCount > 0 ? point.totalAmount / point.totalCount : 0;
                       return {
                         html: `
                           <div style="padding: 4px; font-family: sans-serif;">
                             <strong style="color: #6366f1;">Qruplaşdırılmış Bölgə (${point.pointCount} şəhər)</strong><br/>
                             <span style="color: #94a3b8; font-size: 11px;">${point.city}</span><br/>
                             <div style="margin-top: 6px; border-top: 1px solid #334155; padding-top: 4px;">
-                              <strong>Məbləğ:</strong> ${formatAmount(point.totalAmount)}<br/>
-                              <strong>Əməliyyat:</strong> ${formatNumber(point.totalCount)}
+                              <strong>Məbləğ:</strong> ${formatMetricValue(point.totalAmount, 'turnover', amountUnit)}<br/>
+                              <strong>Əməliyyat:</strong> ${formatNumber(point.totalCount)}<br/>
+                              <strong>Ortalama:</strong> ${formatMetricValue(avg, 'average', amountUnit)}
                             </div>
                           </div>
                         `,
                       };
                     }
 
+                    const avg =
+                      point.totalCount > 0 ? point.totalAmount / point.totalCount : 0;
                     return {
-                      html: `<strong>${point.city}</strong><br/>Məbləğ: ${formatAmount(point.totalAmount)}<br/>Say: ${formatNumber(point.totalCount)}`,
+                      html: `<strong>${point.city}</strong><br/>Məbləğ: ${formatMetricValue(point.totalAmount, 'turnover', amountUnit)}<br/>Say: ${formatNumber(point.totalCount)}<br/>Ortalama: ${formatMetricValue(avg, 'average', amountUnit)}`,
                     };
                   }}
                   layers={deckLayers}
@@ -1107,32 +1290,36 @@ const AzmapPage: React.FC = () => {
                   <div>
                     <h3 className="font-semibold">Ən böyük regionlar</h3>
                     <p className={['text-sm', mutedText].join(' ')}>
-                      Məbləğ üzrə ümumiləşdirmə
+                      {metric === 'count'
+                        ? 'Əməliyyat sayı üzrə ümumiləşdirmə'
+                        : metric === 'average'
+                          ? 'Ortalama məbləğ üzrə ümumiləşdirmə'
+                          : 'Məbləğ üzrə ümumiləşdirmə'}
                     </p>
                   </div>
                 </div>
                 <div className="mt-4 space-y-3">
-                  {cityPoints.slice(0, 7).map((point) => (
-                    <div key={point.id}>
-                      <div className="flex items-center justify-between gap-3 text-sm">
-                        <span className="min-w-0 truncate font-medium">{point.city}</span>
-                        <span className="shrink-0 tabular-nums">
-                          {formatShortAmount(point.totalAmount)}
-                        </span>
+                  {sortedCityPoints.slice(0, 7).map((point) => {
+                    const val = getPointMetric(point, metric);
+                    return (
+                      <div key={point.id}>
+                        <div className="flex items-center justify-between gap-3 text-sm">
+                          <span className="min-w-0 truncate font-medium">{point.city}</span>
+                          <span className="shrink-0 tabular-nums">
+                            {formatMetricValue(val, metric, amountUnit)}
+                          </span>
+                        </div>
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-500/15">
+                          <div
+                            className="h-full rounded-full bg-emerald-500"
+                            style={{
+                              width: `${Math.max(6, (val / maxMetric) * 100)}%`,
+                            }}
+                          />
+                        </div>
                       </div>
-                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-500/15">
-                        <div
-                          className="h-full rounded-full bg-emerald-500"
-                          style={{
-                            width: `${Math.max(
-                              6,
-                              (point.totalAmount / maxAmount) * 100
-                            )}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1152,8 +1339,6 @@ const AzmapPage: React.FC = () => {
               </div>
             </aside>
           </section>
-
-          <DataTable columns={columns} data={rows} />
         </>
       )}
     </div>

@@ -33,6 +33,8 @@ export interface MarketBenchmarkRankedParams {
 
 export interface MarketBenchmarkFilterParams {
   ReportMonth?: string | Date;
+  StartDate?: string | Date;
+  EndDate?: string | Date;
   BankName?: string;
   RegionNameClean?: string;
   CardBrandName?: string;

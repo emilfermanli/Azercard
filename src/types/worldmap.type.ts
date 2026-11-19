@@ -28,12 +28,22 @@ export interface WorldmapPaginatedResponse {
 
 export interface WorldmapFilterParams {
   ReportMonth?: string | Date;
+  StartDate?: string | Date;
+  EndDate?: string | Date;
   BankName?: string;
   SourceCountry?: string;
   SourceCountryCategory?: string;
   TargetCountry?: string;
   TargetCountryCategory?: string;
   PaymentSystem?: string;
+  IsIssuingCategory?: string;
+  CardProductTypeCategory?: string;
+  CardAccountCurrency?: string;
+  SourceBankName?: string;
+  AcquiringDeviceType?: string;
+  TransGroup?: string;
+  OperationType?: string;
+  TokenStatus?: string;
   IsIssuing?: boolean | number;
   IsAcquiring?: boolean | number;
   TotalAmount?: number;
@@ -63,3 +73,15 @@ export interface WorldmapHeatmapPoint {
 }
 
 export type WorldmapHeatmapResponse = Record<string, number> | WorldmapHeatmapPoint[];
+
+export interface WorldmapFilterOptionsResponse {
+  isIssuingCategories: string[];
+  cardProductTypeCategories: string[];
+  paymentSystems: string[];
+  cardAccountCurrencies: string[];
+  sourceBankNames: string[];
+  acquiringDeviceTypes: string[];
+  transGroups: string[];
+  operationTypes: string[];
+  tokenStatuses: string[];
+}

@@ -6,7 +6,6 @@ import { TileLayer } from '@deck.gl/geo-layers';
 import { FlyToInterpolator } from '@deck.gl/core';
 import type { MapViewState, ViewStateChangeParameters } from '@deck.gl/core';
 import { BASE_MAP_TILE_URL, type BaseMapStyle } from '@/utils/basemap-tiles';
-import type { ColumnDef } from '@tanstack/react-table';
 import {
   ArrowRightLeft,
   BadgeDollarSign,
@@ -25,24 +24,66 @@ import {
 } from 'lucide-react';
 import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
-import { Button, DataTable, DateInput, LoadingSpinner } from '@/components';
+import { Button, DateInput, LoadingSpinner } from '@/components';
 import { useGetGeneralBanksQuery } from '@/services/general.service';
 import {
+  useGetWorldmapFilterOptionsQuery,
   useGetWorldmapFilterQuery,
   useGetWorldmapHeatmapQuery,
 } from '@/services/worldmap.service';
-import type { WorldmapHeatmapResponse, WorldmapItem } from '@/types/worldmap.type';
+import type {
+  WorldmapFilterOptionsResponse,
+  WorldmapHeatmapResponse,
+  WorldmapItem,
+} from '@/types/worldmap.type';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 
 import {
   DataPageHeader,
   formatAmount,
-  formatDate,
   formatNumber,
   PageError,
   PageLoading,
   StatCard,
 } from '../_data-page-ui';
+
+type Metric = 'turnover' | 'count' | 'average';
+type AmountUnit = 'Min' | 'Mln' | 'Mlrd';
+
+const METRIC_OPTIONS: Array<{ value: Metric; label: string }> = [
+  { value: 'turnover', label: 'Dövriyyə' },
+  { value: 'count', label: 'Əməliyyat sayı' },
+  { value: 'average', label: 'Ortalama məbləğ' },
+];
+
+const AMOUNT_UNITS: Array<{
+  value: AmountUnit;
+  label: string;
+  divisor: number;
+  suffix: string;
+}> = [
+  { value: 'Min', label: 'Min (₼)', divisor: 1_000, suffix: 'min ₼' },
+  { value: 'Mln', label: 'Mln (₼)', divisor: 1_000_000, suffix: 'mln ₼' },
+  { value: 'Mlrd', label: 'Mlrd (₼)', divisor: 1_000_000_000, suffix: 'mlrd ₼' },
+];
+
+function getItemMetric(
+  item: { totalAmount: number; totalCount: number },
+  metric: Metric
+) {
+  if (metric === 'count') return item.totalCount;
+  if (metric === 'average') {
+    return item.totalCount > 0 ? item.totalAmount / item.totalCount : 0;
+  }
+  return item.totalAmount;
+}
+
+function formatMetricValue(value: number, metric: Metric, unit: AmountUnit) {
+  if (metric === 'count') return formatNumber(value);
+  if (metric === 'average') return `${formatAmount(value)} ₼`;
+  const unitInfo = AMOUNT_UNITS.find((u) => u.value === unit) ?? AMOUNT_UNITS[1];
+  return `${formatAmount(value / unitInfo.divisor)} ${unitInfo.suffix}`;
+}
 
 type Flow = {
   id: string;
@@ -155,10 +196,6 @@ async function loadWrappedMapTile({
   return createImageBitmap(await response.blob());
 }
 
-function toBool(value: boolean | number) {
-  return value === true || value === 1;
-}
-
 function hasCoordinates(item: WorldmapItem) {
   return (
     item.sourceLatitude != null &&
@@ -166,13 +203,6 @@ function hasCoordinates(item: WorldmapItem) {
     item.targetLatitude != null &&
     item.targetLongitude != null
   );
-}
-
-function formatShortAmount(value: number) {
-  if (value >= 1_000_000_000) return `${formatAmount(value / 1_000_000_000)} mlrd`;
-  if (value >= 1_000_000) return `${formatAmount(value / 1_000_000)} mln`;
-  if (value >= 1_000) return `${formatAmount(value / 1_000)} min`;
-  return formatAmount(value);
 }
 
 function translateCategory(value: string | null | undefined) {
@@ -271,7 +301,7 @@ function normalizeHeatmapResponse(
           id: `${country}-${index}`,
           country,
           position: [longitude, latitude],
-          totalCount: point.totalCount ?? 0,
+          totalCount: point.totalCount ?? fallbackPoint?.totalCount ?? 0,
           weight,
         };
       })
@@ -305,6 +335,19 @@ function normalizeHeatmapResponse(
   }));
 }
 
+const WORLD_EXTRA_FILTER_FIELDS = [
+  { key: 'IsIssuingCategory', optKey: 'isIssuingCategories', label: 'İssuing kateqoriyası', placeholder: 'Bütün kateqoriyalar' },
+  { key: 'CardProductTypeCategory', optKey: 'cardProductTypeCategories', label: 'Məhsul tipi', placeholder: 'Bütün məhsul tipləri' },
+  { key: 'CardAccountCurrency', optKey: 'cardAccountCurrencies', label: 'Valyuta', placeholder: 'Bütün valyutalar' },
+  { key: 'SourceBankName', optKey: 'sourceBankNames', label: 'Mənbə bank adı', placeholder: 'Bütün banklar' },
+  { key: 'AcquiringDeviceType', optKey: 'acquiringDeviceTypes', label: 'Acquiring qurğu', placeholder: 'Bütün qurğular' },
+  { key: 'TransGroup', optKey: 'transGroups', label: 'Əməliyyat qrupları', placeholder: 'Bütün qruplar' },
+  { key: 'OperationType', optKey: 'operationTypes', label: 'Əməliyyat tipləri', placeholder: 'Bütün tiplər' },
+  { key: 'TokenStatus', optKey: 'tokenStatuses', label: 'Token statusu', placeholder: 'Bütün statuslar' },
+] as const;
+
+type WorldExtraKey = (typeof WORLD_EXTRA_FILTER_FIELDS)[number]['key'];
+
 const WorldmapPage: React.FC = () => {
   const isDark = useShellTheme();
   const mapContainerRef = useRef<HTMLDivElement>(null);
@@ -328,7 +371,11 @@ const WorldmapPage: React.FC = () => {
   const [sourceLongitudeFilter, setSourceLongitudeFilter] = useState('');
   const [targetLatitudeFilter, setTargetLatitudeFilter] = useState('');
   const [targetLongitudeFilter, setTargetLongitudeFilter] = useState('');
-  const [reportMonth, setReportMonth] = useState('');
+  const [metric, setMetric] = useState<Metric>('turnover');
+  const [amountUnit, setAmountUnit] = useState<AmountUnit>('Mln');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [extraFilters, setExtraFilters] = useState<Partial<Record<WorldExtraKey, string>>>({});
   const [draftBankId, setDraftBankId] = useState('');
   const [draftSourceCountry, setDraftSourceCountry] = useState('');
   const [draftSourceCountryCategory, setDraftSourceCountryCategory] = useState('');
@@ -343,7 +390,9 @@ const WorldmapPage: React.FC = () => {
   const [draftSourceLongitudeFilter, setDraftSourceLongitudeFilter] = useState('');
   const [draftTargetLatitudeFilter, setDraftTargetLatitudeFilter] = useState('');
   const [draftTargetLongitudeFilter, setDraftTargetLongitudeFilter] = useState('');
-  const [draftReportMonth, setDraftReportMonth] = useState('');
+  const [draftStartDate, setDraftStartDate] = useState('');
+  const [draftEndDate, setDraftEndDate] = useState('');
+  const [draftExtraFilters, setDraftExtraFilters] = useState<Partial<Record<WorldExtraKey, string>>>({});
   const [isApplyingFilters, setIsApplyingFilters] = useState(false);
   const [hasStartedApplyFetch, setHasStartedApplyFetch] = useState(false);
   const [sourceCountryOptionCache, setSourceCountryOptionCache] = useState<
@@ -367,8 +416,18 @@ const WorldmapPage: React.FC = () => {
   const targetLatitudeNumber = parseNumberFilter(targetLatitudeFilter);
   const targetLongitudeNumber = parseNumberFilter(targetLongitudeFilter);
   const { data: banks = [], isLoading: banksLoading } = useGetGeneralBanksQuery();
+  const { data: worldFilterOptions, isLoading: worldExtraLoading } =
+    useGetWorldmapFilterOptionsQuery();
+  const activeExtraParams = useMemo(() => {
+    const out: Partial<Record<WorldExtraKey, string>> = {};
+    for (const [k, v] of Object.entries(extraFilters)) {
+      if (v) out[k as WorldExtraKey] = v;
+    }
+    return out;
+  }, [extraFilters]);
   const { data, isLoading, isError, isFetching } = useGetWorldmapFilterQuery({
-    ...(reportMonth ? { ReportMonth: reportMonth } : {}),
+    ...(startDate ? { StartDate: startDate } : {}),
+    ...(endDate ? { EndDate: endDate } : {}),
     ...(bankId ? { BankName: bankId } : {}),
     ...(sourceCountry ? { SourceCountry: sourceCountry } : {}),
     ...(sourceCountryCategory ? { SourceCountryCategory: sourceCountryCategory } : {}),
@@ -383,6 +442,7 @@ const WorldmapPage: React.FC = () => {
     ...(sourceLongitudeNumber != null ? { SourceLongitude: sourceLongitudeNumber } : {}),
     ...(targetLatitudeNumber != null ? { TargetLatitude: targetLatitudeNumber } : {}),
     ...(targetLongitudeNumber != null ? { TargetLongitude: targetLongitudeNumber } : {}),
+    ...activeExtraParams,
   });
   const {
     data: heatmapData,
@@ -390,7 +450,7 @@ const WorldmapPage: React.FC = () => {
     isFetching: isHeatmapFetching,
   } = useGetWorldmapHeatmapQuery({
     ...(bankId ? { bankName: bankId } : {}),
-    ...(reportMonth ? { month: reportMonth } : {}),
+    ...(startDate ? { month: startDate } : {}),
   });
   const rows = useMemo(() => data?.items ?? [], [data?.items]);
 
@@ -423,7 +483,8 @@ const WorldmapPage: React.FC = () => {
     setDraftSourceLongitudeFilter(sourceLongitudeFilter);
     setDraftTargetLatitudeFilter(targetLatitudeFilter);
     setDraftTargetLongitudeFilter(targetLongitudeFilter);
-    setDraftReportMonth(reportMonth);
+    setDraftStartDate(startDate);
+    setDraftEndDate(endDate);
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -435,15 +496,16 @@ const WorldmapPage: React.FC = () => {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [
     bankId,
+    endDate,
     filterDrawerOpen,
     isAcquiring,
     isIssuing,
     paymentSystem,
-    reportMonth,
     sourceCountry,
     sourceCountryCategory,
     sourceLatitudeFilter,
     sourceLongitudeFilter,
+    startDate,
     targetCountry,
     targetCountryCategory,
     targetLatitudeFilter,
@@ -531,43 +593,6 @@ const WorldmapPage: React.FC = () => {
 
     await mapContainerRef.current?.requestFullscreen();
   };
-
-  const columns = useMemo<ColumnDef<WorldmapItem, unknown>[]>(
-    () => [
-      { accessorKey: 'bankName', header: 'Bank' },
-      { accessorKey: 'sourceCountry', header: 'Mənbə ölkə' },
-      { accessorKey: 'targetCountry', header: 'Hədəf ölkə' },
-      { accessorKey: 'paymentSystem', header: 'Ödəniş sistemi' },
-      {
-        accessorKey: 'reportMonth',
-        header: 'Ay',
-        cell: ({ getValue }) => formatDate(getValue() as string),
-      },
-      {
-        accessorKey: 'isIssuing',
-        header: 'Emitent',
-        cell: ({ getValue }) =>
-          toBool(getValue() as boolean | number) ? 'Bəli' : 'Xeyr',
-      },
-      {
-        accessorKey: 'isAcquiring',
-        header: 'Ekvayrinq',
-        cell: ({ getValue }) =>
-          toBool(getValue() as boolean | number) ? 'Bəli' : 'Xeyr',
-      },
-      {
-        accessorKey: 'totalAmount',
-        header: 'Məbləğ',
-        cell: ({ getValue }) => formatAmount(getValue() as number),
-      },
-      {
-        accessorKey: 'totalCount',
-        header: 'Say',
-        cell: ({ getValue }) => formatNumber(getValue() as number),
-      },
-    ],
-    []
-  );
 
   const mapData = useMemo(() => {
     const flowMap = new Map<string, Flow>();
@@ -1087,7 +1112,9 @@ const WorldmapPage: React.FC = () => {
       sourceLongitudeFilter ||
       targetLatitudeFilter ||
       targetLongitudeFilter ||
-      reportMonth
+      startDate ||
+      endDate ||
+      Object.values(extraFilters).some(Boolean)
   );
   const hasDraftFilters = Boolean(
     draftBankId ||
@@ -1104,7 +1131,9 @@ const WorldmapPage: React.FC = () => {
       draftSourceLongitudeFilter ||
       draftTargetLatitudeFilter ||
       draftTargetLongitudeFilter ||
-      draftReportMonth
+      draftStartDate ||
+      draftEndDate ||
+      Object.values(draftExtraFilters).some(Boolean)
   );
   const mapButtonClass = [
     'flex h-10 w-10 items-center justify-center rounded-lg border shadow-lg transition hover:scale-[1.03]',
@@ -1128,7 +1157,9 @@ const WorldmapPage: React.FC = () => {
     setSourceLongitudeFilter('');
     setTargetLatitudeFilter('');
     setTargetLongitudeFilter('');
-    setReportMonth('');
+    setStartDate('');
+    setEndDate('');
+    setExtraFilters({});
     setDraftBankId('');
     setDraftSourceCountry('');
     setDraftSourceCountryCategory('');
@@ -1143,10 +1174,15 @@ const WorldmapPage: React.FC = () => {
     setDraftSourceLongitudeFilter('');
     setDraftTargetLatitudeFilter('');
     setDraftTargetLongitudeFilter('');
-    setDraftReportMonth('');
+    setDraftStartDate('');
+    setDraftEndDate('');
+    setDraftExtraFilters({});
   };
 
   const applyDraftFilters = () => {
+    const extraChanged = WORLD_EXTRA_FILTER_FIELDS.some(
+      (f) => (draftExtraFilters[f.key] ?? '') !== (extraFilters[f.key] ?? '')
+    );
     const hasChanges =
       draftBankId !== bankId ||
       draftSourceCountry !== sourceCountry ||
@@ -1162,7 +1198,9 @@ const WorldmapPage: React.FC = () => {
       draftSourceLongitudeFilter !== sourceLongitudeFilter ||
       draftTargetLatitudeFilter !== targetLatitudeFilter ||
       draftTargetLongitudeFilter !== targetLongitudeFilter ||
-      draftReportMonth !== reportMonth;
+      draftStartDate !== startDate ||
+      draftEndDate !== endDate ||
+      extraChanged;
 
     if (!hasChanges) {
       setFilterDrawerOpen(false);
@@ -1185,7 +1223,9 @@ const WorldmapPage: React.FC = () => {
     setSourceLongitudeFilter(draftSourceLongitudeFilter);
     setTargetLatitudeFilter(draftTargetLatitudeFilter);
     setTargetLongitudeFilter(draftTargetLongitudeFilter);
-    setReportMonth(draftReportMonth);
+    setStartDate(draftStartDate);
+    setEndDate(draftEndDate);
+    setExtraFilters(draftExtraFilters);
     setFilterDrawerOpen(false);
   };
 
@@ -1409,11 +1449,20 @@ const WorldmapPage: React.FC = () => {
                   </div>
 
                   <label className="space-y-1.5 text-sm font-medium">
-                    <span className={mutedText}>Ay</span>
+                    <span className={mutedText}>Başlanğıc tarix</span>
                     <DateInput
                       className={inputClass}
-                      value={draftReportMonth}
-                      onChange={setDraftReportMonth}
+                      value={draftStartDate}
+                      onChange={setDraftStartDate}
+                    />
+                  </label>
+
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={mutedText}>Bitmə tarixi</span>
+                    <DateInput
+                      className={inputClass}
+                      value={draftEndDate}
+                      onChange={setDraftEndDate}
                     />
                   </label>
 
@@ -1530,6 +1579,41 @@ const WorldmapPage: React.FC = () => {
                       />
                     </label>
                   </div>
+
+                  {WORLD_EXTRA_FILTER_FIELDS.map((field) => {
+                    const rawList =
+                      worldFilterOptions?.[
+                        field.optKey as keyof WorldmapFilterOptionsResponse
+                      ] ?? [];
+                    const options: SelectOption[] = rawList.map((val) => ({
+                      label: val,
+                      value: val,
+                    }));
+                    const currentValue = draftExtraFilters[field.key] ?? '';
+                    const selected =
+                      options.find((opt) => opt.value === currentValue) ?? null;
+                    return (
+                      <label key={field.key} className="space-y-1.5 text-sm font-medium">
+                        <span className={mutedText}>{field.label}</span>
+                        <Select
+                          inputId={`worldmap-filter-${field.key}`}
+                          isClearable
+                          isLoading={worldExtraLoading}
+                          noOptionsMessage={() => 'Məlumat tapılmadı'}
+                          onChange={(option: SingleValue<SelectOption>) =>
+                            setDraftExtraFilters((prev) => ({
+                              ...prev,
+                              [field.key]: option?.value ?? '',
+                            }))
+                          }
+                          options={options}
+                          placeholder={field.placeholder}
+                          styles={selectStyles}
+                          value={selected}
+                        />
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1563,9 +1647,78 @@ const WorldmapPage: React.FC = () => {
             </aside>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Ümumi qeyd" value={formatNumber(data?.totalCount)} />
-            <StatCard label="Ümumi məbləğ" value={formatShortAmount(totalAmount)} />
+          <div
+            className={[
+              'flex flex-wrap items-center justify-between gap-4 rounded-xl border p-4 shadow-sm',
+              panelClass,
+            ].join(' ')}
+          >
+            <div className="flex flex-wrap items-center gap-6">
+              <div className="space-y-1.5">
+                <span className={['block text-xs font-medium', mutedText].join(' ')}>
+                  Kateqoriya
+                </span>
+                <div className="inline-flex rounded-lg border border-slate-500/20 p-1">
+                  {METRIC_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setMetric(opt.value)}
+                      className={[
+                        'rounded-md px-3 py-1.5 text-xs font-semibold transition',
+                        metric === opt.value
+                          ? 'bg-cyan-600 text-white shadow'
+                          : isDark
+                            ? 'text-slate-300 hover:bg-slate-800'
+                            : 'text-slate-700 hover:bg-slate-100',
+                      ].join(' ')}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <span className={['block text-xs font-medium', mutedText].join(' ')}>
+                  Məbləğ vahidi
+                </span>
+                <div className="inline-flex rounded-lg border border-slate-500/20 p-1">
+                  {AMOUNT_UNITS.map((unit) => (
+                    <button
+                      key={unit.value}
+                      type="button"
+                      onClick={() => setAmountUnit(unit.value)}
+                      className={[
+                        'rounded-md px-3 py-1.5 text-xs font-semibold transition',
+                        amountUnit === unit.value
+                          ? 'bg-cyan-600 text-white shadow'
+                          : isDark
+                            ? 'text-slate-300 hover:bg-slate-800'
+                            : 'text-slate-700 hover:bg-slate-100',
+                      ].join(' ')}
+                    >
+                      {unit.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <StatCard
+              label={metric === 'average' ? 'Ortalama məbləğ' : 'Ümumi məbləğ'}
+              value={
+                metric === 'average'
+                  ? formatMetricValue(
+                      totalOperations > 0 ? totalAmount / totalOperations : 0,
+                      'average',
+                      amountUnit
+                    )
+                  : formatMetricValue(totalAmount, 'turnover', amountUnit)
+              }
+            />
             <StatCard label="Əməliyyat sayı" value={formatNumber(totalOperations)} />
             <StatCard label="Aktiv bank" value={formatNumber(uniqueBanks)} />
           </div>
@@ -1778,8 +1931,10 @@ const WorldmapPage: React.FC = () => {
                     const item = object as Flow | CountryPoint | ClusteredHeatmapPoint;
 
                     if ('sourceCountry' in item) {
+                      const avg =
+                        item.totalCount > 0 ? item.totalAmount / item.totalCount : 0;
                       return {
-                        html: `<strong>${item.sourceCountry} → ${item.targetCountry}</strong><br/>${item.paymentSystem}<br/>Məbləğ: ${formatAmount(item.totalAmount)}<br/>Say: ${formatNumber(item.totalCount)}`,
+                        html: `<strong>${item.sourceCountry} → ${item.targetCountry}</strong><br/>${item.paymentSystem}<br/>Məbləğ: ${formatMetricValue(item.totalAmount, 'turnover', amountUnit)}<br/>Say: ${formatNumber(item.totalCount)}<br/>Ortalama: ${formatMetricValue(avg, 'average', amountUnit)}`,
                       };
                     }
 
@@ -1792,7 +1947,7 @@ const WorldmapPage: React.FC = () => {
                               <strong style="color: #06b6d4;">Qruplaşdırılmış Bölgə (${point.pointCount} ölkə)</strong><br/>
                               <span style="color: #94a3b8; font-size: 11px;">${point.country}</span><br/>
                               <div style="margin-top: 6px; border-top: 1px solid #334155; padding-top: 4px;">
-                                <strong>Dəyər:</strong> ${formatAmount(point.weight)}<br/>
+                                <strong>Dəyər:</strong> ${formatMetricValue(point.weight, 'turnover', amountUnit)}<br/>
                                 <strong>Əməliyyat:</strong> ${formatNumber(point.totalCount)}
                               </div>
                             </div>
@@ -1801,12 +1956,14 @@ const WorldmapPage: React.FC = () => {
                       }
 
                       return {
-                        html: `<strong>${point.country}</strong><br/>İstilik xəritəsi dəyəri: ${formatAmount(point.weight)}<br/>Say: ${formatNumber(point.totalCount)}`,
+                        html: `<strong>${point.country}</strong><br/>İstilik xəritəsi dəyəri: ${formatMetricValue(point.weight, 'turnover', amountUnit)}<br/>Say: ${formatNumber(point.totalCount)}`,
                       };
                     }
 
+                    const avg =
+                      item.totalCount > 0 ? item.totalAmount / item.totalCount : 0;
                     return {
-                      html: `<strong>${item.country}</strong><br/>${item.category}<br/>Məbləğ: ${formatAmount(item.totalAmount)}<br/>Say: ${formatNumber(item.totalCount)}`,
+                      html: `<strong>${item.country}</strong><br/>${item.category}<br/>Məbləğ: ${formatMetricValue(item.totalAmount, 'turnover', amountUnit)}<br/>Say: ${formatNumber(item.totalCount)}<br/>Ortalama: ${formatMetricValue(avg, 'average', amountUnit)}`,
                     };
                   }}
                   layers={deckLayers}
@@ -1837,29 +1994,67 @@ const WorldmapPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="mt-4 space-y-3">
-                  {mapData.flows.slice(0, 6).map((flow) => (
-                    <div key={flow.id}>
-                      <div className="flex items-center justify-between gap-3 text-sm">
-                        <span className="min-w-0 truncate font-medium">
-                          {flow.sourceCountry} {'→'} {flow.targetCountry}
-                        </span>
-                        <span className="shrink-0 tabular-nums">
-                          {formatShortAmount(flow.totalAmount)}
-                        </span>
-                      </div>
-                      <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-500/15">
-                        <div
-                          className="h-full rounded-full bg-cyan-500"
-                          style={{
-                            width: `${Math.max(
-                              6,
-                              (flow.totalAmount / mapData.maxAmount) * 100
-                            )}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
+                  {(() => {
+                    const groupedMap = new Map<
+                      string,
+                      {
+                        id: string;
+                        sourceCountry: string;
+                        targetCountry: string;
+                        totalAmount: number;
+                        totalCount: number;
+                      }
+                    >();
+                    for (const flow of mapData.flows) {
+                      const key = `${flow.sourceCountry}→${flow.targetCountry}`;
+                      const existing = groupedMap.get(key);
+                      if (existing) {
+                        existing.totalAmount += flow.totalAmount;
+                        existing.totalCount += flow.totalCount;
+                      } else {
+                        groupedMap.set(key, {
+                          id: key,
+                          sourceCountry: flow.sourceCountry,
+                          targetCountry: flow.targetCountry,
+                          totalAmount: flow.totalAmount,
+                          totalCount: flow.totalCount,
+                        });
+                      }
+                    }
+                    const topRoutes = [...groupedMap.values()]
+                      .sort(
+                        (a, b) =>
+                          getItemMetric(b, metric) - getItemMetric(a, metric)
+                      )
+                      .slice(0, 6);
+                    const maxVal = Math.max(
+                      ...topRoutes.map((r) => getItemMetric(r, metric)),
+                      1
+                    );
+                    return topRoutes.map((flow) => {
+                      const val = getItemMetric(flow, metric);
+                      return (
+                        <div key={flow.id}>
+                          <div className="flex items-center justify-between gap-3 text-sm">
+                            <span className="min-w-0 truncate font-medium">
+                              {flow.sourceCountry} {'→'} {flow.targetCountry}
+                            </span>
+                            <span className="shrink-0 tabular-nums">
+                              {formatMetricValue(val, metric, amountUnit)}
+                            </span>
+                          </div>
+                          <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-500/15">
+                            <div
+                              className="h-full rounded-full bg-cyan-500"
+                              style={{
+                                width: `${Math.max(6, (val / maxVal) * 100)}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
 
@@ -1876,25 +2071,33 @@ const WorldmapPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="mt-4 space-y-3">
-                  {mapData.paymentSummary.map((payment) => (
-                    <div
-                      key={payment.name}
-                      className={[
-                        'rounded-lg border px-3 py-2',
-                        isDark ? 'border-slate-800 bg-slate-950/40' : 'border-slate-100',
-                      ].join(' ')}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-sm font-semibold">{payment.name}</span>
-                        <span className="text-sm tabular-nums">
-                          {formatShortAmount(payment.totalAmount)}
-                        </span>
+                  {[...mapData.paymentSummary]
+                    .sort(
+                      (a, b) => getItemMetric(b, metric) - getItemMetric(a, metric)
+                    )
+                    .map((payment) => (
+                      <div
+                        key={payment.name}
+                        className={[
+                          'rounded-lg border px-3 py-2',
+                          isDark ? 'border-slate-800 bg-slate-950/40' : 'border-slate-100',
+                        ].join(' ')}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-sm font-semibold">{payment.name}</span>
+                          <span className="text-sm tabular-nums">
+                            {formatMetricValue(
+                              getItemMetric(payment, metric),
+                              metric,
+                              amountUnit
+                            )}
+                          </span>
+                        </div>
+                        <p className={['mt-1 text-xs', mutedText].join(' ')}>
+                          {formatNumber(payment.totalCount)} əməliyyat
+                        </p>
                       </div>
-                      <p className={['mt-1 text-xs', mutedText].join(' ')}>
-                        {formatNumber(payment.totalCount)} əməliyyat
-                      </p>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </div>
 
@@ -1914,8 +2117,6 @@ const WorldmapPage: React.FC = () => {
               </div>
             </aside>
           </section>
-
-          <DataTable columns={columns} data={rows} />
         </>
       )}
     </div>

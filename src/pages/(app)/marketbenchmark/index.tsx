@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { ColumnDef } from '@tanstack/react-table';
 import {
   BarChart3,
   CreditCard,
@@ -29,7 +28,7 @@ import {
 } from 'recharts';
 import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
-import { Button, DataPagination, DataTable, DateInput } from '@/components';
+import { Button, DateInput } from '@/components';
 import { useGetGeneralBanksQuery } from '@/services/general.service';
 import { useGetMarketbenchmarkFilterQuery } from '@/services/marketbenchmark.service';
 import type { MarketBenchmarkItem } from '@/types/marketbenchmark.type';
@@ -38,7 +37,6 @@ import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import {
   DataPageHeader,
   formatAmount,
-  formatDate,
   formatNumber,
   PageError,
   PageLoading,
@@ -75,7 +73,6 @@ type SelectOption = {
 };
 
 const CHART_COLORS = ['#2563eb', '#10b981', '#06b6d4', '#f59e0b', '#ef4444', '#8b5cf6'];
-const PAGE_SIZE = 10;
 
 function formatPercent(value: number | null | undefined) {
   return `${formatAmount(value)}%`;
@@ -392,13 +389,14 @@ const MarketBenchmarkPage: React.FC = () => {
   const [regionNameClean, setRegionNameClean] = useState('');
   const [cardBrandName, setCardBrandName] = useState('');
   const [productType, setProductType] = useState('');
-  const [reportMonth, setReportMonth] = useState('');
-  const [page, setPage] = useState(1);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [draftBankName, setDraftBankName] = useState('');
   const [draftRegionNameClean, setDraftRegionNameClean] = useState('');
   const [draftCardBrandName, setDraftCardBrandName] = useState('');
   const [draftProductType, setDraftProductType] = useState('');
-  const [draftReportMonth, setDraftReportMonth] = useState('');
+  const [draftStartDate, setDraftStartDate] = useState('');
+  const [draftEndDate, setDraftEndDate] = useState('');
 
   useEffect(() => {
     if (filterDrawerOpen) {
@@ -406,7 +404,8 @@ const MarketBenchmarkPage: React.FC = () => {
       setDraftRegionNameClean(regionNameClean);
       setDraftCardBrandName(cardBrandName);
       setDraftProductType(productType);
-      setDraftReportMonth(reportMonth);
+      setDraftStartDate(startDate);
+      setDraftEndDate(endDate);
     }
   }, [
     filterDrawerOpen,
@@ -414,31 +413,23 @@ const MarketBenchmarkPage: React.FC = () => {
     regionNameClean,
     cardBrandName,
     productType,
-    reportMonth,
+    startDate,
+    endDate,
   ]);
 
   const [regionOptionCache, setRegionOptionCache] = useState<SelectOption[]>([]);
   const [brandOptionCache, setBrandOptionCache] = useState<SelectOption[]>([]);
   const [productOptionCache, setProductOptionCache] = useState<SelectOption[]>([]);
   const { data: banks = [], isLoading: banksLoading } = useGetGeneralBanksQuery();
-  const { data, isLoading, isError, isFetching } = useGetMarketbenchmarkFilterQuery({
+  const { data, isLoading, isError } = useGetMarketbenchmarkFilterQuery({
     ...(bankName ? { BankName: bankName } : {}),
     ...(regionNameClean ? { RegionNameClean: regionNameClean } : {}),
     ...(cardBrandName ? { CardBrandName: cardBrandName } : {}),
     ...(productType ? { ProductType: productType } : {}),
-    ...(reportMonth ? { ReportMonth: reportMonth } : {}),
+    ...(startDate ? { StartDate: startDate } : {}),
+    ...(endDate ? { EndDate: endDate } : {}),
   });
   const rows = useMemo(() => data?.items ?? [], [data?.items]);
-  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const pagedRows = useMemo(
-    () => rows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE),
-    [rows, safePage]
-  );
-
-  useEffect(() => {
-    setPage(1);
-  }, [bankName, regionNameClean, cardBrandName, productType, reportMonth]);
 
   useEffect(() => {
     setRegionOptionCache((current) =>
@@ -451,45 +442,6 @@ const MarketBenchmarkPage: React.FC = () => {
       mergeSelectOptions(current, toUniqueOptions(rows.map((row) => row.productType)))
     );
   }, [rows]);
-
-  const columns = useMemo<ColumnDef<MarketBenchmarkItem, unknown>[]>(
-    () => [
-      { accessorKey: 'bankName', header: 'Bank' },
-      { accessorKey: 'regionNameClean', header: 'Region' },
-      {
-        accessorKey: 'cardBrandName',
-        header: 'Kart brendi',
-        cell: ({ getValue }) => cleanBrand(getValue() as string | null),
-      },
-      { accessorKey: 'productType', header: 'Məhsul tipi' },
-      {
-        accessorKey: 'reportMonth',
-        header: 'Ay',
-        cell: ({ getValue }) => formatDate(getValue() as string),
-      },
-      {
-        accessorKey: 'marketSharePct',
-        header: 'Bazar payı',
-        cell: ({ getValue }) => formatPercent(getValue() as number),
-      },
-      {
-        accessorKey: 'cardSharePct',
-        header: 'Kart payı',
-        cell: ({ getValue }) => formatPercent(getValue() as number),
-      },
-      {
-        accessorKey: 'bankCardCount',
-        header: 'Bank kartı',
-        cell: ({ getValue }) => formatNumber(getValue() as number),
-      },
-      {
-        accessorKey: 'bankTransAmount',
-        header: 'Bank məbləği',
-        cell: ({ getValue }) => formatAmount(getValue() as number),
-      },
-    ],
-    []
-  );
 
   const topBanks = useMemo(
     () => groupRows(rows, (row) => row.bankName ?? 'Naməlum bank'),
@@ -621,8 +573,15 @@ const MarketBenchmarkPage: React.FC = () => {
     productOptions.find((item) => item.value === draftProductType) ?? null;
 
   const hasActiveFilters = Boolean(
-    bankName || regionNameClean || cardBrandName || productType || reportMonth
+    bankName || regionNameClean || cardBrandName || productType || startDate || endDate
   );
+
+  const hasSelectedBank = Boolean(bankName);
+  const distinctBankCount = useMemo(
+    () => new Set(rows.map((row) => row.bankName).filter(Boolean)).size,
+    [rows]
+  );
+  const leaderBank = topBanks[0] ?? null;
 
   const totalBankAmount = rows.reduce((sum, row) => sum + row.bankTransAmount, 0);
   const totalBankCards = rows.reduce((sum, row) => sum + row.bankCardCount, 0);
@@ -695,13 +654,14 @@ const MarketBenchmarkPage: React.FC = () => {
     setRegionNameClean('');
     setCardBrandName('');
     setProductType('');
-    setReportMonth('');
+    setStartDate('');
+    setEndDate('');
     setDraftBankName('');
     setDraftRegionNameClean('');
     setDraftCardBrandName('');
     setDraftProductType('');
-    setDraftReportMonth('');
-    setPage(1);
+    setDraftStartDate('');
+    setDraftEndDate('');
     setFilterDrawerOpen(false);
   };
 
@@ -710,8 +670,8 @@ const MarketBenchmarkPage: React.FC = () => {
     setRegionNameClean(draftRegionNameClean);
     setCardBrandName(draftCardBrandName);
     setProductType(draftProductType);
-    setReportMonth(draftReportMonth);
-    setPage(1);
+    setStartDate(draftStartDate);
+    setEndDate(draftEndDate);
     setFilterDrawerOpen(false);
   };
 
@@ -884,11 +844,20 @@ const MarketBenchmarkPage: React.FC = () => {
                   </label>
 
                   <label className="space-y-1.5 text-sm font-medium">
-                    <span className={mutedText}>Ay</span>
+                    <span className={mutedText}>Başlanğıc tarixi</span>
                     <DateInput
                       className={inputClass}
-                      value={draftReportMonth}
-                      onChange={setDraftReportMonth}
+                      value={draftStartDate}
+                      onChange={setDraftStartDate}
+                    />
+                  </label>
+
+                  <label className="space-y-1.5 text-sm font-medium">
+                    <span className={mutedText}>Bitmə tarixi</span>
+                    <DateInput
+                      className={inputClass}
+                      value={draftEndDate}
+                      onChange={setDraftEndDate}
                     />
                   </label>
                 </div>
@@ -911,7 +880,8 @@ const MarketBenchmarkPage: React.FC = () => {
                     !draftRegionNameClean &&
                     !draftCardBrandName &&
                     !draftProductType &&
-                    !draftReportMonth
+                    !draftStartDate &&
+                    !draftEndDate
                   }
                   onClick={resetFilters}
                 >
@@ -930,11 +900,29 @@ const MarketBenchmarkPage: React.FC = () => {
             </aside>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <StatCard label="Ümumi qeyd" value={formatNumber(data?.totalCount)} />
-            <StatCard label="Bank məbləği" value={formatShortAmount(totalBankAmount)} />
-            <StatCard label="Orta bazar payı" value={formatPercent(avgMarketShare)} />
-            <StatCard label="Orta kart payı" value={formatPercent(avgCardShare)} />
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <StatCard
+              label={hasSelectedBank ? 'Bank məbləği' : 'Ümumi bazar dövriyyəsi'}
+              value={formatShortAmount(totalBankAmount)}
+            />
+            {hasSelectedBank ? (
+              <>
+                <StatCard label="Bazar payı" value={formatPercent(avgMarketShare)} />
+                <StatCard label="Kart payı" value={formatPercent(avgCardShare)} />
+              </>
+            ) : (
+              <>
+                <StatCard label="Aktiv bank sayı" value={formatNumber(distinctBankCount)} />
+                <StatCard
+                  label="Bazar lideri"
+                  value={
+                    leaderBank
+                      ? `${leaderBank.label} (${formatShortAmount(leaderBank.amount)})`
+                      : '—'
+                  }
+                />
+              </>
+            )}
           </div>
 
           <section className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(340px,0.85fr)]">
@@ -1032,18 +1020,6 @@ const MarketBenchmarkPage: React.FC = () => {
               <HorizontalAmountChart color="#8b5cf6" data={brandChartData} />
             </BenchmarkPanel>
           </section>
-
-          <DataTable columns={columns} data={pagedRows} />
-          <DataPagination
-            hasNext={safePage < totalPages}
-            hasPrev={safePage > 1}
-            isFetching={isFetching}
-            onPageChange={setPage}
-            page={safePage}
-            pageSize={PAGE_SIZE}
-            totalCount={rows.length}
-            totalPages={totalPages}
-          />
         </>
       )}
     </div>

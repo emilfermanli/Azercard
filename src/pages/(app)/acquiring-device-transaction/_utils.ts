@@ -23,7 +23,7 @@ export function pickMetric(
   metric: Metric
 ): number {
   if (metric === 'count') return item.count;
-  if (metric === 'average') return item.count ? item.value / item.count : 0;
+  // Backend Category=Average olduqda item.value artıq ortalama məbləğdir.
   return item.value;
 }
 
@@ -45,13 +45,16 @@ export function formatMetric(value: number, metric: Metric, unit: AmountUnit): s
   if (metric === 'count') {
     return Math.round(value).toLocaleString('az-AZ');
   }
+  if (metric === 'average') {
+    return value.toLocaleString('az-AZ', { maximumFractionDigits: 2 });
+  }
   const scaled = value / amountDivisor(unit);
   return scaled.toLocaleString('az-AZ', { maximumFractionDigits: 2 });
 }
 
-/** Monetar göstəricini qrafik oxu üçün vahidə bölür (count olduğu kimi qalır). */
+/** Monetar göstəricini qrafik oxu üçün vahidə bölür (count və average olduğu kimi qalır). */
 export function scaleForAxis(value: number, metric: Metric, unit: AmountUnit): number {
-  if (metric === 'count') return value;
+  if (metric === 'count' || metric === 'average') return value;
   return value / amountDivisor(unit);
 }
 

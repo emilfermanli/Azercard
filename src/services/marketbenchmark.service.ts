@@ -35,12 +35,14 @@ export const marketbenchmarkApi = createApi({
       MarketBenchmarkPaginatedResponse,
       MarketBenchmarkFilterParams
     >({
-      query: ({ ReportMonth, ...rest }) => ({
+      query: ({ ReportMonth, StartDate, EndDate, ...rest }) => ({
         url: 'MarketBenchmark/filter',
         method: 'GET',
         params: {
           ...rest,
           ...(ReportMonth != null ? { ReportMonth: toQueryDate(ReportMonth) } : {}),
+          ...(StartDate != null ? { StartDate: toQueryDate(StartDate) } : {}),
+          ...(EndDate != null ? { EndDate: toQueryDate(EndDate) } : {}),
         },
       }),
     }),

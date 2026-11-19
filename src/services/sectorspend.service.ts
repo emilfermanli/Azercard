@@ -23,12 +23,14 @@ export const sectorspendApi = createApi({
       SectorSpendPaginatedResponse,
       SectorSpendFilterParams
     >({
-      query: ({ month, ...params }) => ({
+      query: ({ month, startDate, endDate, ...params }) => ({
         url: 'SectorSpend/filter',
         method: 'GET',
         params: {
           ...params,
           ...(month != null ? { month: toQueryDate(month) } : {}),
+          ...(startDate != null ? { startDate: toQueryDate(startDate) } : {}),
+          ...(endDate != null ? { endDate: toQueryDate(endDate) } : {}),
         },
       }),
     }),

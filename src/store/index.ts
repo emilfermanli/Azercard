@@ -13,7 +13,6 @@ import { userApi } from '@/services/user.service';
 import { authApi } from '@/services/auth.service';
 import { organizationApi } from '@/services/organization.service';
 import { azmapApi } from '@/services/azmap.service';
-import { forecastingApi } from '@/services/forecasting.service';
 import { generalApi } from '@/services/general.service';
 import { marketbenchmarkApi } from '@/services/marketbenchmark.service';
 import { sectorspendApi } from '@/services/sectorspend.service';
@@ -36,7 +35,6 @@ const rootReducer = combineReducers({
   [authApi.reducerPath]: authApi.reducer,
   [organizationApi.reducerPath]: organizationApi.reducer,
   [azmapApi.reducerPath]: azmapApi.reducer,
-  [forecastingApi.reducerPath]: forecastingApi.reducer,
   [generalApi.reducerPath]: generalApi.reducer,
   [marketbenchmarkApi.reducerPath]: marketbenchmarkApi.reducer,
   [sectorspendApi.reducerPath]: sectorspendApi.reducer,
@@ -72,7 +70,6 @@ const store = configureStore({
         userApi.middleware,
         organizationApi.middleware,
         azmapApi.middleware,
-        forecastingApi.middleware,
         generalApi.middleware,
         marketbenchmarkApi.middleware,
         sectorspendApi.middleware,

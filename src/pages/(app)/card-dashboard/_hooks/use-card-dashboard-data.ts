@@ -33,7 +33,8 @@ function breakdownValue(item: CardBreakdownItem, metric: Metric): number {
   if (metric === 'count') return item.totalTxCount;
   if (metric === 'avg')
     return item.totalTxCount ? item.totalAmount / item.totalTxCount : 0;
-  return item.totalAmount; // amount, max (max bölgü mövcud deyil → məbləğ)
+  if (metric === 'max') return item.maxAmount ?? item.totalAmount;
+  return item.totalAmount;
 }
 
 function breakdownPct(item: CardBreakdownItem, metric: Metric): number {
@@ -44,6 +45,7 @@ function breakdownPct(item: CardBreakdownItem, metric: Metric): number {
 function trendActual(p: CardTrendPoint, metric: Metric): number {
   if (metric === 'count') return p.totalTxCount;
   if (metric === 'avg') return p.totalTxCount ? p.totalAmount / p.totalTxCount : 0;
+  if (metric === 'max') return p.maxAmount ?? p.totalAmount;
   return p.totalAmount;
 }
 

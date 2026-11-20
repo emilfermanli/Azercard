@@ -49,6 +49,7 @@ export type CardTrendPoint = {
   periodLabel: string;
   totalAmount: number;
   totalTxCount: number;
+  maxAmount?: number;
   prevAmount: number | null;
   prevTxCount: number | null;
   amountChangePct: number | null;
@@ -68,6 +69,7 @@ export type CardBreakdownItem = {
   category: string;
   totalAmount: number;
   totalTxCount: number;
+  maxAmount?: number;
   amountPct: number;
   txCountPct: number;
 };

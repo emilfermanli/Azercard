@@ -146,8 +146,6 @@ function groupRows(
       current.amount += row.bankTransAmount;
       current.count += row.bankTransCount;
       current.cards += row.bankCardCount;
-      current.marketShare = Math.max(current.marketShare, row.marketSharePct);
-      current.cardShare = Math.max(current.cardShare, row.cardSharePct);
       return;
     }
 
@@ -156,12 +154,22 @@ function groupRows(
       amount: row.bankTransAmount,
       count: row.bankTransCount,
       cards: row.bankCardCount,
-      marketShare: row.marketSharePct,
-      cardShare: row.cardSharePct,
+      marketShare: 0,
+      cardShare: 0,
     });
   });
 
-  return Array.from(map.values()).sort((a, b) => b.amount - a.amount);
+  const items = Array.from(map.values());
+  const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
+  const totalCards = items.reduce((sum, item) => sum + item.cards, 0);
+
+  return items
+    .map((item) => ({
+      ...item,
+      marketShare: totalAmount > 0 ? (item.amount / totalAmount) * 100 : 0,
+      cardShare: totalCards > 0 ? (item.cards / totalCards) * 100 : 0,
+    }))
+    .sort((a, b) => b.amount - a.amount);
 }
 
 function toChartItems(items: SummaryItem[]): ChartItem[] {

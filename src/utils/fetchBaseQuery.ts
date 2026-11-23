@@ -1,4 +1,5 @@
 import { RootState } from '@/store';
+import { FRONTEND_CACHE_ENABLED } from '@/utils/cache-config';
 import { fetchBaseQuery } from '@reduxjs/toolkit/query';
 
 /**
@@ -33,6 +34,11 @@ export const baseQuery = fetchBaseQuery({
     // If we have a token set in state, let's assume that we should be passing it.
     if (auth?.data?.accessToken) {
       headers.set('authorization', `Bearer ${auth.data.accessToken}`);
+    }
+
+    if (!FRONTEND_CACHE_ENABLED) {
+      headers.set('cache-control', 'no-cache');
+      headers.set('pragma', 'no-cache');
     }
 
     return headers;

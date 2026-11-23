@@ -1,5 +1,6 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 
+import { rtkCacheDefaults } from '@/utils/cache-config';
 import { baseQuery } from '@/utils/fetchBaseQuery';
 import type {
   AcquiringDashboard,
@@ -23,6 +24,7 @@ function cleanParams<T extends Record<string, unknown>>(params: T) {
 export const acquiringDeviceApi = createApi({
   reducerPath: 'acquiringDeviceApi',
   baseQuery,
+  ...rtkCacheDefaults,
   endpoints: (builder) => ({
     // Bir dəfə yüklənir — bütün dropdown dəyərləri + minDate/maxDate.
     getAcquiringFilterOptions: builder.query<AcquiringFilterOptions, void>({

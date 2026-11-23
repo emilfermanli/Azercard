@@ -9,6 +9,7 @@ import type {
   SectorSpendTrendParams,
 } from '@/types/sectorspend.type';
 import { createApi } from '@reduxjs/toolkit/query/react';
+import { rtkCacheDefaults } from '@/utils/cache-config';
 import { baseQuery } from '@/utils/fetchBaseQuery';
 
 function toQueryDate(date: string | Date): string {
@@ -18,6 +19,7 @@ function toQueryDate(date: string | Date): string {
 export const sectorspendApi = createApi({
   reducerPath: 'sectorspendApi',
   baseQuery,
+  ...rtkCacheDefaults,
   endpoints: (builder) => ({
     getSectorSpendFilter: builder.query<
       SectorSpendPaginatedResponse,

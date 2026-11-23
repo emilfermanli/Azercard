@@ -48,6 +48,15 @@ server {
         proxy_buffering       off;
     }
 
+    # ---- runtime config (never cached) ----
+    location = /runtime-config.js {
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+        add_header Pragma "no-cache" always;
+        expires -1;
+        access_log off;
+        try_files $uri =404;
+    }
+
     # ---- hashed static assets: cache forever ----
     location /assets/ {
         expires    1y;

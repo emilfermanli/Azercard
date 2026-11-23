@@ -6,12 +6,14 @@ import type {
   RegisterUserPayload,
 } from '@/types/user.type';
 import { createApi } from '@reduxjs/toolkit/query/react';
+import { rtkCacheDefaults } from '@/utils/cache-config';
 import { baseQuery } from '@/utils/fetchBaseQuery';
 import { mapGetAllUsersResponse } from '@/utils/map-get-all-users-response';
 
 export const userApi = createApi({
   reducerPath: 'userApi',
   baseQuery,
+  ...rtkCacheDefaults,
   tagTypes: ['User'],
   endpoints: (builder) => ({
     getAllUsers: builder.query<GetAllUsersResult, GetAllUsersParams>({

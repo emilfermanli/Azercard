@@ -1,5 +1,6 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 
+import { rtkCacheDefaults } from '@/utils/cache-config';
 import { baseQuery } from '@/utils/fetchBaseQuery';
 import type {
   CardDashboardArgs,
@@ -21,6 +22,7 @@ function cleanParams<T extends Record<string, unknown>>(params: T) {
 export const cardDashboardApi = createApi({
   reducerPath: 'cardDashboardApi',
   baseQuery,
+  ...rtkCacheDefaults,
   endpoints: (builder) => ({
     // Bir dəfə yüklənir — dropdown dəyərləri.
     getCardDashboardFilters: builder.query<CardDashboardFilters, void>({

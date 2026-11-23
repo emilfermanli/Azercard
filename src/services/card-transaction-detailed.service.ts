@@ -1,5 +1,6 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 
+import { rtkCacheDefaults } from '@/utils/cache-config';
 import { baseQuery } from '@/utils/fetchBaseQuery';
 import type {
   TdBankRow,
@@ -22,6 +23,7 @@ function cleanParams<T extends Record<string, unknown>>(params: T) {
 export const transactionDetailedApi = createApi({
   reducerPath: 'transactionDetailedApi',
   baseQuery,
+  ...rtkCacheDefaults,
   endpoints: (builder) => ({
     // KPI + IS_Issuing_Category bölgüsü + target bank / qurğu (seçimə görə).
     getTdSummary: builder.query<TdSummary, TransactionDetailedArgs>({

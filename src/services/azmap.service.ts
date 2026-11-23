@@ -6,6 +6,7 @@ import type {
   AzmapItem,
 } from '@/types/azmap.type';
 import { createApi } from '@reduxjs/toolkit/query/react';
+import { rtkCacheDefaults } from '@/utils/cache-config';
 import { baseQuery } from '@/utils/fetchBaseQuery';
 
 function toQueryDate(date: string | Date): string {
@@ -15,6 +16,7 @@ function toQueryDate(date: string | Date): string {
 export const azmapApi = createApi({
   reducerPath: 'azmapApi',
   baseQuery,
+  ...rtkCacheDefaults,
   endpoints: (builder) => ({
     getAzmapFilter: builder.query<AzmapFilterResponse, AzmapFilterParams | void>({
       query: (params) => ({

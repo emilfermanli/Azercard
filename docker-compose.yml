@@ -17,6 +17,7 @@ services:
       # read at container start by nginx (no rebuild needed to change)
       API_UPSTREAM: ${API_UPSTREAM:-http://31.57.77.199:8080}
       SERVER_NAME: ${SERVER_NAME:-_}
+      CACHE_ENABLED: ${CACHE_ENABLED:-true}
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1/healthz"]
       interval: 30s

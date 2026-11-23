@@ -1,10 +1,12 @@
 import type { GeneralBank, GeneralMccGroup } from '@/types/general.type';
 import { createApi } from '@reduxjs/toolkit/query/react';
+import { rtkCacheDefaults } from '@/utils/cache-config';
 import { baseQuery } from '@/utils/fetchBaseQuery';
 
 export const generalApi = createApi({
   reducerPath: 'generalApi',
   baseQuery,
+  ...rtkCacheDefaults,
   endpoints: (builder) => ({
     getGeneralBanks: builder.query<GeneralBank[], void>({
       query: () => ({

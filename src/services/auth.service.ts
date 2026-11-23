@@ -10,6 +10,7 @@ import type {
   UserListRow,
 } from '@/types/user.type';
 import { createApi } from '@reduxjs/toolkit/query/react';
+import { rtkCacheDefaults } from '@/utils/cache-config';
 import { baseQuery } from '@/utils/fetchBaseQuery';
 import {
   isAuthLoginApiResponse,
@@ -38,6 +39,7 @@ function asRoleArray(raw: unknown): RoleRow[] {
 export const authApi = createApi({
   reducerPath: 'authApi',
   baseQuery,
+  ...rtkCacheDefaults,
   tagTypes: ['CurrentUser', 'Role'],
   endpoints: (builder) => ({
     login: builder.mutation<Auth, AuthLoginPayload>({

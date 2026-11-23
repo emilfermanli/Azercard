@@ -7,6 +7,7 @@ import type {
   UpdatePositionPayload,
 } from '@/types/organization.type';
 import { createApi } from '@reduxjs/toolkit/query/react';
+import { rtkCacheDefaults } from '@/utils/cache-config';
 import { baseQuery } from '@/utils/fetchBaseQuery';
 
 function asArray<T>(raw: unknown): T[] {
@@ -16,6 +17,7 @@ function asArray<T>(raw: unknown): T[] {
 export const organizationApi = createApi({
   reducerPath: 'organizationApi',
   baseQuery,
+  ...rtkCacheDefaults,
   tagTypes: ['Department', 'Position'],
   endpoints: (builder) => ({
     getDepartments: builder.query<Department[], void>({

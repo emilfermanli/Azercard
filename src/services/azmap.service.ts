@@ -6,7 +6,10 @@ import type {
   AzmapItem,
 } from '@/types/azmap.type';
 import { createApi } from '@reduxjs/toolkit/query/react';
-import { rtkCacheDefaults } from '@/utils/cache-config';
+import {
+  dashboardApiCacheOptions,
+  dashboardEndpointCacheOptions,
+} from '@/utils/cache-config';
 import { baseQuery } from '@/utils/fetchBaseQuery';
 
 function toQueryDate(date: string | Date): string {
@@ -16,7 +19,7 @@ function toQueryDate(date: string | Date): string {
 export const azmapApi = createApi({
   reducerPath: 'azmapApi',
   baseQuery,
-  ...rtkCacheDefaults,
+  ...dashboardApiCacheOptions(),
   endpoints: (builder) => ({
     getAzmapFilter: builder.query<AzmapFilterResponse, AzmapFilterParams | void>({
       query: (params) => ({
@@ -55,24 +58,28 @@ export const azmapApi = createApi({
         url: 'AzMap/cities',
         method: 'GET',
       }),
+      ...dashboardEndpointCacheOptions(),
     }),
     getAzmapRegions: builder.query<string[], void>({
       query: () => ({
         url: 'AzMap/regions',
         method: 'GET',
       }),
+      ...dashboardEndpointCacheOptions(),
     }),
     getAzmapBanks: builder.query<string[], void>({
       query: () => ({
         url: 'AzMap/banks',
         method: 'GET',
       }),
+      ...dashboardEndpointCacheOptions(),
     }),
     getAzmapFilterOptions: builder.query<AzmapFilterOptionsResponse, void>({
       query: () => ({
         url: 'AzMap/filter-options',
         method: 'GET',
       }),
+      ...dashboardEndpointCacheOptions(),
     }),
   }),
 });

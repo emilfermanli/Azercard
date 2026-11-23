@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DeckGL from '@deck.gl/react';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import { BitmapLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers';
@@ -30,7 +30,6 @@ import {
   useGetAzmapFilterOptionsQuery,
   useGetAzmapFilterQuery,
   useGetAzmapHeatmapQuery,
-  useGetAzmapRegionsQuery,
 } from '@/services/azmap.service';
 import type { AzmapFilterOptionsResponse, AzmapItem } from '@/types/azmap.type';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
@@ -232,7 +231,6 @@ const AzmapPage: React.FC = () => {
   const [viewState, setViewState] = useState<MapViewState>(INITIAL_VIEW_STATE);
   const { data: banks = [], isLoading: banksLoading } = useGetAzmapBanksQuery();
   const { data: cities = [], isLoading: citiesLoading } = useGetAzmapCitiesQuery();
-  const { data: regions = [], isLoading: regionsLoading } = useGetAzmapRegionsQuery();
   const { data: filterOptionsData, isLoading: extraOptionsLoading } = useGetAzmapFilterOptionsQuery();
   const activeExtraParams = useMemo(() => {
     const out: Partial<Record<AzExtraKey, string>> = {};
@@ -253,11 +251,14 @@ const AzmapPage: React.FC = () => {
     data: heatmapData,
     isError: isHeatmapError,
     isFetching: isHeatmapFetching,
-  } = useGetAzmapHeatmapQuery({
-    ...(bankName ? { bankName } : {}),
-    ...(sourceCity ? { sourceCity } : {}),
-    ...(startDate ? { month: startDate } : {}),
-  });
+  } = useGetAzmapHeatmapQuery(
+    {
+      ...(bankName ? { bankName } : {}),
+      ...(sourceCity ? { sourceCity } : {}),
+      ...(startDate ? { month: startDate } : {}),
+    },
+    { skip: mapMode !== 'heatmap' }
+  );
   const rows = data?.items ?? [];
 
   useEffect(() => {
@@ -273,15 +274,21 @@ const AzmapPage: React.FC = () => {
   }, []);
 
   const cityPoints = useMemo(() => buildCityPoints(rows), [rows]);
+  const quantizedZoom = Math.round((viewState.zoom ?? 6.35) * 2) / 2;
 
   const clusteredPoints = useMemo<ClusteredCityPoint[]>(() => {
-    const zoom = viewState.zoom ?? 6.35;
-    if (zoom >= 7.8) {
-      return cityPoints.map((p) => ({ ...p, isCluster: false, pointCount: 1 }));
+    if (mapMode !== 'points') return [];
+    if (quantizedZoom >= 7.8) {
+      return cityPoints.map((p) => ({
+        ...p,
+        position: [...p.position] as [number, number],
+        isCluster: false,
+        pointCount: 1,
+      }));
     }
 
     // Dynamic threshold based on zoom level: at zoom 5, ~1.0 degree distance; zoom 6, ~0.5; etc.
-    const threshold = 1.0 / Math.pow(2, zoom - 5);
+    const threshold = 1.0 / Math.pow(2, quantizedZoom - 5);
     const result: ClusteredCityPoint[] = [];
 
     cityPoints.forEach((point) => {
@@ -323,6 +330,7 @@ const AzmapPage: React.FC = () => {
       if (!merged) {
         result.push({
           ...point,
+          position: [...point.position] as [number, number],
           isCluster: false,
           pointCount: 1,
         });
@@ -330,20 +338,25 @@ const AzmapPage: React.FC = () => {
     });
 
     return result.sort((a, b) => b.totalAmount - a.totalAmount);
-  }, [cityPoints, viewState.zoom]);
+  }, [cityPoints, mapMode, quantizedZoom]);
 
-  const heatmapPoints = useMemo(
-    () => buildCityPoints(heatmapData?.length ? heatmapData : rows),
-    [heatmapData, rows]
-  );
+  const heatmapPoints = useMemo(() => {
+    if (mapMode !== 'heatmap') return [];
+    return buildCityPoints(heatmapData?.length ? heatmapData : rows);
+  }, [heatmapData, mapMode, rows]);
 
   const clusteredHeatmapPoints = useMemo<ClusteredCityPoint[]>(() => {
-    const zoom = viewState.zoom ?? 6.35;
-    if (zoom >= 7.8) {
-      return heatmapPoints.map((p) => ({ ...p, isCluster: false, pointCount: 1 }));
+    if (mapMode !== 'heatmap') return [];
+    if (quantizedZoom >= 7.8) {
+      return heatmapPoints.map((p) => ({
+        ...p,
+        position: [...p.position] as [number, number],
+        isCluster: false,
+        pointCount: 1,
+      }));
     }
 
-    const threshold = 1.0 / Math.pow(2, zoom - 5);
+    const threshold = 1.0 / Math.pow(2, quantizedZoom - 5);
     const result: ClusteredCityPoint[] = [];
 
     heatmapPoints.forEach((point) => {
@@ -384,6 +397,7 @@ const AzmapPage: React.FC = () => {
       if (!merged) {
         result.push({
           ...point,
+          position: [...point.position] as [number, number],
           isCluster: false,
           pointCount: 1,
         });
@@ -391,7 +405,7 @@ const AzmapPage: React.FC = () => {
     });
 
     return result.sort((a, b) => b.totalAmount - a.totalAmount);
-  }, [heatmapPoints, viewState.zoom]);
+  }, [heatmapPoints, mapMode, quantizedZoom]);
   const sortedCityPoints = useMemo(
     () =>
       [...cityPoints].sort(
@@ -435,17 +449,22 @@ const AzmapPage: React.FC = () => {
     () => cities.filter(Boolean).map((item) => ({ label: item, value: item })),
     [cities]
   );
-  const regionOptions = useMemo<SelectOption[]>(
-    () => regions.filter(Boolean).map((item) => ({ label: item, value: item })),
-    [regions]
-  );
+  const extraFieldOptions = useMemo(() => {
+    const map = {} as Record<AzExtraKey, SelectOption[]>;
+    for (const field of AZ_EXTRA_FILTER_FIELDS) {
+      const rawList =
+        filterOptionsData?.[field.optKey as keyof AzmapFilterOptionsResponse] ?? [];
+      map[field.key] = rawList.map((val) => ({ label: val, value: val }));
+    }
+    return map;
+  }, [filterOptionsData]);
 
   const selectedDraftBank =
     bankOptions.find((item) => item.value === draftBankName) ?? null;
   const selectedDraftCity =
     cityOptions.find((item) => item.value === draftSourceCity) ?? null;
   const selectedDraftRegion =
-    regionOptions.find((item) => item.value === draftSourceCityClean) ?? null;
+    cityOptions.find((item) => item.value === draftSourceCityClean) ?? null;
 
   const hasActiveFilters = Boolean(
     bankName ||
@@ -623,7 +642,6 @@ const AzmapPage: React.FC = () => {
     ];
   }, [
     baseMapStyle,
-    cityPoints,
     clusteredPoints,
     clusteredHeatmapPoints,
     heatmapPoints,
@@ -632,8 +650,37 @@ const AzmapPage: React.FC = () => {
     maxHeatmapMetric,
     maxMetric,
     metric,
-    viewState.zoom,
   ]);
+
+  const getTooltip = useCallback(
+    ({ object }: { object?: unknown }) => {
+      if (!object) return null;
+      const point = object as ClusteredCityPoint;
+
+      if (point.isCluster) {
+        const avg = point.totalCount > 0 ? point.totalAmount / point.totalCount : 0;
+        return {
+          html: `
+            <div style="padding: 4px; font-family: sans-serif;">
+              <strong style="color: #6366f1;">Qruplaşdırılmış Bölgə (${point.pointCount} şəhər)</strong><br/>
+              <span style="color: #94a3b8; font-size: 11px;">${point.city}</span><br/>
+              <div style="margin-top: 6px; border-top: 1px solid #334155; padding-top: 4px;">
+                <strong>Məbləğ:</strong> ${formatMetricValue(point.totalAmount, 'turnover', amountUnit)}<br/>
+                <strong>Əməliyyat:</strong> ${formatNumber(point.totalCount)}<br/>
+                <strong>Ortalama:</strong> ${formatMetricValue(avg, 'average', amountUnit)}
+              </div>
+            </div>
+          `,
+        };
+      }
+
+      const avg = point.totalCount > 0 ? point.totalAmount / point.totalCount : 0;
+      return {
+        html: `<strong>${point.city}</strong><br/>Məbləğ: ${formatMetricValue(point.totalAmount, 'turnover', amountUnit)}<br/>Say: ${formatNumber(point.totalCount)}<br/>Ortalama: ${formatMetricValue(avg, 'average', amountUnit)}`,
+      };
+    },
+    [amountUnit]
+  );
 
   const panelClass = isDark
     ? 'border-slate-800 bg-slate-900/70 text-slate-100 shadow-black/20'
@@ -871,12 +918,12 @@ const AzmapPage: React.FC = () => {
                     <Select
                       inputId="azmap-filter-region"
                       isClearable
-                      isLoading={regionsLoading}
+                      isLoading={citiesLoading}
                       noOptionsMessage={() => 'Region tapılmadı'}
                       onChange={(option: SingleValue<SelectOption>) =>
                         setDraftSourceCityClean(option?.value ?? '')
                       }
-                      options={regionOptions}
+                      options={cityOptions}
                       placeholder="Bütün regionlar"
                       styles={selectStyles}
                       value={selectedDraftRegion}
@@ -902,14 +949,7 @@ const AzmapPage: React.FC = () => {
                   </label>
 
                   {AZ_EXTRA_FILTER_FIELDS.map((field) => {
-                    const rawList =
-                      filterOptionsData?.[
-                        field.optKey as keyof AzmapFilterOptionsResponse
-                      ] ?? [];
-                    const options: SelectOption[] = rawList.map((val) => ({
-                      label: val,
-                      value: val,
-                    }));
+                    const options = extraFieldOptions[field.key] ?? [];
                     const currentValue = draftExtraFilters[field.key] ?? '';
                     const selected =
                       options.find((opt) => opt.value === currentValue) ?? null;
@@ -1239,34 +1279,7 @@ const AzmapPage: React.FC = () => {
                 </div>
                 <DeckGL
                   controller
-                  getTooltip={({ object }) => {
-                    if (!object) return null;
-                    const point = object as ClusteredCityPoint;
-
-                    if (point.isCluster) {
-                      const avg =
-                        point.totalCount > 0 ? point.totalAmount / point.totalCount : 0;
-                      return {
-                        html: `
-                          <div style="padding: 4px; font-family: sans-serif;">
-                            <strong style="color: #6366f1;">Qruplaşdırılmış Bölgə (${point.pointCount} şəhər)</strong><br/>
-                            <span style="color: #94a3b8; font-size: 11px;">${point.city}</span><br/>
-                            <div style="margin-top: 6px; border-top: 1px solid #334155; padding-top: 4px;">
-                              <strong>Məbləğ:</strong> ${formatMetricValue(point.totalAmount, 'turnover', amountUnit)}<br/>
-                              <strong>Əməliyyat:</strong> ${formatNumber(point.totalCount)}<br/>
-                              <strong>Ortalama:</strong> ${formatMetricValue(avg, 'average', amountUnit)}
-                            </div>
-                          </div>
-                        `,
-                      };
-                    }
-
-                    const avg =
-                      point.totalCount > 0 ? point.totalAmount / point.totalCount : 0;
-                    return {
-                      html: `<strong>${point.city}</strong><br/>Məbləğ: ${formatMetricValue(point.totalAmount, 'turnover', amountUnit)}<br/>Say: ${formatNumber(point.totalCount)}<br/>Ortalama: ${formatMetricValue(avg, 'average', amountUnit)}`,
-                    };
-                  }}
+                  getTooltip={getTooltip}
                   layers={deckLayers}
                   onViewStateChange={handleViewStateChange}
                   style={{

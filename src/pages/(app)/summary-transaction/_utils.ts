@@ -1,6 +1,11 @@
-/** Məbləğ formatı (az-AZ, 2 onluq). */
-export function formatAmount(value: number): string {
-  return Number(value ?? 0).toLocaleString('az-AZ', { maximumFractionDigits: 2 });
+import type { AmountScale } from '@/types/summary-transaction.type';
+
+/** Məbləğ formatı (az-AZ, 2 onluq — miqyasa bölünmüş). */
+export function formatAmount(value: number, scale: AmountScale = 1): string {
+  const divisor = scale > 0 ? scale : 1;
+  return (Number(value ?? 0) / divisor).toLocaleString('az-AZ', {
+    maximumFractionDigits: 2,
+  });
 }
 
 /** Tam say formatı. */

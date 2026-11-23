@@ -741,10 +741,16 @@ const SectorSpendPage: React.FC = () => {
       endDate
   );
 
-  const totalAmount = rows.reduce((sum, row) => sum + row.totalAmount, 0);
-  const totalLocalAmount = rows.reduce((sum, row) => sum + row.totalLocalAmount, 0);
-  const totalCount = rows.reduce((sum, row) => sum + row.totalCount, 0);
-  const avgTicket = totalCount > 0 ? totalAmount / totalCount : 0;
+  const { totalAmount, totalLocalAmount, avgTicket } = useMemo(() => {
+    const amountSum = rows.reduce((sum, row) => sum + row.totalAmount, 0);
+    const localAmountSum = rows.reduce((sum, row) => sum + row.totalLocalAmount, 0);
+    const countSum = rows.reduce((sum, row) => sum + row.totalCount, 0);
+    return {
+      totalAmount: amountSum,
+      totalLocalAmount: localAmountSum,
+      avgTicket: countSum > 0 ? amountSum / countSum : 0,
+    };
+  }, [rows]);
   const topSector = sectorMix[0];
   const mutedText = isDark ? 'text-slate-300' : 'text-slate-500';
   const inputClass = [

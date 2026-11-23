@@ -591,14 +591,24 @@ const MarketBenchmarkPage: React.FC = () => {
   );
   const leaderBank = topBanks[0] ?? null;
 
-  const totalBankAmount = rows.reduce((sum, row) => sum + row.bankTransAmount, 0);
-  const totalBankCards = rows.reduce((sum, row) => sum + row.bankCardCount, 0);
-  const avgMarketShare = average(rows.map((row) => row.marketSharePct));
-  const avgCardShare = average(rows.map((row) => row.cardSharePct));
-  const bestRow = rows.reduce<MarketBenchmarkItem | null>(
-    (best, row) => (!best || row.marketSharePct > best.marketSharePct ? row : best),
-    null
-  );
+  const { totalBankAmount, totalBankCards, avgMarketShare, avgCardShare, bestRow } =
+    useMemo(() => {
+      const amountSum = rows.reduce((sum, row) => sum + row.bankTransAmount, 0);
+      const cardsSum = rows.reduce((sum, row) => sum + row.bankCardCount, 0);
+      const marketAvg = average(rows.map((row) => row.marketSharePct));
+      const cardAvg = average(rows.map((row) => row.cardSharePct));
+      const best = rows.reduce<MarketBenchmarkItem | null>(
+        (acc, row) => (!acc || row.marketSharePct > acc.marketSharePct ? row : acc),
+        null
+      );
+      return {
+        totalBankAmount: amountSum,
+        totalBankCards: cardsSum,
+        avgMarketShare: marketAvg,
+        avgCardShare: cardAvg,
+        bestRow: best,
+      };
+    }, [rows]);
   const mutedText = isDark ? 'text-slate-300' : 'text-slate-500';
   const inputClass = [
     'h-10 w-full rounded-lg border px-3 text-sm outline-none ring-blue-500/40 transition focus:ring-2',

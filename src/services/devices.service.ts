@@ -1,6 +1,9 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 
-import { rtkCacheDefaults } from '@/utils/cache-config';
+import {
+  dashboardApiCacheOptions,
+  dashboardEndpointCacheOptions,
+} from '@/utils/cache-config';
 import { baseQuery } from '@/utils/fetchBaseQuery';
 import type {
   DeviceFilters,
@@ -33,15 +36,17 @@ function cleanParams<T extends Record<string, unknown>>(params: T) {
 export const devicesApi = createApi({
   reducerPath: 'devicesApi',
   baseQuery,
-  ...rtkCacheDefaults,
+  ...dashboardApiCacheOptions(),
   endpoints: (builder) => ({
     // Bir dəfə yüklənir — default ayı verir.
     getDevicesLatestMonth: builder.query<DeviceLatestMonth, void>({
       query: () => ({ url: 'devices/latest-month', method: 'GET' }),
+      ...dashboardEndpointCacheOptions(),
     }),
     // Bir dəfə yüklənir — dropdown dəyərləri.
     getDevicesFilters: builder.query<DeviceFilters, void>({
       query: () => ({ url: 'devices/filters', method: 'GET' }),
+      ...dashboardEndpointCacheOptions(),
     }),
     // "Cəmi" qutusu.
     getDevicesTotal: builder.query<DeviceTotal, DeviceFilterArgs>({

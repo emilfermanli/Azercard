@@ -1,6 +1,6 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 
-import { rtkCacheDefaults } from '@/utils/cache-config';
+import { dashboardApiCacheOptions } from '@/utils/cache-config';
 import { baseQuery } from '@/utils/fetchBaseQuery';
 import type {
   SummaryTransactionArgs,
@@ -21,7 +21,7 @@ function cleanParams<T extends Record<string, unknown>>(params: T) {
 export const summaryTransactionApi = createApi({
   reducerPath: 'summaryTransactionApi',
   baseQuery,
-  ...rtkCacheDefaults,
+  ...dashboardApiCacheOptions(),
   endpoints: (builder) => ({
     // Total + issuing + inner + acquiring (hər biri qurğu bölgüsü ilə) — bir sorğuda.
     getSummaryTransaction: builder.query<

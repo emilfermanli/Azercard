@@ -21,9 +21,27 @@ export function isFrontendCacheEnabled(): boolean {
 
 export const FRONTEND_CACHE_ENABLED = isFrontendCacheEnabled();
 
+export const DASHBOARD_DATA_CACHE_SECONDS = 300;
+export const DASHBOARD_LOOKUP_CACHE_SECONDS = 1800;
+
 export const rtkCacheDefaults = FRONTEND_CACHE_ENABLED
   ? {}
   : ({
       keepUnusedDataFor: 0,
       refetchOnMountOrArgChange: true,
     } as const);
+
+export function dashboardApiCacheOptions(seconds = DASHBOARD_DATA_CACHE_SECONDS) {
+  return FRONTEND_CACHE_ENABLED
+    ? ({ keepUnusedDataFor: seconds } as const)
+    : ({
+        keepUnusedDataFor: 0,
+        refetchOnMountOrArgChange: true,
+      } as const);
+}
+
+export function dashboardEndpointCacheOptions(seconds = DASHBOARD_LOOKUP_CACHE_SECONDS) {
+  return FRONTEND_CACHE_ENABLED
+    ? ({ keepUnusedDataFor: seconds } as const)
+    : ({ keepUnusedDataFor: 0 } as const);
+}

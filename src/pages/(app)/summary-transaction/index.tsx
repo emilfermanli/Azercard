@@ -19,7 +19,7 @@ const SummaryTransactionPage: React.FC = () => {
   const filters = useSummaryFilters();
   const { data, isLoading, isError, isFetching } = useGetSummaryTransactionQuery({
     ...filters.apiArgs,
-    Scale: scale,
+    Scale: 1,
   });
 
   const unit = SCALE_UNIT[scale];
@@ -93,7 +93,7 @@ const SummaryTransactionPage: React.FC = () => {
                     Məbləğ
                   </p>
                   <p className="mt-0.5 text-3xl font-bold tabular-nums">
-                    {formatAmount(data?.total.amount ?? 0)}{' '}
+                    {formatAmount(data?.total.amount ?? 0, scale)}{' '}
                     <span className="text-sm font-medium opacity-70">{unit}</span>
                   </p>
                 </div>

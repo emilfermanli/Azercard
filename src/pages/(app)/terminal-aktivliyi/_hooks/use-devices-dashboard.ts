@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { useDebouncedValue } from '@/hooks';
 import {
   useGetDevicesShareQuery,
   useGetDevicesTrendQuery,
@@ -98,6 +99,12 @@ export function useDevicesDashboard({
     { skip: !prevRange }
   );
 
+  const debouncedXyDims = useDebouncedValue(`${xDimension}|${yDimension}`, 150);
+  const [debouncedXDimension, debouncedYDimension] = debouncedXyDims.split('|') as [
+    DeviceDimension,
+    DeviceDimension,
+  ];
+
   const {
     data: xyData,
     isLoading: isMatrixLoading,
@@ -106,8 +113,8 @@ export function useDevicesDashboard({
     {
       dateFrom: xyDateFrom ?? '',
       dateTo: xyDateTo ?? '',
-      xDimension,
-      yDimension,
+      xDimension: debouncedXDimension,
+      yDimension: debouncedYDimension,
       ...queryFilters,
     },
     { skip: !xyDateFrom || !xyDateTo }

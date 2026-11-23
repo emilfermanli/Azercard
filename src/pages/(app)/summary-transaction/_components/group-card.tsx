@@ -71,7 +71,7 @@ export function GroupCard({
             Məbləğ
           </p>
           <p className="mt-0.5 text-lg font-bold tabular-nums">
-            {formatAmount(group?.amount ?? 0)}{' '}
+            {formatAmount(group?.amount ?? 0, scale)}{' '}
             <span className="text-xs font-medium opacity-70">{unit}</span>
           </p>
         </div>
@@ -102,7 +102,7 @@ export function GroupCard({
               </span>
               <div className="flex items-baseline gap-4 text-right tabular-nums">
                 <span className="text-sm font-semibold">
-                  {formatAmount(row?.amount ?? 0)}{' '}
+                  {formatAmount(row?.amount ?? 0, scale)}{' '}
                   <span className={['text-[10px] font-medium', muted].join(' ')}>
                     {unit}
                   </span>

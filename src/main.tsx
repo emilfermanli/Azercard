@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client';
-import { Routes } from '@generouted/react-router';
+import { Routes } from '@generouted/react-router/lazy';
 
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';

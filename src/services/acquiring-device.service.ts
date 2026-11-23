@@ -1,6 +1,9 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 
-import { rtkCacheDefaults } from '@/utils/cache-config';
+import {
+  dashboardApiCacheOptions,
+  dashboardEndpointCacheOptions,
+} from '@/utils/cache-config';
 import { baseQuery } from '@/utils/fetchBaseQuery';
 import type {
   AcquiringDashboard,
@@ -24,11 +27,12 @@ function cleanParams<T extends Record<string, unknown>>(params: T) {
 export const acquiringDeviceApi = createApi({
   reducerPath: 'acquiringDeviceApi',
   baseQuery,
-  ...rtkCacheDefaults,
+  ...dashboardApiCacheOptions(),
   endpoints: (builder) => ({
     // Bir dəfə yüklənir — bütün dropdown dəyərləri + minDate/maxDate.
     getAcquiringFilterOptions: builder.query<AcquiringFilterOptions, void>({
       query: () => ({ url: 'AcquiringDevice/filter-options', method: 'GET' }),
+      ...dashboardEndpointCacheOptions(),
     }),
     // Sağ kartlar + 1,2,3,5,6-cı qrafiklər — hamısı bir sorğuda.
     getAcquiringDashboard: builder.query<AcquiringDashboard, AcquiringDashboardArgs>({

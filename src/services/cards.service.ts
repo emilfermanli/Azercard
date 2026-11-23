@@ -1,6 +1,9 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 
-import { rtkCacheDefaults } from '@/utils/cache-config';
+import {
+  dashboardApiCacheOptions,
+  dashboardEndpointCacheOptions,
+} from '@/utils/cache-config';
 import { baseQuery } from '@/utils/fetchBaseQuery';
 import type {
   CardFilterOptions,
@@ -28,11 +31,12 @@ function cleanParams<T extends Record<string, unknown>>(params: T) {
 export const cardsApi = createApi({
   reducerPath: 'cardsApi',
   baseQuery,
-  ...rtkCacheDefaults,
+  ...dashboardApiCacheOptions(),
   endpoints: (builder) => ({
     // Bir dəfə yüklənir — dropdown dəyərləri + minMonth/maxMonth.
     getCardFilterOptions: builder.query<CardFilterOptions, void>({
       query: () => ({ url: 'cards/filter-options', method: 'GET' }),
+      ...dashboardEndpointCacheOptions(),
     }),
     // Yuxarı kartlar — seçilmiş ölçü (dimension) üzrə bölgü (tam massiv qaytarır).
     getCardTopCards: builder.query<CardTopCardItem[], CardTopCardsArgs>({

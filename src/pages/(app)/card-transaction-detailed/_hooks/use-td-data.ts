@@ -1,12 +1,12 @@
 import { useMemo } from 'react';
 
+import { useDebouncedValue } from '@/hooks';
 import {
   useGetTdBanksQuery,
   useGetTdDevicesQuery,
   useGetTdSummaryQuery,
 } from '@/services/card-transaction-detailed.service';
 import type { TransactionDetailedArgs } from '@/types/card-transaction-detailed.type';
-import { MEASURE_API } from '../_constants';
 import type { ColumnKey, ColumnRow, Measure } from '../_types';
 import { labelText, rowValue } from '../_utils';
 
@@ -14,6 +14,7 @@ type DataArgs = {
   apiArgs: TransactionDetailedArgs;
   measure: Measure;
   selections: Record<ColumnKey, string>;
+  visible: Record<ColumnKey, boolean>;
 };
 
 type RawRow = {
@@ -59,23 +60,31 @@ function without(
   return next;
 }
 
-export function useTdData({ apiArgs, measure, selections }: DataArgs) {
-  const args: TransactionDetailedArgs = { ...apiArgs, Measure: MEASURE_API[measure] };
+export function useTdData({ apiArgs, measure, selections, visible }: DataArgs) {
+  const debouncedArgs = useDebouncedValue(apiArgs, 150);
 
   // Cross-filter: hər sütun DİGƏR sütunların seçiminə görə filtrlənir, amma
   // ÖZ seçimini istisna edir — beləliklə seçim edəndə həmin sütun tam siyahı və
   // eyni sıra ilə qalır (seçilmiş element öz yerində vurğulanır).
   // KPI isə bütün seçimlərə görə filtrlənmiş ümumi cəmi göstərir (tam args).
-  const issuingArgs = without(args, 'IssuingCategory');
-  const targetArgs = without(args, 'TargetBankName');
-  const bankArgs = without(args, 'SourceBankName');
-  const deviceArgs = without(args, 'AcquiringDevice');
+  const issuingArgs = without(debouncedArgs, 'IssuingCategory');
+  const targetArgs = without(debouncedArgs, 'TargetBankName');
+  const bankArgs = without(debouncedArgs, 'SourceBankName');
+  const deviceArgs = without(debouncedArgs, 'AcquiringDevice');
 
-  const { data: summary, isFetching: f1 } = useGetTdSummaryQuery(args);
-  const { data: issuingSummary, isFetching: fi } = useGetTdSummaryQuery(issuingArgs);
-  const { data: targetSummary, isFetching: ftb } = useGetTdSummaryQuery(targetArgs);
-  const { data: banks, isFetching: f2 } = useGetTdBanksQuery(bankArgs);
-  const { data: devices, isFetching: f3 } = useGetTdDevicesQuery(deviceArgs);
+  const { data: summary, isFetching: f1 } = useGetTdSummaryQuery(debouncedArgs);
+  const { data: issuingSummary, isFetching: fi } = useGetTdSummaryQuery(issuingArgs, {
+    skip: !visible.issuing,
+  });
+  const { data: targetSummary, isFetching: ftb } = useGetTdSummaryQuery(targetArgs, {
+    skip: !visible.targetBank,
+  });
+  const { data: banks, isFetching: f2 } = useGetTdBanksQuery(bankArgs, {
+    skip: !visible.bank,
+  });
+  const { data: devices, isFetching: f3 } = useGetTdDevicesQuery(deviceArgs, {
+    skip: !visible.device,
+  });
 
   const bankRows = useMemo<ColumnRow[]>(
     () =>

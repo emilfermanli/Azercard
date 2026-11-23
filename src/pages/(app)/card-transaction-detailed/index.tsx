@@ -31,6 +31,7 @@ const CardTransactionDetailedPage: React.FC = () => {
     apiArgs: filters.apiArgs,
     measure,
     selections: filters.selections,
+    visible,
   });
 
   const shownColumns = COLUMNS.filter((col) => visible[col.key]);

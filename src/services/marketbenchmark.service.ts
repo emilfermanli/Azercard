@@ -6,7 +6,7 @@ import type {
   MarketBenchmarkRankedParams,
 } from '@/types/marketbenchmark.type';
 import { createApi } from '@reduxjs/toolkit/query/react';
-import { rtkCacheDefaults } from '@/utils/cache-config';
+import { dashboardApiCacheOptions } from '@/utils/cache-config';
 import { baseQuery } from '@/utils/fetchBaseQuery';
 
 function toQueryDate(date: string | Date): string {
@@ -16,7 +16,7 @@ function toQueryDate(date: string | Date): string {
 export const marketbenchmarkApi = createApi({
   reducerPath: 'marketbenchmarkApi',
   baseQuery,
-  ...rtkCacheDefaults,
+  ...dashboardApiCacheOptions(),
   endpoints: (builder) => ({
     getMarketbenchmarkRanked: builder.query<
       MarketBenchmarkPaginatedResponse,

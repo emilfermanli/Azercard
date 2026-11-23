@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { useDebouncedValue } from '@/hooks';
 import {
   useGetCardPayChartQuery,
   useGetCardTopCardsQuery,
@@ -89,6 +90,12 @@ export function usePortfolioDashboard({
     { skip: !snapshotMonth || !chartOpen || rightPanelMode !== 'share' }
   );
 
+  const debouncedXyDims = useDebouncedValue(`${xDimension}|${yDimension}`, 150);
+  const [debouncedXDimension, debouncedYDimension] = debouncedXyDims.split('|') as [
+    CardDimension,
+    CardDimension,
+  ];
+
   // Matris (xy-chart) — tam tarix aralığı.
   const {
     data: xyData,
@@ -96,8 +103,8 @@ export function usePortfolioDashboard({
     isFetching: isMatrixFetching,
   } = useGetCardXyChartQuery(
     {
-      XDimension: xDimension,
-      YDimension: yDimension,
+      XDimension: debouncedXDimension,
+      YDimension: debouncedYDimension,
       FromMonth: rangeFrom ?? '',
       ToMonth: rangeTo ?? '',
       ...apiFilters,

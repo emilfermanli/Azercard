@@ -6,7 +6,10 @@ import type {
   WorldmapPaginatedResponse,
 } from '@/types/worldmap.type';
 import { createApi } from '@reduxjs/toolkit/query/react';
-import { rtkCacheDefaults } from '@/utils/cache-config';
+import {
+  dashboardApiCacheOptions,
+  dashboardEndpointCacheOptions,
+} from '@/utils/cache-config';
 import { baseQuery } from '@/utils/fetchBaseQuery';
 
 function toQueryDate(date: string | Date): string {
@@ -16,7 +19,7 @@ function toQueryDate(date: string | Date): string {
 export const worldmapApi = createApi({
   reducerPath: 'worldmapApi',
   baseQuery,
-  ...rtkCacheDefaults,
+  ...dashboardApiCacheOptions(),
   endpoints: (builder) => ({
     getWorldmapFilter: builder.query<
       WorldmapPaginatedResponse,
@@ -61,6 +64,7 @@ export const worldmapApi = createApi({
         url: 'WorldMap/filter-options',
         method: 'GET',
       }),
+      ...dashboardEndpointCacheOptions(),
     }),
   }),
 });

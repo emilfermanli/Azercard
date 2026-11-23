@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DeckGL from '@deck.gl/react';
 import { HeatmapLayer } from '@deck.gl/aggregation-layers';
 import { ArcLayer, BitmapLayer, ScatterplotLayer, TextLayer } from '@deck.gl/layers';
@@ -448,10 +448,13 @@ const WorldmapPage: React.FC = () => {
     data: heatmapData,
     isError: isHeatmapError,
     isFetching: isHeatmapFetching,
-  } = useGetWorldmapHeatmapQuery({
-    ...(bankId ? { bankName: bankId } : {}),
-    ...(startDate ? { month: startDate } : {}),
-  });
+  } = useGetWorldmapHeatmapQuery(
+    {
+      ...(bankId ? { bankName: bankId } : {}),
+      ...(startDate ? { month: startDate } : {}),
+    },
+    { skip: mapMode !== 'heatmap' }
+  );
   const rows = useMemo(() => data?.items ?? [], [data?.items]);
 
   useEffect(() => {
@@ -722,18 +725,25 @@ const WorldmapPage: React.FC = () => {
     () => new Set(rows.map((item) => item.bankName).filter(Boolean)).size,
     [rows]
   );
-  const heatmapPoints = useMemo(
-    () => normalizeHeatmapResponse(heatmapData, mapData.countryPoints),
-    [heatmapData, mapData.countryPoints]
-  );
+  const quantizedZoom = Math.round((viewState.zoom ?? 1.35) * 2) / 2;
+
+  const heatmapPoints = useMemo(() => {
+    if (mapMode !== 'heatmap') return [];
+    return normalizeHeatmapResponse(heatmapData, mapData.countryPoints);
+  }, [heatmapData, mapData.countryPoints, mapMode]);
 
   const clusteredHeatmapPoints = useMemo<ClusteredHeatmapPoint[]>(() => {
-    const zoom = viewState.zoom ?? 1.35;
-    if (zoom >= 4.0) {
-      return heatmapPoints.map((p) => ({ ...p, isCluster: false, pointCount: 1 }));
+    if (mapMode !== 'heatmap') return [];
+    if (quantizedZoom >= 4.0) {
+      return heatmapPoints.map((p) => ({
+        ...p,
+        position: [...p.position] as [number, number],
+        isCluster: false,
+        pointCount: 1,
+      }));
     }
 
-    const threshold = 18.0 / Math.pow(2, zoom - 1);
+    const threshold = 18.0 / Math.pow(2, quantizedZoom - 1);
     const result: ClusteredHeatmapPoint[] = [];
 
     heatmapPoints.forEach((point) => {
@@ -772,6 +782,7 @@ const WorldmapPage: React.FC = () => {
       if (!merged) {
         result.push({
           ...point,
+          position: [...point.position] as [number, number],
           isCluster: false,
           pointCount: 1,
         });
@@ -779,10 +790,59 @@ const WorldmapPage: React.FC = () => {
     });
 
     return result.sort((a, b) => b.weight - a.weight);
-  }, [heatmapPoints, viewState.zoom]);
+  }, [heatmapPoints, mapMode, quantizedZoom]);
   const maxHeatmapWeight = useMemo(
     () => Math.max(...heatmapPoints.map((point) => point.weight), 1),
     [heatmapPoints]
+  );
+  const worldExtraFieldOptions = useMemo(() => {
+    const map = {} as Record<WorldExtraKey, SelectOption[]>;
+    for (const field of WORLD_EXTRA_FILTER_FIELDS) {
+      const rawList =
+        worldFilterOptions?.[field.optKey as keyof WorldmapFilterOptionsResponse] ?? [];
+      map[field.key] = rawList.map((val) => ({ label: val, value: val }));
+    }
+    return map;
+  }, [worldFilterOptions]);
+  const { topRoutes, topRoutesMaxVal } = useMemo(() => {
+    const groupedMap = new Map<
+      string,
+      {
+        id: string;
+        sourceCountry: string;
+        targetCountry: string;
+        totalAmount: number;
+        totalCount: number;
+      }
+    >();
+    for (const flow of mapData.flows) {
+      const key = `${flow.sourceCountry}→${flow.targetCountry}`;
+      const existing = groupedMap.get(key);
+      if (existing) {
+        existing.totalAmount += flow.totalAmount;
+        existing.totalCount += flow.totalCount;
+      } else {
+        groupedMap.set(key, {
+          id: key,
+          sourceCountry: flow.sourceCountry,
+          targetCountry: flow.targetCountry,
+          totalAmount: flow.totalAmount,
+          totalCount: flow.totalCount,
+        });
+      }
+    }
+    const routes = [...groupedMap.values()]
+      .sort((a, b) => getItemMetric(b, metric) - getItemMetric(a, metric))
+      .slice(0, 6);
+    const maxVal = Math.max(...routes.map((r) => getItemMetric(r, metric)), 1);
+    return { topRoutes: routes, topRoutesMaxVal: maxVal };
+  }, [mapData.flows, metric]);
+  const sortedPaymentSummary = useMemo(
+    () =>
+      [...mapData.paymentSummary].sort(
+        (a, b) => getItemMetric(b, metric) - getItemMetric(a, metric)
+      ),
+    [mapData.paymentSummary, metric]
   );
   const bankOptions = useMemo(() => {
     const options = banks
@@ -1029,8 +1089,49 @@ const WorldmapPage: React.FC = () => {
     mapData,
     mapMode,
     maxHeatmapWeight,
-    viewState.zoom,
   ]);
+
+  const getTooltip = useCallback(
+    ({ object }: { object?: unknown }) => {
+      if (!object) return null;
+      const item = object as Flow | CountryPoint | ClusteredHeatmapPoint;
+
+      if ('sourceCountry' in item) {
+        const avg = item.totalCount > 0 ? item.totalAmount / item.totalCount : 0;
+        return {
+          html: `<strong>${item.sourceCountry} → ${item.targetCountry}</strong><br/>${item.paymentSystem}<br/>Məbləğ: ${formatMetricValue(item.totalAmount, 'turnover', amountUnit)}<br/>Say: ${formatNumber(item.totalCount)}<br/>Ortalama: ${formatMetricValue(avg, 'average', amountUnit)}`,
+        };
+      }
+
+      if ('weight' in item) {
+        const point = item as ClusteredHeatmapPoint;
+        if (point.isCluster) {
+          return {
+            html: `
+              <div style="padding: 4px; font-family: sans-serif;">
+                <strong style="color: #06b6d4;">Qruplaşdırılmış Bölgə (${point.pointCount} ölkə)</strong><br/>
+                <span style="color: #94a3b8; font-size: 11px;">${point.country}</span><br/>
+                <div style="margin-top: 6px; border-top: 1px solid #334155; padding-top: 4px;">
+                  <strong>Dəyər:</strong> ${formatMetricValue(point.weight, 'turnover', amountUnit)}<br/>
+                  <strong>Əməliyyat:</strong> ${formatNumber(point.totalCount)}
+                </div>
+              </div>
+            `,
+          };
+        }
+
+        return {
+          html: `<strong>${point.country}</strong><br/>İstilik xəritəsi dəyəri: ${formatMetricValue(point.weight, 'turnover', amountUnit)}<br/>Say: ${formatNumber(point.totalCount)}`,
+        };
+      }
+
+      const avg = item.totalCount > 0 ? item.totalAmount / item.totalCount : 0;
+      return {
+        html: `<strong>${item.country}</strong><br/>${item.category}<br/>Məbləğ: ${formatMetricValue(item.totalAmount, 'turnover', amountUnit)}<br/>Say: ${formatNumber(item.totalCount)}<br/>Ortalama: ${formatMetricValue(avg, 'average', amountUnit)}`,
+      };
+    },
+    [amountUnit]
+  );
 
   const panelClass = isDark
     ? 'border-slate-800 bg-slate-900/70 text-slate-100 shadow-black/20'
@@ -1581,14 +1682,7 @@ const WorldmapPage: React.FC = () => {
                   </div>
 
                   {WORLD_EXTRA_FILTER_FIELDS.map((field) => {
-                    const rawList =
-                      worldFilterOptions?.[
-                        field.optKey as keyof WorldmapFilterOptionsResponse
-                      ] ?? [];
-                    const options: SelectOption[] = rawList.map((val) => ({
-                      label: val,
-                      value: val,
-                    }));
+                    const options = worldExtraFieldOptions[field.key] ?? [];
                     const currentValue = draftExtraFilters[field.key] ?? '';
                     const selected =
                       options.find((opt) => opt.value === currentValue) ?? null;
@@ -1926,46 +2020,7 @@ const WorldmapPage: React.FC = () => {
                 />
                 <DeckGL
                   controller
-                  getTooltip={({ object }) => {
-                    if (!object) return null;
-                    const item = object as Flow | CountryPoint | ClusteredHeatmapPoint;
-
-                    if ('sourceCountry' in item) {
-                      const avg =
-                        item.totalCount > 0 ? item.totalAmount / item.totalCount : 0;
-                      return {
-                        html: `<strong>${item.sourceCountry} → ${item.targetCountry}</strong><br/>${item.paymentSystem}<br/>Məbləğ: ${formatMetricValue(item.totalAmount, 'turnover', amountUnit)}<br/>Say: ${formatNumber(item.totalCount)}<br/>Ortalama: ${formatMetricValue(avg, 'average', amountUnit)}`,
-                      };
-                    }
-
-                    if ('weight' in item) {
-                      const point = item as ClusteredHeatmapPoint;
-                      if (point.isCluster) {
-                        return {
-                          html: `
-                            <div style="padding: 4px; font-family: sans-serif;">
-                              <strong style="color: #06b6d4;">Qruplaşdırılmış Bölgə (${point.pointCount} ölkə)</strong><br/>
-                              <span style="color: #94a3b8; font-size: 11px;">${point.country}</span><br/>
-                              <div style="margin-top: 6px; border-top: 1px solid #334155; padding-top: 4px;">
-                                <strong>Dəyər:</strong> ${formatMetricValue(point.weight, 'turnover', amountUnit)}<br/>
-                                <strong>Əməliyyat:</strong> ${formatNumber(point.totalCount)}
-                              </div>
-                            </div>
-                          `,
-                        };
-                      }
-
-                      return {
-                        html: `<strong>${point.country}</strong><br/>İstilik xəritəsi dəyəri: ${formatMetricValue(point.weight, 'turnover', amountUnit)}<br/>Say: ${formatNumber(point.totalCount)}`,
-                      };
-                    }
-
-                    const avg =
-                      item.totalCount > 0 ? item.totalAmount / item.totalCount : 0;
-                    return {
-                      html: `<strong>${item.country}</strong><br/>${item.category}<br/>Məbləğ: ${formatMetricValue(item.totalAmount, 'turnover', amountUnit)}<br/>Say: ${formatNumber(item.totalCount)}<br/>Ortalama: ${formatMetricValue(avg, 'average', amountUnit)}`,
-                    };
-                  }}
+                  getTooltip={getTooltip}
                   layers={deckLayers}
                   onViewStateChange={handleViewStateChange}
                   style={{
@@ -1994,67 +2049,29 @@ const WorldmapPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="mt-4 space-y-3">
-                  {(() => {
-                    const groupedMap = new Map<
-                      string,
-                      {
-                        id: string;
-                        sourceCountry: string;
-                        targetCountry: string;
-                        totalAmount: number;
-                        totalCount: number;
-                      }
-                    >();
-                    for (const flow of mapData.flows) {
-                      const key = `${flow.sourceCountry}→${flow.targetCountry}`;
-                      const existing = groupedMap.get(key);
-                      if (existing) {
-                        existing.totalAmount += flow.totalAmount;
-                        existing.totalCount += flow.totalCount;
-                      } else {
-                        groupedMap.set(key, {
-                          id: key,
-                          sourceCountry: flow.sourceCountry,
-                          targetCountry: flow.targetCountry,
-                          totalAmount: flow.totalAmount,
-                          totalCount: flow.totalCount,
-                        });
-                      }
-                    }
-                    const topRoutes = [...groupedMap.values()]
-                      .sort(
-                        (a, b) =>
-                          getItemMetric(b, metric) - getItemMetric(a, metric)
-                      )
-                      .slice(0, 6);
-                    const maxVal = Math.max(
-                      ...topRoutes.map((r) => getItemMetric(r, metric)),
-                      1
-                    );
-                    return topRoutes.map((flow) => {
-                      const val = getItemMetric(flow, metric);
-                      return (
-                        <div key={flow.id}>
-                          <div className="flex items-center justify-between gap-3 text-sm">
-                            <span className="min-w-0 truncate font-medium">
-                              {flow.sourceCountry} {'→'} {flow.targetCountry}
-                            </span>
-                            <span className="shrink-0 tabular-nums">
-                              {formatMetricValue(val, metric, amountUnit)}
-                            </span>
-                          </div>
-                          <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-500/15">
-                            <div
-                              className="h-full rounded-full bg-cyan-500"
-                              style={{
-                                width: `${Math.max(6, (val / maxVal) * 100)}%`,
-                              }}
-                            />
-                          </div>
+                  {topRoutes.map((flow) => {
+                    const val = getItemMetric(flow, metric);
+                    return (
+                      <div key={flow.id}>
+                        <div className="flex items-center justify-between gap-3 text-sm">
+                          <span className="min-w-0 truncate font-medium">
+                            {flow.sourceCountry} {'→'} {flow.targetCountry}
+                          </span>
+                          <span className="shrink-0 tabular-nums">
+                            {formatMetricValue(val, metric, amountUnit)}
+                          </span>
                         </div>
-                      );
-                    });
-                  })()}
+                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-500/15">
+                          <div
+                            className="h-full rounded-full bg-cyan-500"
+                            style={{
+                              width: `${Math.max(6, (val / topRoutesMaxVal) * 100)}%`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -2071,11 +2088,7 @@ const WorldmapPage: React.FC = () => {
                   </div>
                 </div>
                 <div className="mt-4 space-y-3">
-                  {[...mapData.paymentSummary]
-                    .sort(
-                      (a, b) => getItemMetric(b, metric) - getItemMetric(a, metric)
-                    )
-                    .map((payment) => (
+                  {sortedPaymentSummary.map((payment) => (
                       <div
                         key={payment.name}
                         className={[

@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 
+import { useDebouncedValue } from '@/hooks';
 import {
   useGetAcquiringDashboardQuery,
   useGetAcquiringTrendQuery,
@@ -51,7 +52,10 @@ export function useAcquiringDashboard({
   granularity,
   activeDeviceType,
 }: DashboardArgs) {
-  const category = METRIC_API_CATEGORY[metric];
+  const debouncedMetric = useDebouncedValue(metric, 150);
+  const debouncedGranularity = useDebouncedValue(granularity, 150);
+  const debouncedApiFilters = useDebouncedValue(apiFilters, 150);
+  const category = METRIC_API_CATEGORY[debouncedMetric];
   const ready = Boolean(fromDate && toDate);
 
   const { data: dashboard, isFetching: isDashboardFetching } =
@@ -60,8 +64,8 @@ export function useAcquiringDashboard({
         FromDate: fromDate ?? '',
         ToDate: toDate ?? '',
         Category: category,
-        AmountUnit: amountUnit,
-        ...apiFilters,
+        AmountUnit: 'Min',
+        ...debouncedApiFilters,
       },
       { skip: !ready }
     );
@@ -69,12 +73,12 @@ export function useAcquiringDashboard({
   const { data: trend, isFetching: isTrendFetching } = useGetAcquiringTrendQuery(
     {
       Dimension: TREND_AGG_DIMENSION,
-      Granularity: granularity,
+      Granularity: debouncedGranularity,
       FromDate: fromDate ?? '',
       ToDate: toDate ?? '',
       Category: category,
-      AmountUnit: amountUnit,
-      ...apiFilters,
+      AmountUnit: 'Min',
+      ...debouncedApiFilters,
     },
     { skip: !ready }
   );
@@ -193,13 +197,13 @@ export function useAcquiringDashboard({
     return Array.from(byPeriod.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([period, acc]) => ({
-        label: periodLabel(period, granularity),
+        label: periodLabel(period, debouncedGranularity),
         actual: acc.hasForecast ? null : acc.actual,
         forecast: acc.hasForecast ? acc.forecast : null,
         lower: acc.hasForecast ? acc.lower : null,
         upper: acc.hasForecast ? acc.upper : null,
       }));
-  }, [trend, granularity]);
+  }, [trend, debouncedGranularity]);
 
   const hasForecast = useMemo(
     () => trendData.some((d) => d.forecast != null),

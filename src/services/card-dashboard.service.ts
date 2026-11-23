@@ -1,6 +1,9 @@
 import { createApi } from '@reduxjs/toolkit/query/react';
 
-import { rtkCacheDefaults } from '@/utils/cache-config';
+import {
+  dashboardApiCacheOptions,
+  dashboardEndpointCacheOptions,
+} from '@/utils/cache-config';
 import { baseQuery } from '@/utils/fetchBaseQuery';
 import type {
   CardDashboardArgs,
@@ -22,11 +25,12 @@ function cleanParams<T extends Record<string, unknown>>(params: T) {
 export const cardDashboardApi = createApi({
   reducerPath: 'cardDashboardApi',
   baseQuery,
-  ...rtkCacheDefaults,
+  ...dashboardApiCacheOptions(),
   endpoints: (builder) => ({
     // Bir dəfə yüklənir — dropdown dəyərləri.
     getCardDashboardFilters: builder.query<CardDashboardFilters, void>({
       query: () => ({ url: 'CardDashboard/filters', method: 'GET' }),
+      ...dashboardEndpointCacheOptions(),
     }),
     // KPI + trend + 4 bölgü — hamısı bir sorğuda.
     getCardDashboard: builder.query<CardDashboardResponse, CardDashboardArgs>({

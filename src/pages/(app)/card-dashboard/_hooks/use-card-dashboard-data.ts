@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 
+import { useDebouncedValue } from '@/hooks';
 import { useGetCardDashboardQuery } from '@/services/card-dashboard.service';
 import type {
   CardBreakdown,
@@ -63,11 +64,13 @@ export function useCardDashboardData({
   dateGrouping,
   metric,
 }: DataArgs) {
+  const debouncedDateGrouping = useDebouncedValue(dateGrouping, 150);
+
   // Serverdən həmişə RoundTo: 0 (xam AZN) sorğulanır; vahidə bölmə yalnız UI göstərmə anında aparılır.
   const { data, isFetching } = useGetCardDashboardQuery({
     ...apiArgs,
     RoundTo: 0,
-    DateGrouping: dateGrouping as CardDashboardArgs['DateGrouping'],
+    DateGrouping: debouncedDateGrouping as CardDashboardArgs['DateGrouping'],
   });
 
   useEffect(() => {

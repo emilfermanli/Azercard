@@ -8,19 +8,18 @@ import { FiltersDrawer } from './_components/filters-drawer';
 import { KpiCards } from './_components/kpi-cards';
 import { TrendChart } from './_components/trend-chart';
 import { BREAKDOWN_CHARTS, KPI_METRICS } from './_constants';
+import { AmountUnitProvider } from './_context/amount-unit-context';
 import { useCardDashboardData } from './_hooks/use-card-dashboard-data';
 import { useCardDashboardFilters } from './_hooks/use-card-dashboard-filters';
 import type { Metric } from './_types';
 
-const CardDashboardPage: React.FC = () => {
+function CardDashboardContent() {
   const [metric, setMetric] = useState<Metric>('amount');
-  const [roundTo, setRoundTo] = useState(0);
   const [dateGrouping, setDateGrouping] = useState(0);
 
   const filters = useCardDashboardFilters();
   const data = useCardDashboardData({
     apiArgs: filters.apiArgs,
-    roundTo,
     dateGrouping,
     metric,
   });
@@ -40,8 +39,6 @@ const CardDashboardPage: React.FC = () => {
       <KpiCards cards={data.kpiCards} onSelect={setMetric} />
 
       <DashboardToolbar
-        roundTo={roundTo}
-        onRoundToChange={setRoundTo}
         dateGrouping={dateGrouping}
         onDateGroupingChange={setDateGrouping}
       />
@@ -53,14 +50,16 @@ const CardDashboardPage: React.FC = () => {
           title={product.title}
           subtitle={product.subtitle}
           data={data.breakdowns.productBreakdown}
+          monetary={data.metricMonetary}
+          metric={metric}
         />
         {/* 5 — Artma / azalma tendensiyası: trend */}
         <TrendChart
           data={data.trendData}
           alerts={data.alerts}
+          metric={metric}
           metricLabel={metricLabel}
           monetary={data.metricMonetary}
-          roundTo={data.roundTo}
           hasForecast={data.hasForecast}
         />
       </div>
@@ -72,12 +71,14 @@ const CardDashboardPage: React.FC = () => {
           title={paymentSystem.title}
           subtitle={paymentSystem.subtitle}
           data={data.breakdowns.paymentSystem}
+          monetary={data.metricMonetary}
         />
         {/* 8 — Ödəniş tipi: üfüqi bar */}
         <BreakdownBar
           title={paymentType.title}
           subtitle={paymentType.subtitle}
           data={data.breakdowns.paymentType}
+          monetary={data.metricMonetary}
         />
       </div>
 
@@ -88,10 +89,18 @@ const CardDashboardPage: React.FC = () => {
           title={cashNonCash.title}
           subtitle={cashNonCash.subtitle}
           data={data.breakdowns.cashNonCash}
+          monetary={data.metricMonetary}
+          metric={metric}
         />
       </div>
     </div>
   );
-};
+}
+
+const CardDashboardPage: React.FC = () => (
+  <AmountUnitProvider>
+    <CardDashboardContent />
+  </AmountUnitProvider>
+);
 
 export default CardDashboardPage;

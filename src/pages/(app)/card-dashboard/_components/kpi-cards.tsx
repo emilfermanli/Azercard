@@ -1,6 +1,8 @@
 import { ArrowRightLeft, Scale, TrendingUp, Wallet, type LucideIcon } from 'lucide-react';
 
+import { useAmountUnit } from '../_context/amount-unit-context';
 import type { KpiCard, Metric } from '../_types';
+import { formatAmount, formatCount, formatExactAmount } from '../_utils';
 
 const ACCENTS: Record<Metric, string> = {
   amount: 'from-sky-500 to-blue-600',
@@ -26,7 +28,8 @@ function sharedValueSizeClass(values: string[]): string {
   if (maxLen <= 9) return 'text-4xl';
   if (maxLen <= 12) return 'text-3xl';
   if (maxLen <= 16) return 'text-2xl';
-  return 'text-xl';
+  if (maxLen <= 20) return 'text-xl';
+  return 'text-lg';
 }
 
 type KpiCardsProps = {
@@ -38,11 +41,29 @@ type KpiCardsProps = {
  * Yuxarı 4 KPI pəncərəsi — kliklə aktiv göstərici seçilir (trend + bölgülər ona uyğunlaşır).
  */
 export function KpiCards({ cards, onSelect }: KpiCardsProps) {
-  const valueSize = sharedValueSizeClass(cards.map((c) => c.value));
+  const { unit } = useAmountUnit();
+
+  const formattedCards = cards.map((card) => {
+    const value =
+      card.rawValue == null
+        ? '—'
+        : card.monetary
+          ? formatAmount(card.rawValue, unit)
+          : formatCount(card.rawValue);
+    const fullValue =
+      card.rawValue == null
+        ? '—'
+        : card.monetary
+          ? formatExactAmount(card.rawValue)
+          : formatCount(card.rawValue);
+    return { ...card, value, fullValue };
+  });
+
+  const valueSize = sharedValueSizeClass(formattedCards.map((c) => c.value));
 
   return (
     <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-      {cards.map((card) => {
+      {formattedCards.map((card) => {
         const Icon = ICONS[card.key];
         return (
           <button
@@ -68,7 +89,7 @@ export function KpiCards({ cards, onSelect }: KpiCardsProps) {
                 <Icon className="h-[1.35rem] w-[1.35rem]" strokeWidth={2.25} />
               </span>
             </div>
-            <div className="group/val relative w-fit">
+            <div className="group/val relative w-fit" title={card.fullValue}>
               <p
                 className={[
                   'font-bold tabular-nums leading-tight break-words',

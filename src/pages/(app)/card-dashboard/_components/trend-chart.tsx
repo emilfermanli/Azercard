@@ -11,16 +11,27 @@ import {
 } from 'recharts';
 
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
-import type { AlertItem, TrendDatum } from '../_types';
-import { formatCompactNumber, formatMetricValue, formatPct, mutedText } from '../_utils';
+import { useAmountUnit } from '../_context/amount-unit-context';
+import type { AlertItem, Metric, TrendDatum } from '../_types';
+import {
+  buildCountAxisTicks,
+  buildUnitAxisTicks,
+  formatAmount,
+  formatCount,
+  formatExactAmount,
+  formatPct,
+  getUnitSuffix,
+  mutedText,
+  type AmountUnit,
+} from '../_utils';
 import { ChartCard } from './chart-card';
 
 type TrendChartProps = {
   data: TrendDatum[];
   alerts: AlertItem[];
+  metric: Metric;
   metricLabel: string;
   monetary: boolean;
-  roundTo: number;
   hasForecast: boolean;
   className?: string;
 };
@@ -30,26 +41,37 @@ function TrendTooltip({
   payload,
   label,
   monetary,
-  roundTo,
+  unit,
 }: {
   active?: boolean;
   payload?: Array<{ dataKey?: string; value?: number }>;
   label?: string;
   monetary: boolean;
-  roundTo: number;
+  unit: AmountUnit;
 }) {
   if (!active || !payload?.length) return null;
   const point = payload.find(
     (p) => (p.dataKey === 'actual' || p.dataKey === 'forecast') && p.value != null
   );
-  if (!point) return null;
+  if (!point || point.value == null) return null;
+
+  const formattedValue = monetary
+    ? formatAmount(point.value, unit)
+    : formatCount(point.value);
+  const exactValue = monetary ? formatExactAmount(point.value) : null;
+
   return (
     <div className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white shadow-xl">
       <p className="font-semibold">{label}</p>
       <p className="mt-1 tabular-nums">
         {point.dataKey === 'forecast' ? 'Proqnoz: ' : ''}
-        {formatMetricValue(point.value ?? 0, monetary, roundTo)}
+        {formattedValue}
       </p>
+      {exactValue && exactValue !== formattedValue && (
+        <p className="mt-0.5 text-[11px] text-slate-300 tabular-nums">
+          Tam: {exactValue}
+        </p>
+      )}
     </div>
   );
 }
@@ -57,19 +79,76 @@ function TrendTooltip({
 export function TrendChart({
   data,
   alerts,
+  metric,
   metricLabel,
   monetary,
-  roundTo,
   hasForecast,
   className,
 }: TrendChartProps) {
   const isDark = useShellTheme();
+  const { unit } = useAmountUnit();
   const axisColor = isDark ? '#94a3b8' : '#64748b';
+
+  const unitSuffix = getUnitSuffix(unit);
+  const unitTag = monetary ? (unitSuffix ? ` (${unitSuffix} ₼)` : ' (₼)') : '';
+
+  let minRaw = 0;
+  let maxRaw = 0;
+  let hasNumeric = false;
+  let actualSum = 0;
+  let hasActual = false;
+
+  for (const d of data) {
+    if (d.actual != null && Number.isFinite(d.actual)) {
+      actualSum += d.actual;
+      hasActual = true;
+    }
+    for (const v of [d.actual, d.forecast, d.low, d.high]) {
+      if (v != null && Number.isFinite(v)) {
+        if (!hasNumeric) {
+          minRaw = v;
+          maxRaw = v;
+          hasNumeric = true;
+        } else {
+          if (v < minRaw) minRaw = v;
+          if (v > maxRaw) maxRaw = v;
+        }
+      }
+    }
+  }
+
+  const yTicks =
+    hasNumeric && minRaw >= 0 && maxRaw > 0
+      ? monetary
+        ? buildUnitAxisTicks(maxRaw, unit, 5)
+        : buildCountAxisTicks(maxRaw, 5)
+      : undefined;
+
+  const formatYAxisTick = (value: number) =>
+    monetary
+      ? formatAmount(value, unit, { includeCurrency: false, bareZero: true })
+      : formatCount(value);
+
+  const sampleValues = yTicks ?? (hasNumeric ? [minRaw, maxRaw] : [0]);
+  const maxTickLen = Math.max(0, ...sampleValues.map((v) => formatYAxisTick(v).length));
+  const yAxisWidth = Math.min(156, Math.max(72, Math.ceil(maxTickLen * 7.5 + 16)));
+
+  const showTotal = hasActual && (metric === 'amount' || metric === 'count');
+  const formattedTotal = showTotal
+    ? monetary
+      ? formatAmount(actualSum, unit)
+      : formatCount(actualSum)
+    : null;
+  const exactTotal = showTotal
+    ? monetary
+      ? formatExactAmount(actualSum)
+      : formatCount(actualSum)
+    : undefined;
 
   return (
     <ChartCard
       title="Artma / azalma tendensiyası"
-      subtitle={`${metricLabel} — zaman üzrə${hasForecast ? ' (proqnozla)' : ''}`}
+      subtitle={`${metricLabel}${unitTag} — zaman üzrə${hasForecast ? ' (proqnozla)' : ''}`}
       empty={data.length === 0}
       className={className}
     >
@@ -97,7 +176,7 @@ export function TrendChart({
 
       <div className="h-72">
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 8, right: 16, left: -4, bottom: 0 }}>
+          <ComposedChart data={data} margin={{ top: 8, right: 16, left: 4, bottom: 0 }}>
             <CartesianGrid
               strokeDasharray="3 3"
               stroke={isDark ? '#1e293b' : '#e2e8f0'}
@@ -107,16 +186,19 @@ export function TrendChart({
               dataKey="label"
               tickLine={false}
               axisLine={false}
+              minTickGap={24}
               tick={{ fontSize: 12, fill: axisColor }}
             />
             <YAxis
-              width={68}
+              width={yAxisWidth}
               tickLine={false}
               axisLine={false}
+              ticks={yTicks}
+              domain={yTicks ? [0, yTicks[yTicks.length - 1]] : undefined}
               tick={{ fontSize: 12, fill: axisColor }}
-              tickFormatter={(value: number) => formatCompactNumber(value, 1)}
+              tickFormatter={formatYAxisTick}
             />
-            <Tooltip content={<TrendTooltip monetary={monetary} roundTo={roundTo} />} />
+            <Tooltip content={<TrendTooltip monetary={monetary} unit={unit} />} />
             {/* Proqnoz güvən zolağı (aşağı–yuxarı hədd). */}
             <Area
               dataKey={(d: TrendDatum) =>
@@ -152,18 +234,28 @@ export function TrendChart({
         </ResponsiveContainer>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs font-semibold">
-        <span className="flex items-center gap-2">
-          <span className="h-2.5 w-4 rounded-full bg-[#3b82f6]" />
-          Faktiki
-        </span>
-        <span className="flex items-center gap-2">
-          <span className="h-2.5 w-4 rounded-full bg-[#f59e0b]" />
-          Proqnoz (aşağı–yuxarı hədd)
-        </span>
-        {!hasForecast && (
-          <span className={mutedText(isDark)}>
-            (proqnoz üçün kifayət qədər tarixçə yoxdur)
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-xs font-semibold">
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          <span className="flex items-center gap-2">
+            <span className="h-2.5 w-4 rounded-full bg-[#3b82f6]" />
+            Faktiki
+          </span>
+          <span className="flex items-center gap-2">
+            <span className="h-2.5 w-4 rounded-full bg-[#f59e0b]" />
+            Proqnoz (aşağı–yuxarı hədd)
+          </span>
+          {!hasForecast && (
+            <span className={mutedText(isDark)}>
+              (proqnoz üçün kifayət qədər tarixçə yoxdur)
+            </span>
+          )}
+        </div>
+        {formattedTotal && (
+          <span
+            title={exactTotal}
+            className={['tabular-nums', mutedText(isDark)].join(' ')}
+          >
+            Cəm: {formattedTotal}
           </span>
         )}
       </div>

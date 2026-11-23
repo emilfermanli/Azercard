@@ -24,14 +24,6 @@ export const DATE_GROUPING_OPTIONS: Array<{ value: number; label: string }> = [
   { value: 2, label: 'İl' },
 ];
 
-// Məbləğ yuvarlaqlaşdırma (RoundTo enum) — server tərəfdə tətbiq olunur.
-export const ROUND_TO_OPTIONS: Array<{ value: number; label: string; suffix: string }> = [
-  { value: 0, label: 'Tam', suffix: '' },
-  { value: 1, label: 'Min', suffix: 'min' },
-  { value: 2, label: 'Mln', suffix: 'mln' },
-  { value: 3, label: 'Mlrd', suffix: 'mlrd' },
-];
-
 // Bölgü qrafiklərinin (6,7,8,9) donut palitrası.
 export const DONUT_PALETTE = [
   '#3b82f6',

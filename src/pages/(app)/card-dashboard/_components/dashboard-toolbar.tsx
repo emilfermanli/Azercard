@@ -1,15 +1,22 @@
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
-import { DATE_GROUPING_OPTIONS, ROUND_TO_OPTIONS } from '../_constants';
+import { DATE_GROUPING_OPTIONS } from '../_constants';
+import { useAmountUnit } from '../_context/amount-unit-context';
+import { AMOUNT_UNIT_OPTIONS, type AmountUnit } from '../_format';
 import { mutedText, panelClass } from '../_utils';
 
-type SegmentedProps = {
+type SegmentedProps<T extends string | number> = {
   label: string;
-  value: number;
-  options: Array<{ value: number; label: string }>;
-  onChange: (value: number) => void;
+  value: T;
+  options: Array<{ value: T; label: string }>;
+  onChange: (value: T) => void;
 };
 
-function Segmented({ label, value, options, onChange }: SegmentedProps) {
+function Segmented<T extends string | number>({
+  label,
+  value,
+  options,
+  onChange,
+}: SegmentedProps<T>) {
   const isDark = useShellTheme();
   return (
     <div>
@@ -19,8 +26,9 @@ function Segmented({ label, value, options, onChange }: SegmentedProps) {
       <div className="inline-flex rounded-lg border border-blue-500/30 p-1">
         {options.map((item) => (
           <button
-            key={item.value}
+            key={String(item.value)}
             type="button"
+            aria-pressed={value === item.value}
             onClick={() => onChange(item.value)}
             className={[
               'h-8 rounded-md px-3 text-xs font-semibold transition',
@@ -40,19 +48,16 @@ function Segmented({ label, value, options, onChange }: SegmentedProps) {
 }
 
 type ToolbarProps = {
-  roundTo: number;
-  onRoundToChange: (value: number) => void;
   dateGrouping: number;
   onDateGroupingChange: (value: number) => void;
 };
 
 export function DashboardToolbar({
-  roundTo,
-  onRoundToChange,
   dateGrouping,
   onDateGroupingChange,
 }: ToolbarProps) {
   const isDark = useShellTheme();
+  const { unit, setUnit } = useAmountUnit();
 
   return (
     <section
@@ -61,13 +66,13 @@ export function DashboardToolbar({
         panelClass(isDark),
       ].join(' ')}
     >
-      <Segmented
+      <Segmented<AmountUnit>
         label="Məbləğ vahidi"
-        value={roundTo}
-        options={ROUND_TO_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
-        onChange={onRoundToChange}
+        value={unit}
+        options={AMOUNT_UNIT_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+        onChange={setUnit}
       />
-      <Segmented
+      <Segmented<number>
         label="Tarix qruplaşması"
         value={dateGrouping}
         options={DATE_GROUPING_OPTIONS}

@@ -4,7 +4,7 @@
 /** DateGrouping enum — trend zaman addımı. */
 export type DateGrouping = 0 | 1 | 2; // 0 = ay, 1 = rüb, 2 = il
 
-/** RoundTo enum — məbləğ yuvarlaqlaşdırma (server tərəfdə tətbiq olunur). */
+/** RoundTo enum — frontend həmişə 0 (xam AZN) sorğulayır; vahidə bölmə yalnız göstərmə anında aparılır. */
 export type RoundTo = 0 | 1 | 2 | 3; // 0 = tam, 1 = min, 2 = mln, 3 = mlrd
 
 /** Bütün dashboard sorğusunun parametrləri (hamısı optional, tək dəyər). */

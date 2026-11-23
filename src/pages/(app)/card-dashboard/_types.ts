@@ -11,22 +11,18 @@ export type SelectOption = {
 export type KpiCard = {
   key: Metric;
   label: string;
-  /** qısa (kompakt) dəyər — kartda göstərilir. */
-  value: string;
-  /** tam dəyər — hover tooltipində göstərilir. */
-  fullValue: string;
+  /** Xam AZN (monetar) və ya əməliyyat sayı (count) dəyəri — formatlama render anında aparılır. */
+  rawValue: number | null;
   active: boolean;
   monetary: boolean;
 };
 
 export type DonutDatum = {
   name: string;
-  /** donut bölmə ölçüsü (aktiv göstərici üzrə mütləq dəyər). */
+  /** Aktiv göstərici üzrə xam dəyər (AZN və ya əməliyyat sayı). */
   value: number;
   /** faiz payı. */
   pct: number;
-  /** formatlanmış mütləq dəyər (etiket üçün). */
-  valueLabel: string;
   color: string;
 };
 

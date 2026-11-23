@@ -2,42 +2,94 @@ import { useState } from 'react';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
-import type { DisplayMode, DonutDatum } from '../_types';
-import { formatPct, mutedText } from '../_utils';
+import { useAmountUnit } from '../_context/amount-unit-context';
+import type { DisplayMode, DonutDatum, Metric } from '../_types';
+import {
+  formatAmount,
+  formatCount,
+  formatExactAmount,
+  formatPct,
+  mutedText,
+  type AmountUnit,
+} from '../_utils';
 import { ChartCard } from './chart-card';
 
 type BreakdownDonutProps = {
   title: string;
   subtitle: string;
   data: DonutDatum[];
+  monetary: boolean;
+  metric: Metric;
 };
 
 function DonutTooltip({
   active,
   payload,
   mode,
+  monetary,
+  unit,
 }: {
   active?: boolean;
   payload?: Array<{ payload?: DonutDatum }>;
   mode: DisplayMode;
+  monetary: boolean;
+  unit: AmountUnit;
 }) {
   if (!active || !payload?.length) return null;
   const item = payload[0].payload;
   if (!item) return null;
+
+  const formattedValue = monetary
+    ? formatAmount(item.value, unit)
+    : formatCount(item.value);
+  const exactValue = monetary ? formatExactAmount(item.value) : null;
+
   return (
     <div className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white shadow-xl">
       <p className="font-semibold">{item.name}</p>
       <p className="mt-1 tabular-nums">
-        {mode === 'pct' ? formatPct(item.pct) : item.valueLabel}
+        {mode === 'pct'
+          ? `${formatPct(item.pct)} (${formattedValue})`
+          : `${formattedValue} (${formatPct(item.pct)})`}
       </p>
+      {exactValue && exactValue !== formattedValue && (
+        <p className="mt-0.5 text-[11px] text-slate-300 tabular-nums">
+          Tam: {exactValue}
+        </p>
+      )}
     </div>
   );
 }
 
 /** Bölgü qrafiki (6,7,8,9) — donut + yuxarıda % / Number seçimi. */
-export function BreakdownDonut({ title, subtitle, data }: BreakdownDonutProps) {
+export function BreakdownDonut({
+  title,
+  subtitle,
+  data,
+  monetary,
+  metric,
+}: BreakdownDonutProps) {
   const isDark = useShellTheme();
+  const { unit } = useAmountUnit();
   const [mode, setMode] = useState<DisplayMode>('pct');
+
+  const showTotal =
+    mode === 'number' &&
+    data.length > 0 &&
+    (metric === 'amount' || metric === 'count');
+  const totalRaw = showTotal
+    ? data.reduce((sum, item) => sum + item.value, 0)
+    : 0;
+  const formattedTotal = showTotal
+    ? monetary
+      ? formatAmount(totalRaw, unit)
+      : formatCount(totalRaw)
+    : null;
+  const exactTotal = showTotal
+    ? monetary
+      ? formatExactAmount(totalRaw)
+      : formatCount(totalRaw)
+    : undefined;
 
   const toggle = (
     <div className="inline-flex rounded-lg border border-blue-500/30 p-0.5">
@@ -72,7 +124,11 @@ export function BreakdownDonut({ title, subtitle, data }: BreakdownDonutProps) {
         <div className="h-44 w-44 shrink-0">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
-              <Tooltip content={<DonutTooltip mode={mode} />} />
+              <Tooltip
+                content={
+                  <DonutTooltip mode={mode} monetary={monetary} unit={unit} />
+                }
+              />
               <Pie
                 data={data}
                 dataKey="value"
@@ -91,32 +147,58 @@ export function BreakdownDonut({ title, subtitle, data }: BreakdownDonutProps) {
             </PieChart>
           </ResponsiveContainer>
         </div>
-        <ul className="min-w-0 flex-1 space-y-1.5">
-          {data.map((item) => (
-            <li
-              key={item.name}
-              className="flex items-center justify-between gap-3 text-sm"
+        <div className="min-w-0 flex-1">
+          <ul className="space-y-1.5">
+            {data.map((item) => {
+              const formattedValue = monetary
+                ? formatAmount(item.value, unit)
+                : formatCount(item.value);
+              const exactValue = monetary
+                ? formatExactAmount(item.value)
+                : formatCount(item.value);
+
+              return (
+                <li
+                  key={item.name}
+                  className="flex items-center justify-between gap-3 text-sm"
+                >
+                  <span className="flex min-w-0 items-center gap-2 font-medium">
+                    <span
+                      className="h-3 w-3 shrink-0 rounded-full"
+                      style={{ backgroundColor: item.color }}
+                    />
+                    <span className="truncate" title={item.name}>
+                      {item.name}
+                    </span>
+                  </span>
+                  <span
+                    title={mode === 'number' ? exactValue : undefined}
+                    className={[
+                      'shrink-0 tabular-nums font-semibold',
+                      mutedText(isDark),
+                    ].join(' ')}
+                  >
+                    {mode === 'pct' ? formatPct(item.pct) : formattedValue}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+          {formattedTotal && (
+            <div
+              className={[
+                'mt-2 flex items-center justify-between border-t pt-2 text-xs font-semibold',
+                isDark ? 'border-slate-800' : 'border-slate-200',
+                mutedText(isDark),
+              ].join(' ')}
             >
-              <span className="flex min-w-0 items-center gap-2 font-medium">
-                <span
-                  className="h-3 w-3 shrink-0 rounded-full"
-                  style={{ backgroundColor: item.color }}
-                />
-                <span className="truncate" title={item.name}>
-                  {item.name}
-                </span>
+              <span>Cəm</span>
+              <span title={exactTotal} className="tabular-nums">
+                {formattedTotal}
               </span>
-              <span
-                className={[
-                  'shrink-0 tabular-nums font-semibold',
-                  mutedText(isDark),
-                ].join(' ')}
-              >
-                {mode === 'pct' ? formatPct(item.pct) : item.valueLabel}
-              </span>
-            </li>
-          ))}
-        </ul>
+            </div>
+          )}
+        </div>
       </div>
     </ChartCard>
   );

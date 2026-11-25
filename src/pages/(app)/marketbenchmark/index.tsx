@@ -136,7 +136,10 @@ function groupRows(
   rows: MarketBenchmarkItem[],
   getLabel: (row: MarketBenchmarkItem) => string
 ) {
-  const map = new Map<string, SummaryItem>();
+  const map = new Map<
+    string,
+    SummaryItem & { marketAmountSum: number; marketCardsSum: number }
+  >();
 
   rows.forEach((row) => {
     const label = getLabel(row);
@@ -146,6 +149,8 @@ function groupRows(
       current.amount += row.bankTransAmount;
       current.count += row.bankTransCount;
       current.cards += row.bankCardCount;
+      current.marketAmountSum += row.marketTotalAmount;
+      current.marketCardsSum += row.marketTotalCards;
       return;
     }
 
@@ -154,6 +159,8 @@ function groupRows(
       amount: row.bankTransAmount,
       count: row.bankTransCount,
       cards: row.bankCardCount,
+      marketAmountSum: row.marketTotalAmount,
+      marketCardsSum: row.marketTotalCards,
       marketShare: 0,
       cardShare: 0,
     });
@@ -165,9 +172,14 @@ function groupRows(
 
   return items
     .map((item) => ({
-      ...item,
-      marketShare: totalAmount > 0 ? (item.amount / totalAmount) * 100 : 0,
-      cardShare: totalCards > 0 ? (item.cards / totalCards) * 100 : 0,
+      label: item.label,
+      amount: item.amount,
+      count: item.count,
+      cards: item.cards,
+      marketShare:
+        totalAmount > 0 ? Math.min(100, (item.amount / totalAmount) * 100) : 0,
+      cardShare:
+        totalCards > 0 ? Math.min(100, (item.cards / totalCards) * 100) : 0,
     }))
     .sort((a, b) => b.amount - a.amount);
 }
@@ -478,15 +490,10 @@ const MarketBenchmarkPage: React.FC = () => {
         bank: string;
         region: string;
         brand: string;
-        months: Map<
-          string,
-          {
-            bankAmount: number;
-            marketAmount: number;
-            cardCount: number;
-            marketCards: number;
-          }
-        >;
+        bankAmount: number;
+        marketAmount: number;
+        cardCount: number;
+        marketCards: number;
       }
     >();
 
@@ -494,26 +501,19 @@ const MarketBenchmarkPage: React.FC = () => {
       const bank = row.bankName ?? 'Naməlum bank';
       const region = row.regionNameClean ?? 'Naməlum region';
       const brand = cleanBrand(row.cardBrandName);
-      const month = row.reportMonth ?? '';
       const key = `${bank}|${region}|${brand}`;
-      let bucket = map.get(key);
+      const bucket = map.get(key);
 
-      if (!bucket) {
-        bucket = { bank, region, brand, months: new Map() };
-        map.set(key, bucket);
-      }
-
-      const monthEntry = bucket.months.get(month);
-      if (monthEntry) {
-        monthEntry.bankAmount = Math.max(monthEntry.bankAmount, row.bankTransAmount);
-        monthEntry.marketAmount = Math.max(
-          monthEntry.marketAmount,
-          row.marketTotalAmount
-        );
-        monthEntry.cardCount += row.bankCardCount;
-        monthEntry.marketCards = Math.max(monthEntry.marketCards, row.marketTotalCards);
+      if (bucket) {
+        bucket.bankAmount += row.bankTransAmount;
+        bucket.marketAmount += row.marketTotalAmount;
+        bucket.cardCount += row.bankCardCount;
+        bucket.marketCards += row.marketTotalCards;
       } else {
-        bucket.months.set(month, {
+        map.set(key, {
+          bank,
+          region,
+          brand,
           bankAmount: row.bankTransAmount,
           marketAmount: row.marketTotalAmount,
           cardCount: row.bankCardCount,
@@ -523,28 +523,20 @@ const MarketBenchmarkPage: React.FC = () => {
     });
 
     return Array.from(map.values())
-      .map((bucket) => {
-        let bankAmount = 0;
-        let marketAmount = 0;
-        let cardCount = 0;
-        let marketCards = 0;
-
-        bucket.months.forEach((m) => {
-          bankAmount += m.bankAmount;
-          marketAmount += m.marketAmount;
-          cardCount += m.cardCount;
-          marketCards += m.marketCards;
-        });
-
-        return {
-          bank: bucket.bank,
-          region: bucket.region,
-          brand: bucket.brand,
-          marketShare: marketAmount > 0 ? (bankAmount / marketAmount) * 100 : 0,
-          cardShare: marketCards > 0 ? (cardCount / marketCards) * 100 : 0,
-          amount: bankAmount,
-        };
-      })
+      .map((bucket) => ({
+        bank: bucket.bank,
+        region: bucket.region,
+        brand: bucket.brand,
+        marketShare:
+          bucket.marketAmount > 0
+            ? Math.min(100, (bucket.bankAmount / bucket.marketAmount) * 100)
+            : 0,
+        cardShare:
+          bucket.marketCards > 0
+            ? Math.min(100, (bucket.cardCount / bucket.marketCards) * 100)
+            : 0,
+        amount: bucket.bankAmount,
+      }))
       .sort((a, b) => b.amount - a.amount);
   }, [rows]);
   const bankOptions = useMemo<SelectOption[]>(
@@ -595,8 +587,34 @@ const MarketBenchmarkPage: React.FC = () => {
     useMemo(() => {
       const amountSum = rows.reduce((sum, row) => sum + row.bankTransAmount, 0);
       const cardsSum = rows.reduce((sum, row) => sum + row.bankCardCount, 0);
-      const marketAvg = average(rows.map((row) => row.marketSharePct));
-      const cardAvg = average(rows.map((row) => row.cardSharePct));
+      const cellMarketMap = new Map<string, { marketAmount: number; marketCards: number }>();
+      rows.forEach((row) => {
+        const cellKey = `${row.regionNameClean ?? ''}|${row.cardBrandName ?? ''}|${row.productType ?? ''}`;
+        const existing = cellMarketMap.get(cellKey);
+        if (!existing) {
+          cellMarketMap.set(cellKey, {
+            marketAmount: row.marketTotalAmount,
+            marketCards: row.marketTotalCards,
+          });
+        } else {
+          existing.marketAmount = Math.max(existing.marketAmount, row.marketTotalAmount);
+          existing.marketCards = Math.max(existing.marketCards, row.marketTotalCards);
+        }
+      });
+      let marketAmountTotal = 0;
+      let marketCardsTotal = 0;
+      cellMarketMap.forEach((cell) => {
+        marketAmountTotal += cell.marketAmount;
+        marketCardsTotal += cell.marketCards;
+      });
+      const marketAvg =
+        marketAmountTotal > 0
+          ? Math.min(100, Math.round((amountSum / marketAmountTotal) * 10000) / 100)
+          : Math.min(100, average(rows.map((row) => row.marketSharePct)));
+      const cardAvg =
+        marketCardsTotal > 0
+          ? Math.min(100, Math.round((cardsSum / marketCardsTotal) * 10000) / 100)
+          : Math.min(100, average(rows.map((row) => row.cardSharePct)));
       const best = rows.reduce<MarketBenchmarkItem | null>(
         (acc, row) => (!acc || row.marketSharePct > acc.marketSharePct ? row : acc),
         null

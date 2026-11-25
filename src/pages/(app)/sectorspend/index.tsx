@@ -157,7 +157,19 @@ function mergeSelectOptions(current: SelectOption[], incoming: SelectOption[]) {
   current.forEach((option) => map.set(option.value, option));
   incoming.forEach((option) => map.set(option.value, option));
 
-  return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label, 'az'));
+  const next = Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label, 'az'));
+  if (
+    next.length === current.length &&
+    next.every(
+      (o, i) =>
+        o.value === current[i]?.value &&
+        o.label === current[i]?.label &&
+        o.id === current[i]?.id
+    )
+  ) {
+    return current;
+  }
+  return next;
 }
 
 function ensureSelectedOption(
@@ -232,7 +244,7 @@ function groupRows(rows: SectorSpendItem[], getLabel: (row: SectorSpendItem) => 
       count: item.count,
       localAmount: item.localAmount,
       avgTicket: item.count > 0 ? item.amount / item.count : 0,
-      localRatio: item.rowCount > 0 ? item.ratioSum / item.rowCount : 0,
+      localRatio: item.amount > 0 ? (item.localAmount / item.amount) * 100 : 0,
       marketShare: item.marketShare,
       sharePct: grandTotalAmount > 0 ? (item.amount / grandTotalAmount) * 100 : 0,
       topSector: item.topSector,
@@ -345,6 +357,7 @@ function DonutChart({ data }: { data: ChartItem[] }) {
               outerRadius={86}
               paddingAngle={3}
               stroke="none"
+              isAnimationActive={false}
             >
               {chartData.map((item, index) => (
                 <Cell key={item.name} fill={CHART_COLORS[index % CHART_COLORS.length]} />
@@ -413,15 +426,18 @@ function HorizontalChart({ data, color }: { data: ChartItem[]; color: string }) 
             content={<ChartTooltip />}
             cursor={{ fill: 'rgba(148, 163, 184, 0.08)' }}
           />
-          <Bar dataKey="value" fill={color} radius={[0, 6, 6, 0]} />
+          <Bar dataKey="value" fill={color} radius={[0, 6, 6, 0]} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     </div>
   );
 }
 
+const EMPTY_ARRAY: never[] = [];
+
 function LocalRatioScatter({ data }: { data: ScatterPoint[] }) {
   const isDark = useShellTheme();
+  const chartData = useMemo(() => data.slice(0, 50), [data]);
 
   return (
     <div className="h-80">
@@ -446,7 +462,7 @@ function LocalRatioScatter({ data }: { data: ScatterPoint[] }) {
           />
           <ZAxis dataKey="amount" range={[60, 520]} />
           <Tooltip content={<ScatterTooltip />} cursor={{ strokeDasharray: '3 3' }} />
-          <Scatter data={data} fill="#f59e0b" fillOpacity={0.78} />
+          <Scatter data={chartData} fill="#f59e0b" fillOpacity={0.78} isAnimationActive={false} />
         </ScatterChart>
       </ResponsiveContainer>
     </div>
@@ -516,8 +532,8 @@ const SectorSpendPage: React.FC = () => {
   >([]);
   const [sourceCountryCategoryOptionCache, setSourceCountryCategoryOptionCache] =
     useState<SelectOption[]>([]);
-  const { data: banks = [], isLoading: banksLoading } = useGetGeneralBanksQuery();
-  const { data: mccGroups = [], isLoading: mccGroupsLoading } =
+  const { data: banks = EMPTY_ARRAY, isLoading: banksLoading } = useGetGeneralBanksQuery();
+  const { data: mccGroups = EMPTY_ARRAY, isLoading: mccGroupsLoading } =
     useGetGeneralMccGroupsQuery();
   const { data, isLoading, isError } = useGetSectorSpendFilterQuery({
     ...(bankName ? { bankName } : {}),

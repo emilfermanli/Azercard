@@ -201,11 +201,13 @@ export function usePortfolioDashboard({
 
   const trendChartData = useMemo<TrendDatum[]>(
     () =>
-      (trendData?.series?.[0]?.points ?? []).map((point) => ({
-        label: monthLabel(point.period),
-        total: point.count,
-      })),
-    [trendData]
+      (trendData?.series?.[0]?.points ?? [])
+        .filter((point) => !point.isForecast && (!snapshotMonth || point.period <= snapshotMonth))
+        .map((point) => ({
+          label: monthLabel(point.period),
+          total: point.count,
+        })),
+    [trendData, snapshotMonth]
   );
 
   return {

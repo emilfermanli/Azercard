@@ -98,6 +98,9 @@ export type CardXyChart = {
 export type CardTrendPoint = {
   period: string;
   count: number;
+  isForecast?: boolean;
+  forecast?: number | null;
+  forecastGrowthRate?: number | null;
 };
 
 export type CardTrendSeries = {

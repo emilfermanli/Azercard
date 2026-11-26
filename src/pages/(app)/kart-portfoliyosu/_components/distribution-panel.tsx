@@ -15,7 +15,7 @@ import {
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import { RIGHT_PANEL_MODES } from '../_constants';
 import type { PieDatum, RightPanelMode, TrendDatum } from '../_types';
-import { mutedText, panelClass, subtlePanelClass } from '../_utils';
+import { formatCompactCount, mutedText, panelClass, subtlePanelClass } from '../_utils';
 import { ShareTooltip, TrendTooltip } from './chart-tooltips';
 
 type DistributionPanelProps = {
@@ -158,7 +158,7 @@ export function DistributionPanel({
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={trendChartData}
-                margin={{ top: 8, right: 12, left: -8, bottom: 0 }}
+                margin={{ top: 8, right: 12, left: 4, bottom: 0 }}
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
@@ -172,9 +172,10 @@ export function DistributionPanel({
                   tick={{ fontSize: 12, fill: isDark ? '#94a3b8' : '#64748b' }}
                 />
                 <YAxis
-                  width={48}
+                  width={54}
                   tickLine={false}
                   axisLine={false}
+                  tickFormatter={formatCompactCount}
                   tick={{ fontSize: 12, fill: isDark ? '#94a3b8' : '#64748b' }}
                 />
                 <Tooltip content={<TrendTooltip />} />

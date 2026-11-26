@@ -6,6 +6,21 @@ export function formatCount(value: number): string {
   return value.toLocaleString('az-AZ');
 }
 
+/** Qrafik Y oxu üçün kompakt rəqəm formatı (məs: 3.8M / 450K) — etiketlərin kəsilməməsi üçün. */
+export function formatCompactCount(value: number): string {
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000_000) {
+    return `${(value / 1_000_000_000).toLocaleString('az-AZ', { maximumFractionDigits: 1 })}B`;
+  }
+  if (abs >= 1_000_000) {
+    return `${(value / 1_000_000).toLocaleString('az-AZ', { maximumFractionDigits: 1 })}M`;
+  }
+  if (abs >= 1_000) {
+    return `${(value / 1_000).toLocaleString('az-AZ', { maximumFractionDigits: 1 })}K`;
+  }
+  return value.toLocaleString('az-AZ');
+}
+
 /** boolean mom göstəricisini trend istiqamətinə çevirir. */
 export function trendFromBool(isUp: boolean | null | undefined, isZero = false): Trend {
   if (isZero || isUp == null) return 'flat';

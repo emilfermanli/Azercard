@@ -67,20 +67,22 @@ export function useTdData({ apiArgs, measure, selections, visible }: DataArgs) {
   // ÖZ seçimini istisna edir — beləliklə seçim edəndə həmin sütun tam siyahı və
   // eyni sıra ilə qalır (seçilmiş element öz yerində vurğulanır).
   // KPI isə bütün seçimlərə görə filtrlənmiş ümumi cəmi göstərir (tam args).
+  // Qeyd: "Bank" sütunu (key: 'bank') TARGET_BANK_NAME (summary.targetBanks),
+  // "Target bank" sütunu (key: 'targetBank') isə SOURCE_BANK_NAME (/banks) göstərir.
   const issuingArgs = without(debouncedArgs, 'IssuingCategory');
-  const targetArgs = without(debouncedArgs, 'TargetBankName');
-  const bankArgs = without(debouncedArgs, 'SourceBankName');
+  const bankArgs = without(debouncedArgs, 'TargetBankName');
+  const targetBankArgs = without(debouncedArgs, 'SourceBankName');
   const deviceArgs = without(debouncedArgs, 'AcquiringDevice');
 
   const { data: summary, isFetching: f1 } = useGetTdSummaryQuery(debouncedArgs);
   const { data: issuingSummary, isFetching: fi } = useGetTdSummaryQuery(issuingArgs, {
     skip: !visible.issuing,
   });
-  const { data: targetSummary, isFetching: ftb } = useGetTdSummaryQuery(targetArgs, {
-    skip: !visible.targetBank,
-  });
-  const { data: banks, isFetching: f2 } = useGetTdBanksQuery(bankArgs, {
+  const { data: bankSummary, isFetching: fb } = useGetTdSummaryQuery(bankArgs, {
     skip: !visible.bank,
+  });
+  const { data: sourceBanks, isFetching: ftb } = useGetTdBanksQuery(targetBankArgs, {
+    skip: !visible.targetBank,
   });
   const { data: devices, isFetching: f3 } = useGetTdDevicesQuery(deviceArgs, {
     skip: !visible.device,
@@ -89,7 +91,7 @@ export function useTdData({ apiArgs, measure, selections, visible }: DataArgs) {
   const bankRows = useMemo<ColumnRow[]>(
     () =>
       toColumnRows(
-        (banks ?? []).map((b) => ({
+        (bankSummary?.targetBanks ?? []).map((b) => ({
           value: b.bankName,
           amount: b.amount,
           count: b.count,
@@ -98,7 +100,7 @@ export function useTdData({ apiArgs, measure, selections, visible }: DataArgs) {
         })),
         measure
       ),
-    [banks, selections.bank, measure]
+    [bankSummary, selections.bank, measure]
   );
 
   const deviceRows = useMemo<ColumnRow[]>(
@@ -134,7 +136,7 @@ export function useTdData({ apiArgs, measure, selections, visible }: DataArgs) {
   const targetBankRows = useMemo<ColumnRow[]>(
     () =>
       toColumnRows(
-        (targetSummary?.targetBanks ?? []).map((b) => ({
+        (sourceBanks ?? []).map((b) => ({
           value: b.bankName,
           amount: b.amount,
           count: b.count,
@@ -143,7 +145,7 @@ export function useTdData({ apiArgs, measure, selections, visible }: DataArgs) {
         })),
         measure
       ),
-    [targetSummary, selections.targetBank, measure]
+    [sourceBanks, selections.targetBank, measure]
   );
 
   const columnData: Record<ColumnKey, ColumnRow[]> = {
@@ -155,7 +157,7 @@ export function useTdData({ apiArgs, measure, selections, visible }: DataArgs) {
 
   // Hər sütun öz sorğusundan gəlir — yüklənmə vəziyyəti də ona uyğun.
   const loading: Record<ColumnKey, boolean> = {
-    bank: f2,
+    bank: fb,
     device: f3,
     issuing: fi,
     targetBank: ftb,
@@ -165,6 +167,6 @@ export function useTdData({ apiArgs, measure, selections, visible }: DataArgs) {
     kpi: summary?.kpi,
     columnData,
     loading,
-    isFetching: f1 || fi || ftb || f2 || f3,
+    isFetching: f1 || fi || fb || ftb || f3,
   };
 }

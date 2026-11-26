@@ -23,7 +23,7 @@ export const COLUMNS: Array<{
   subtitle: string;
   apiKey: keyof TransactionDetailedArgs;
 }> = [
-  { key: 'bank', title: 'Bank', subtitle: 'SOURCE_BANK_NAME', apiKey: 'SourceBankName' },
+  { key: 'bank', title: 'Bank', subtitle: 'TARGET_BANK_NAME', apiKey: 'TargetBankName' },
   {
     key: 'device',
     title: 'Acquiring qurğu',
@@ -39,8 +39,8 @@ export const COLUMNS: Array<{
   {
     key: 'targetBank',
     title: 'Target bank',
-    subtitle: 'TARGET_BANK_NAME',
-    apiKey: 'TargetBankName',
+    subtitle: 'SOURCE_BANK_NAME',
+    apiKey: 'SourceBankName',
   },
 ];
 

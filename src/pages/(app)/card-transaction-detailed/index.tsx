@@ -81,8 +81,8 @@ const CardTransactionDetailedPage: React.FC = () => {
                     loading={data.loading[col.key]}
                     onSelect={(value) => filters.toggleColumn(col.key, value)}
                     hint={
-                      col.key === 'targetBank'
-                        ? 'Target bank bölgüsü hazırda mənbə tərəfindən boş qaytarılır'
+                      col.key === 'bank'
+                        ? 'Bank (TARGET_BANK_NAME) bölgüsü hazırda mənbə tərəfindən boş qaytarılır'
                         : undefined
                     }
                   />

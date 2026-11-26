@@ -3,8 +3,18 @@ import { ArrowDownRight, ArrowRightLeft, ArrowUpRight, Wallet, X } from 'lucide-
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import type { TdKpi } from '@/types/card-transaction-detailed.type';
 import { MEASURE_OPTIONS } from '../_constants';
+import { useTdAmountUnit } from '../_context/amount-unit-context';
 import type { ColumnKey, Measure, SelectionChip } from '../_types';
-import { formatAmount, formatInt, mutedText, panelClass, signedPct } from '../_utils';
+import {
+  AMOUNT_UNIT_OPTIONS,
+  formatAmount,
+  formatExactAmount,
+  formatInt,
+  mutedText,
+  panelClass,
+  signedPct,
+  type AmountUnit,
+} from '../_utils';
 
 type SegmentedProps<T extends string> = {
   value: T;
@@ -20,6 +30,7 @@ function Segmented<T extends string>({ value, options, onChange }: SegmentedProp
         <button
           key={item.value}
           type="button"
+          aria-pressed={value === item.value}
           onClick={() => onChange(item.value)}
           className={[
             'h-8 min-w-11 rounded-md px-3 text-xs font-semibold transition',
@@ -41,14 +52,16 @@ type StatProps = {
   icon: React.ReactNode;
   label: string;
   value: string;
+  title?: string;
   active: boolean;
 };
 
 /** Tək KPI bloku — aktiv göstərici (seçilmiş) vurğulanır. */
-function Stat({ icon, label, value, active }: StatProps) {
+function Stat({ icon, label, value, title, active }: StatProps) {
   const isDark = useShellTheme();
   return (
     <div
+      title={title}
       className={[
         'flex items-center gap-3 rounded-xl border px-3.5 py-2.5 transition',
         active
@@ -103,7 +116,9 @@ export function Toolbar({
   onClearChip,
 }: ToolbarProps) {
   const isDark = useShellTheme();
-  const amount = kpi ? `${formatAmount(kpi.totalAmount)} ₼` : '—';
+  const { unit, setUnit } = useTdAmountUnit();
+  const amount = kpi ? formatAmount(kpi.totalAmount, unit) : '—';
+  const exactAmount = kpi ? formatExactAmount(kpi.totalAmount) : undefined;
   const count = kpi ? formatInt(kpi.totalCount) : '—';
   const change = kpi?.changePercent ?? 0;
 
@@ -120,12 +135,14 @@ export function Toolbar({
             icon={<Wallet className="h-[1.1rem] w-[1.1rem]" />}
             label="Ümumi dövriyyə"
             value={amount}
+            title={exactAmount}
             active={measure === 'amount'}
           />
           <Stat
             icon={<ArrowRightLeft className="h-[1.1rem] w-[1.1rem]" />}
             label="Əməliyyat sayı"
             value={count}
+            title={kpi ? count : undefined}
             active={measure === 'count'}
           />
         </div>
@@ -155,15 +172,31 @@ export function Toolbar({
       </div>
 
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-3 justify-end">
-          <p className={['text-xs font-semibold', mutedText(isDark)].join(' ')}>
-            Göstərici
-          </p>
-          <Segmented<Measure>
-            value={measure}
-            options={MEASURE_OPTIONS}
-            onChange={onMeasureChange}
-          />
+        <div className="flex flex-wrap items-center justify-end gap-4">
+          <div className="flex items-center gap-2.5">
+            <p className={['text-xs font-semibold', mutedText(isDark)].join(' ')}>
+              Məbləğ vahidi
+            </p>
+            <Segmented<AmountUnit>
+              value={unit}
+              options={AMOUNT_UNIT_OPTIONS.map((o) => ({
+                value: o.value,
+                label: o.label,
+              }))}
+              onChange={setUnit}
+            />
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <p className={['text-xs font-semibold', mutedText(isDark)].join(' ')}>
+              Göstərici
+            </p>
+            <Segmented<Measure>
+              value={measure}
+              options={MEASURE_OPTIONS}
+              onChange={onMeasureChange}
+            />
+          </div>
         </div>
 
         {chips.length > 0 && (

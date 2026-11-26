@@ -1,8 +1,16 @@
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
 
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
+import { useTdAmountUnit } from '../_context/amount-unit-context';
 import type { ColumnRow, Measure } from '../_types';
-import { formatPct, measureValue, mutedText, panelClass, signedPct } from '../_utils';
+import {
+  exactMeasureValue,
+  formatPct,
+  measureValue,
+  mutedText,
+  panelClass,
+  signedPct,
+} from '../_utils';
 
 type BreakdownColumnProps = {
   title: string;
@@ -54,6 +62,7 @@ export function BreakdownColumn({
   hint,
 }: BreakdownColumnProps) {
   const isDark = useShellTheme();
+  const { unit } = useTdAmountUnit();
   const trackClass = isDark ? 'bg-slate-800' : 'bg-slate-200';
 
   return (
@@ -105,7 +114,7 @@ export function BreakdownColumn({
                   type="button"
                   onClick={() => onSelect(row.value)}
                   aria-pressed={row.selected}
-                  title={`${row.label} · ${measureValue(row, measure)}`}
+                  title={`${row.label} · ${exactMeasureValue(row, measure)}`}
                   className={[
                     'group w-full rounded-lg border px-3 py-2.5 text-left transition',
                     row.selected
@@ -134,7 +143,7 @@ export function BreakdownColumn({
                       <span className="truncate text-xs font-semibold">{row.label}</span>
                     </div>
                     <span className="shrink-0 text-sm font-bold tabular-nums">
-                      {measureValue(row, measure)}
+                      {measureValue(row, measure, unit)}
                     </span>
                   </div>
 

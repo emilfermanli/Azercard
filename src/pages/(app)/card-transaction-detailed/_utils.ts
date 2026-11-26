@@ -1,4 +1,24 @@
+import {
+  AMOUNT_UNIT_CONFIG,
+  AMOUNT_UNIT_OPTIONS,
+  formatAmount as formatUnitAmount,
+  formatCount,
+  formatExactAmount,
+  formatPct as formatUnitPct,
+  isAmountUnit,
+  type AmountUnit,
+} from '../card-dashboard/_format';
 import type { Measure } from './_types';
+
+export {
+  AMOUNT_UNIT_CONFIG,
+  AMOUNT_UNIT_OPTIONS,
+  formatCount,
+  formatExactAmount,
+  formatUnitAmount as formatAmount,
+  isAmountUnit,
+  type AmountUnit,
+};
 
 /** null/boş label-ı oxunaqlı mətnə çevirir. */
 export function labelText(label: string | null | undefined): string {
@@ -6,18 +26,13 @@ export function labelText(label: string | null | undefined): string {
   return text ? text : 'Naməlum';
 }
 
-/** Məbləğ formatı (az-AZ, 2 onluq). */
-export function formatAmount(value: number): string {
-  return value.toLocaleString('az-AZ', { maximumFractionDigits: 2 });
+/** Tam say formatı (vahiddən asılı deyil). */
+export function formatInt(value: number | null | undefined): string {
+  return formatCount(value);
 }
 
-/** Tam say formatı. */
-export function formatInt(value: number): string {
-  return Math.round(value).toLocaleString('az-AZ');
-}
-
-export function formatPct(value: number): string {
-  return `${value.toLocaleString('az-AZ', { maximumFractionDigits: 1 })}%`;
+export function formatPct(value: number | null | undefined): string {
+  return formatUnitPct(value);
 }
 
 /** Sətirin seçilmiş göstərici üzrə mütləq dəyəri. */
@@ -28,12 +43,25 @@ export function rowValue(
   return measure === 'count' ? row.count : row.amount;
 }
 
-/** Göstərici üzrə dəqiq, tam dəyər (yuvarlaqlaşdırma yoxdur) — say / məbləğ. */
+/** Göstərici və seçilmiş məbləğ vahidi üzrə dəyər — say (tam) / məbləğ (Tam/Min/Mln/Mlrd). */
 export function measureValue(
-  row: { amount: number; count: number },
+  row: { amount: number | null | undefined; count: number | null | undefined },
+  measure: Measure,
+  unit: AmountUnit = 'mln'
+): string {
+  return measure === 'count'
+    ? formatCount(row.count)
+    : formatUnitAmount(row.amount, unit);
+}
+
+/** Tooltip (title) üçün tam dəqiq dəyər — say / xam AZN məbləği. */
+export function exactMeasureValue(
+  row: { amount: number | null | undefined; count: number | null | undefined },
   measure: Measure
 ): string {
-  return measure === 'count' ? formatInt(row.count) : `${formatAmount(row.amount)} ₼`;
+  return measure === 'count'
+    ? formatCount(row.count)
+    : formatExactAmount(row.amount);
 }
 
 /** İşarəli faiz (dəyişmə) — "+12,3%" / "-4%". */

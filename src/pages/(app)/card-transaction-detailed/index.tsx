@@ -7,12 +7,13 @@ import { FiltersDrawer } from './_components/filters-drawer';
 import { ParameterRail } from './_components/parameter-rail';
 import { Toolbar } from './_components/toolbar';
 import { COLUMNS, ISSUING_HINT } from './_constants';
+import { TdAmountUnitProvider } from './_context/amount-unit-context';
 import { useTdData } from './_hooks/use-td-data';
 import { useTdFilters } from './_hooks/use-td-filters';
 import type { ColumnKey, Measure } from './_types';
 import { mutedText } from './_utils';
 
-const CardTransactionDetailedPage: React.FC = () => {
+function CardTransactionDetailedContent() {
   const isDark = useShellTheme();
   const [measure, setMeasure] = useState<Measure>('amount');
 
@@ -94,6 +95,12 @@ const CardTransactionDetailedPage: React.FC = () => {
       </div>
     </div>
   );
-};
+}
+
+const CardTransactionDetailedPage: React.FC = () => (
+  <TdAmountUnitProvider>
+    <CardTransactionDetailedContent />
+  </TdAmountUnitProvider>
+);
 
 export default CardTransactionDetailedPage;

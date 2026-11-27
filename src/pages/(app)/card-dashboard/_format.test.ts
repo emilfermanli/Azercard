@@ -5,11 +5,16 @@ import {
   AMOUNT_UNIT_CONFIG,
   APP_LOCALE,
   buildCountAxisTicks,
+  buildMetricAxisTicks,
   buildUnitAxisTicks,
   formatAmount,
   formatCount,
+  formatCountByUnit,
   formatExactAmount,
+  formatMetricExactValue,
+  formatMetricValue,
   formatPct,
+  getMetricUnitTag,
   type AmountUnit,
 } from './_format';
 
@@ -105,33 +110,62 @@ describe('CardDashboard formatting helpers', () => {
     assert.equal(formatAmount(huge, 'mlrd'), '151.803,42 mlrd ₼');
   });
 
-  it('formats transaction counts independently of amount unit without suffixes', () => {
+  it('formats transaction counts without ₼ symbol across all 4 units, 0, null, tiny, huge, negative', () => {
     assert.equal(formatCount(0), '0');
     assert.equal(formatCount(-0), '0');
     assert.equal(formatCount(2543.55), '2.544');
     assert.equal(formatCount(314428), '314.428');
     assert.equal(formatCount(2543550000), '2.543.550.000');
     assert.doesNotMatch(formatCount(2543550000), /min|mln|mlrd|₼/);
+
+    for (const unit of ALL_UNITS) {
+      assert.equal(formatCountByUnit(null, unit), '—');
+      assert.equal(formatCountByUnit(undefined, unit), '—');
+      assert.equal(formatCountByUnit(Number.NaN, unit), '—');
+      assert.equal(formatCountByUnit(Number.POSITIVE_INFINITY, unit), '—');
+      assert.doesNotMatch(formatCountByUnit(314428, unit), /₼/);
+      assert.doesNotMatch(formatCountByUnit(0, unit), /^-/);
+      assert.doesNotMatch(formatCountByUnit(-0, unit), /^-/);
+      assert.equal(formatCountByUnit(-0, unit), formatCountByUnit(0, unit));
+    }
+
+    assert.equal(formatCountByUnit(0, 'tam'), '0');
+    assert.equal(formatCountByUnit(0, 'min'), '0 min');
+    assert.equal(formatCountByUnit(0, 'mln'), '0 mln');
+    assert.equal(formatCountByUnit(0, 'mlrd'), '0 mlrd');
+
+    assert.equal(formatCountByUnit(314428, 'tam'), '314.428');
+    assert.equal(formatCountByUnit(314428, 'min'), '314,43 min');
+    assert.equal(formatCountByUnit(314428, 'mln'), '0,31 mln');
+    assert.equal(formatCountByUnit(314428, 'mlrd'), '< 0,01 mlrd');
+
+    assert.equal(formatCountByUnit(0.004, 'tam'), '< 0,01');
+    assert.equal(formatCountByUnit(500, 'mln'), '< 0,01 mln');
+    assert.equal(formatCountByUnit(-500, 'mln'), '> -0,01 mln');
+    assert.equal(formatCountByUnit(59, 'mlrd'), '< 0,01 mlrd');
+
+    assert.equal(formatCountByUnit(2543550000, 'tam'), '2.543.550.000');
+    assert.equal(formatCountByUnit(2543550000, 'min'), '2.543.550 min');
+    assert.equal(formatCountByUnit(2543550000, 'mln'), '2.543,55 mln');
+    assert.equal(formatCountByUnit(2543550000, 'mlrd'), '2,54 mlrd');
+
+    assert.equal(formatCountByUnit(-1234567, 'tam'), '-1.234.567');
+    assert.equal(formatCountByUnit(-1234567, 'min'), '-1.234,57 min');
+    assert.equal(formatCountByUnit(-1234567, 'mln'), '-1,23 mln');
+    assert.equal(formatCountByUnit(-1234567, 'mlrd'), '> -0,01 mlrd');
   });
 
-  it('keeps avgAmount = totalAmount / totalTxCount consistent across all 4 units', () => {
-    const scenarios = [
-      { totalAmount: 54195309.27, totalTxCount: 314428 },
-      { totalAmount: 151803420000000, totalTxCount: 2543550000000 },
-    ];
-
-    for (const s of scenarios) {
-      const avg = s.totalAmount / s.totalTxCount;
-      for (const unit of ALL_UNITS) {
-        const expectedAvg = formatAmount(avg, unit);
-        const recomputedAvg = formatAmount(s.totalAmount / s.totalTxCount, unit);
-        assert.equal(recomputedAvg, expectedAvg);
-        assert.ok(
-          !expectedAvg.startsWith('0 '),
-          `Average must not round to zero in ${unit}: ${expectedAvg}`
-        );
-      }
+  it('keeps avgAmount (Orta məbləğ) in unscaled AZN across all 4 units', () => {
+    const avg = 54195309.27 / 314428;
+    const expected = formatAmount(avg, 'tam');
+    for (const unit of ALL_UNITS) {
+      assert.equal(formatMetricValue(avg, 'avg', unit), expected);
+      assert.equal(getMetricUnitTag('avg', unit), ' (₼)');
     }
+    assert.equal(formatMetricExactValue(314428, 'count'), '314.428');
+    assert.equal(getMetricUnitTag('count', 'mln'), ' (mln)');
+    assert.equal(getMetricUnitTag('count', 'tam'), '');
+    assert.equal(getMetricUnitTag('amount', 'mln'), ' (mln ₼)');
   });
 
   it('builds distinct non-overlapping axis ticks scaled to unit', () => {
@@ -156,5 +190,9 @@ describe('CardDashboard formatting helpers', () => {
     const countTicks = buildCountAxisTicks(314428, 5);
     assert.ok(countTicks && countTicks.length >= 2 && countTicks.length <= 5);
     assert.equal(countTicks[0], 0);
+
+    const scaledCountTicks = buildMetricAxisTicks(314428, 'count', 'min', 5);
+    assert.ok(scaledCountTicks && scaledCountTicks.length >= 2 && scaledCountTicks.length <= 5);
+    assert.equal(scaledCountTicks[0], 0);
   });
 });

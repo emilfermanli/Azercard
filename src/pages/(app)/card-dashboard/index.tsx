@@ -50,7 +50,6 @@ function CardDashboardContent() {
           title={product.title}
           subtitle={product.subtitle}
           data={data.breakdowns.productBreakdown}
-          monetary={data.metricMonetary}
           metric={metric}
         />
         {/* 5 — Artma / azalma tendensiyası: trend */}
@@ -59,7 +58,6 @@ function CardDashboardContent() {
           alerts={data.alerts}
           metric={metric}
           metricLabel={metricLabel}
-          monetary={data.metricMonetary}
           hasForecast={data.hasForecast}
         />
       </div>
@@ -71,14 +69,14 @@ function CardDashboardContent() {
           title={paymentSystem.title}
           subtitle={paymentSystem.subtitle}
           data={data.breakdowns.paymentSystem}
-          monetary={data.metricMonetary}
+          metric={metric}
         />
         {/* 8 — Ödəniş tipi: üfüqi bar */}
         <BreakdownBar
           title={paymentType.title}
           subtitle={paymentType.subtitle}
           data={data.breakdowns.paymentType}
-          monetary={data.metricMonetary}
+          metric={metric}
         />
       </div>
 
@@ -89,7 +87,6 @@ function CardDashboardContent() {
           title={cashNonCash.title}
           subtitle={cashNonCash.subtitle}
           data={data.breakdowns.cashNonCash}
-          monetary={data.metricMonetary}
           metric={metric}
         />
       </div>

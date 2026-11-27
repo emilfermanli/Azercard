@@ -5,9 +5,8 @@ import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import { useAmountUnit } from '../_context/amount-unit-context';
 import type { DisplayMode, DonutDatum, Metric } from '../_types';
 import {
-  formatAmount,
-  formatCount,
-  formatExactAmount,
+  formatMetricExactValue,
+  formatMetricValue,
   formatPct,
   mutedText,
   type AmountUnit,
@@ -18,7 +17,6 @@ type BreakdownDonutProps = {
   title: string;
   subtitle: string;
   data: DonutDatum[];
-  monetary: boolean;
   metric: Metric;
 };
 
@@ -26,23 +24,21 @@ function DonutTooltip({
   active,
   payload,
   mode,
-  monetary,
+  metric,
   unit,
 }: {
   active?: boolean;
   payload?: Array<{ payload?: DonutDatum }>;
   mode: DisplayMode;
-  monetary: boolean;
+  metric: Metric;
   unit: AmountUnit;
 }) {
   if (!active || !payload?.length) return null;
   const item = payload[0].payload;
   if (!item) return null;
 
-  const formattedValue = monetary
-    ? formatAmount(item.value, unit)
-    : formatCount(item.value);
-  const exactValue = monetary ? formatExactAmount(item.value) : null;
+  const formattedValue = formatMetricValue(item.value, metric, unit);
+  const exactValue = formatMetricExactValue(item.value, metric);
 
   return (
     <div className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white shadow-xl">
@@ -66,7 +62,6 @@ export function BreakdownDonut({
   title,
   subtitle,
   data,
-  monetary,
   metric,
 }: BreakdownDonutProps) {
   const isDark = useShellTheme();
@@ -81,14 +76,10 @@ export function BreakdownDonut({
     ? data.reduce((sum, item) => sum + item.value, 0)
     : 0;
   const formattedTotal = showTotal
-    ? monetary
-      ? formatAmount(totalRaw, unit)
-      : formatCount(totalRaw)
+    ? formatMetricValue(totalRaw, metric, unit)
     : null;
   const exactTotal = showTotal
-    ? monetary
-      ? formatExactAmount(totalRaw)
-      : formatCount(totalRaw)
+    ? formatMetricExactValue(totalRaw, metric)
     : undefined;
 
   const toggle = (
@@ -126,7 +117,7 @@ export function BreakdownDonut({
             <PieChart>
               <Tooltip
                 content={
-                  <DonutTooltip mode={mode} monetary={monetary} unit={unit} />
+                  <DonutTooltip mode={mode} metric={metric} unit={unit} />
                 }
               />
               <Pie
@@ -150,12 +141,12 @@ export function BreakdownDonut({
         <div className="min-w-0 flex-1">
           <ul className="space-y-1.5">
             {data.map((item) => {
-              const formattedValue = monetary
-                ? formatAmount(item.value, unit)
-                : formatCount(item.value);
-              const exactValue = monetary
-                ? formatExactAmount(item.value)
-                : formatCount(item.value);
+              const formattedValue = formatMetricValue(
+                item.value,
+                metric,
+                unit
+              );
+              const exactValue = formatMetricExactValue(item.value, metric);
 
               return (
                 <li

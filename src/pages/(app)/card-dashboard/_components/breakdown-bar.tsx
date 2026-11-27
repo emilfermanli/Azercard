@@ -11,13 +11,11 @@ import {
 
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import { useAmountUnit } from '../_context/amount-unit-context';
-import type { DisplayMode, DonutDatum } from '../_types';
+import type { DisplayMode, DonutDatum, Metric } from '../_types';
 import {
-  buildCountAxisTicks,
-  buildUnitAxisTicks,
-  formatAmount,
-  formatCount,
-  formatExactAmount,
+  buildMetricAxisTicks,
+  formatMetricExactValue,
+  formatMetricValue,
   formatPct,
   type AmountUnit,
 } from '../_utils';
@@ -27,7 +25,7 @@ type BreakdownBarProps = {
   title: string;
   subtitle: string;
   data: DonutDatum[];
-  monetary: boolean;
+  metric: Metric;
   maxRows?: number;
 };
 
@@ -38,23 +36,21 @@ function BarTooltip({
   active,
   payload,
   mode,
-  monetary,
+  metric,
   unit,
 }: {
   active?: boolean;
   payload?: Array<{ payload?: DonutDatum }>;
   mode: DisplayMode;
-  monetary: boolean;
+  metric: Metric;
   unit: AmountUnit;
 }) {
   if (!active || !payload?.length) return null;
   const item = payload[0].payload;
   if (!item) return null;
 
-  const formattedValue = monetary
-    ? formatAmount(item.value, unit)
-    : formatCount(item.value);
-  const exactValue = monetary ? formatExactAmount(item.value) : null;
+  const formattedValue = formatMetricValue(item.value, metric, unit);
+  const exactValue = formatMetricExactValue(item.value, metric);
 
   return (
     <div className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white shadow-xl">
@@ -78,7 +74,7 @@ export function BreakdownBar({
   title,
   subtitle,
   data,
-  monetary,
+  metric,
   maxRows = 12,
 }: BreakdownBarProps) {
   const isDark = useShellTheme();
@@ -98,9 +94,7 @@ export function BreakdownBar({
       : 0;
   const xTicks =
     mode === 'number' && maxRaw > 0
-      ? monetary
-        ? buildUnitAxisTicks(maxRaw, unit, 4)
-        : buildCountAxisTicks(maxRaw, 4)
+      ? buildMetricAxisTicks(maxRaw, metric, unit, 4)
       : undefined;
 
   const toggle = (
@@ -151,9 +145,10 @@ export function BreakdownBar({
               tickFormatter={(v: number) =>
                 mode === 'pct'
                   ? formatPct(v)
-                  : monetary
-                    ? formatAmount(v, unit, { includeCurrency: false, bareZero: true })
-                    : formatCount(v)
+                  : formatMetricValue(v, metric, unit, {
+                      includeCurrency: false,
+                      bareZero: true,
+                    })
               }
             />
             <YAxis
@@ -168,7 +163,7 @@ export function BreakdownBar({
             <Tooltip
               cursor={{ fill: isDark ? '#1e293b55' : '#eff6ff' }}
               content={
-                <BarTooltip mode={mode} monetary={monetary} unit={unit} />
+                <BarTooltip mode={mode} metric={metric} unit={unit} />
               }
             />
             <Bar dataKey="metric" radius={[0, 6, 6, 0]} barSize={16}>

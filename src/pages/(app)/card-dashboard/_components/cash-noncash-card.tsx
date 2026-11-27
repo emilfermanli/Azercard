@@ -2,9 +2,8 @@ import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import { useAmountUnit } from '../_context/amount-unit-context';
 import type { DonutDatum, Metric } from '../_types';
 import {
-  formatAmount,
-  formatCount,
-  formatExactAmount,
+  formatMetricExactValue,
+  formatMetricValue,
   formatPct,
   mutedText,
   subtlePanelClass,
@@ -15,7 +14,6 @@ type CashNonCashCardProps = {
   title: string;
   subtitle: string;
   data: DonutDatum[];
-  monetary: boolean;
   metric: Metric;
 };
 
@@ -34,7 +32,6 @@ export function CashNonCashCard({
   title,
   subtitle,
   data,
-  monetary,
   metric,
 }: CashNonCashCardProps) {
   const isDark = useShellTheme();
@@ -46,24 +43,16 @@ export function CashNonCashCard({
     ? data.reduce((sum, item) => sum + item.value, 0)
     : 0;
   const totalFormatted = showTotal
-    ? monetary
-      ? formatAmount(totalRaw, unit)
-      : formatCount(totalRaw)
+    ? formatMetricValue(totalRaw, metric, unit)
     : null;
   const totalExact = showTotal
-    ? monetary
-      ? formatExactAmount(totalRaw)
-      : formatCount(totalRaw)
+    ? formatMetricExactValue(totalRaw, metric)
     : undefined;
 
   const tiles = data.map((item) => ({
     ...item,
-    displayValue: monetary
-      ? formatAmount(item.value, unit)
-      : formatCount(item.value),
-    exactValue: monetary
-      ? formatExactAmount(item.value)
-      : formatCount(item.value),
+    displayValue: formatMetricValue(item.value, metric, unit),
+    exactValue: formatMetricExactValue(item.value, metric),
   }));
   const valueSizeClass = sharedTileValueSizeClass(
     tiles.map((tile) => tile.displayValue)

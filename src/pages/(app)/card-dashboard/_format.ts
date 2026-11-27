@@ -113,12 +113,14 @@ export function formatAmount(
   return `${formatted}${unitPart}${currency}`;
 }
 
+import type { Metric } from './_types';
+
 /** Tooltip və detallı yoxlama üçün tam AZN dəyəri (sıfırdan fərqli kiçik dəyərləri gizlətmir). */
 export function formatExactAmount(rawAzn: number | null | undefined): string {
   return formatAmount(rawAzn, 'tam', { exact: true });
 }
 
-/** Əməliyyat sayı formatı — vahiddən asılı deyil və sonluq ("min/mln/mlrd/₼") əlavə etmir. */
+/** Tam əməliyyat sayı formatı — vahiddən asılı deyil və sonluq ("min/mln/mlrd/₼") əlavə etmir. */
 export function formatCount(value: number | null | undefined): string {
   if (!isValidFiniteNumber(value)) return '—';
   const rounded = Math.round(value);
@@ -126,6 +128,50 @@ export function formatCount(value: number | null | undefined): string {
   return new Intl.NumberFormat(APP_LOCALE, {
     maximumFractionDigits: 0,
   }).format(normalized);
+}
+
+/**
+ * Əməliyyat sayını seçilmiş vahidə (Tam / Min / Mln / Mlrd) bölüb
+ * `az-AZ` standartı ilə (₼ simvolu OLMADAN) formatlayır.
+ */
+export function formatCountByUnit(
+  value: number | null | undefined,
+  unit: AmountUnit,
+  options?: Omit<FormatAmountOptions, 'includeCurrency'>
+): string {
+  return formatAmount(value, unit, { ...options, includeCurrency: false });
+}
+
+/** Seçilmiş KPI göstəricisinə (`amount` / `count` / `avg`) görə vahidli dəyəri formatlayır. */
+export function formatMetricValue(
+  value: number | null | undefined,
+  metric: Metric,
+  unit: AmountUnit,
+  options?: FormatAmountOptions
+): string {
+  if (metric === 'count') {
+    return formatCountByUnit(value, unit, options);
+  }
+  const effectiveUnit = metric === 'avg' ? 'tam' : unit;
+  return formatAmount(value, effectiveUnit, options);
+}
+
+/** Tooltip və `title` atributu üçün göstəricinin tam (bölünməmiş) dəyərini formatlayır. */
+export function formatMetricExactValue(
+  value: number | null | undefined,
+  metric: Metric
+): string {
+  return metric === 'count' ? formatCount(value) : formatExactAmount(value);
+}
+
+/** Qrafik altbaşlığı üçün seçilmiş göstərici və vahidə uyğun ölçü etiketi. */
+export function getMetricUnitTag(metric: Metric, unit: AmountUnit): string {
+  if (metric === 'avg') return ' (₼)';
+  const suffix = getUnitSuffix(unit);
+  if (metric === 'count') {
+    return suffix ? ` (${suffix})` : '';
+  }
+  return suffix ? ` (${suffix} ₼)` : ' (₼)';
 }
 
 /** Faiz formatı (`az-AZ`). */
@@ -188,4 +234,20 @@ export function buildCountAxisTicks(
 ): number[] | undefined {
   if (!Number.isFinite(maxRaw) || maxRaw <= 0) return undefined;
   return buildNiceAxisTicks(maxRaw, 1, 1, maxTicks);
+}
+
+/** Aktiv göstəriciyə (`amount` / `count` / `avg`) və vahidə uyğun qrafik ox tick-ləri. */
+export function buildMetricAxisTicks(
+  maxRaw: number,
+  metric: Metric,
+  unit: AmountUnit,
+  maxTicks = 5
+): number[] | undefined {
+  if (metric === 'avg') return buildUnitAxisTicks(maxRaw, 'tam', maxTicks);
+  if (metric === 'count') {
+    return unit === 'tam'
+      ? buildCountAxisTicks(maxRaw, maxTicks)
+      : buildUnitAxisTicks(maxRaw, unit, maxTicks);
+  }
+  return buildUnitAxisTicks(maxRaw, unit, maxTicks);
 }

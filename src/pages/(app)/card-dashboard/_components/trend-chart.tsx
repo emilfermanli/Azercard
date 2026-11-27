@@ -14,13 +14,11 @@ import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import { useAmountUnit } from '../_context/amount-unit-context';
 import type { AlertItem, Metric, TrendDatum } from '../_types';
 import {
-  buildCountAxisTicks,
-  buildUnitAxisTicks,
-  formatAmount,
-  formatCount,
-  formatExactAmount,
+  buildMetricAxisTicks,
+  formatMetricExactValue,
+  formatMetricValue,
   formatPct,
-  getUnitSuffix,
+  getMetricUnitTag,
   mutedText,
   type AmountUnit,
 } from '../_utils';
@@ -31,7 +29,6 @@ type TrendChartProps = {
   alerts: AlertItem[];
   metric: Metric;
   metricLabel: string;
-  monetary: boolean;
   hasForecast: boolean;
   className?: string;
 };
@@ -40,13 +37,13 @@ function TrendTooltip({
   active,
   payload,
   label,
-  monetary,
+  metric,
   unit,
 }: {
   active?: boolean;
   payload?: Array<{ dataKey?: string; value?: number }>;
   label?: string;
-  monetary: boolean;
+  metric: Metric;
   unit: AmountUnit;
 }) {
   if (!active || !payload?.length) return null;
@@ -55,10 +52,8 @@ function TrendTooltip({
   );
   if (!point || point.value == null) return null;
 
-  const formattedValue = monetary
-    ? formatAmount(point.value, unit)
-    : formatCount(point.value);
-  const exactValue = monetary ? formatExactAmount(point.value) : null;
+  const formattedValue = formatMetricValue(point.value, metric, unit);
+  const exactValue = formatMetricExactValue(point.value, metric);
 
   return (
     <div className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-white shadow-xl">
@@ -81,7 +76,6 @@ export function TrendChart({
   alerts,
   metric,
   metricLabel,
-  monetary,
   hasForecast,
   className,
 }: TrendChartProps) {
@@ -89,8 +83,7 @@ export function TrendChart({
   const { unit } = useAmountUnit();
   const axisColor = isDark ? '#94a3b8' : '#64748b';
 
-  const unitSuffix = getUnitSuffix(unit);
-  const unitTag = monetary ? (unitSuffix ? ` (${unitSuffix} ₼)` : ' (₼)') : '';
+  const unitTag = getMetricUnitTag(metric, unit);
 
   let minRaw = 0;
   let maxRaw = 0;
@@ -119,15 +112,14 @@ export function TrendChart({
 
   const yTicks =
     hasNumeric && minRaw >= 0 && maxRaw > 0
-      ? monetary
-        ? buildUnitAxisTicks(maxRaw, unit, 5)
-        : buildCountAxisTicks(maxRaw, 5)
+      ? buildMetricAxisTicks(maxRaw, metric, unit, 5)
       : undefined;
 
   const formatYAxisTick = (value: number) =>
-    monetary
-      ? formatAmount(value, unit, { includeCurrency: false, bareZero: true })
-      : formatCount(value);
+    formatMetricValue(value, metric, unit, {
+      includeCurrency: false,
+      bareZero: true,
+    });
 
   const sampleValues = yTicks ?? (hasNumeric ? [minRaw, maxRaw] : [0]);
   const maxTickLen = Math.max(0, ...sampleValues.map((v) => formatYAxisTick(v).length));
@@ -135,14 +127,10 @@ export function TrendChart({
 
   const showTotal = hasActual && (metric === 'amount' || metric === 'count');
   const formattedTotal = showTotal
-    ? monetary
-      ? formatAmount(actualSum, unit)
-      : formatCount(actualSum)
+    ? formatMetricValue(actualSum, metric, unit)
     : null;
   const exactTotal = showTotal
-    ? monetary
-      ? formatExactAmount(actualSum)
-      : formatCount(actualSum)
+    ? formatMetricExactValue(actualSum, metric)
     : undefined;
 
   return (
@@ -198,7 +186,7 @@ export function TrendChart({
               tick={{ fontSize: 12, fill: axisColor }}
               tickFormatter={formatYAxisTick}
             />
-            <Tooltip content={<TrendTooltip monetary={monetary} unit={unit} />} />
+            <Tooltip content={<TrendTooltip metric={metric} unit={unit} />} />
             {/* Proqnoz güvən zolağı (aşağı–yuxarı hədd). */}
             <Area
               dataKey={(d: TrendDatum) =>

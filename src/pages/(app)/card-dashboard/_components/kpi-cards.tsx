@@ -2,7 +2,10 @@ import { ArrowRightLeft, Scale, Wallet, type LucideIcon } from 'lucide-react';
 
 import { useAmountUnit } from '../_context/amount-unit-context';
 import type { KpiCard, Metric } from '../_types';
-import { formatAmount, formatCount, formatExactAmount } from '../_utils';
+import {
+  formatMetricExactValue,
+  formatMetricValue,
+} from '../_utils';
 
 const ACCENTS: Record<Metric, string> = {
   amount: 'from-sky-500 to-blue-600',
@@ -45,15 +48,11 @@ export function KpiCards({ cards, onSelect }: KpiCardsProps) {
     const value =
       card.rawValue == null
         ? '—'
-        : card.monetary
-          ? formatAmount(card.rawValue, unit)
-          : formatCount(card.rawValue);
+        : formatMetricValue(card.rawValue, card.key, unit);
     const fullValue =
       card.rawValue == null
         ? '—'
-        : card.monetary
-          ? formatExactAmount(card.rawValue)
-          : formatCount(card.rawValue);
+        : formatMetricExactValue(card.rawValue, card.key);
     return { ...card, value, fullValue };
   });
 

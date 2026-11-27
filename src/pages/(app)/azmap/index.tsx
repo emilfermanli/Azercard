@@ -102,16 +102,43 @@ const BASE_MAP_OPTIONS: { label: string; value: BaseMapStyle }[] = [
   { label: 'Sadə', value: 'minimal' },
 ];
 
-function hasCoordinates(item: AzmapItem) {
-  return item.latitude != null && item.longitude != null;
+export const BAKI_DEFAULT_LONGITUDE = 49.867092;
+export const BAKI_DEFAULT_LATITUDE = 40.409264;
+export const UNKNOWN_CITY_NAMES = new Set([
+  'NAMƏLUM',
+  'NAMELUM',
+  'DIGER',
+  'DİGƏR',
+  'DIGƏR',
+  'DİGER',
+  'OTHER',
+  'UNKNOWN',
+]);
+
+export function hasCoordinates(item: AzmapItem) {
+  return (
+    item.latitude != null &&
+    item.longitude != null &&
+    Number.isFinite(Number(item.latitude)) &&
+    Number.isFinite(Number(item.longitude))
+  );
 }
 
-function getCityName(item: AzmapItem) {
-  const city = item.city?.trim();
-  const clean = item.sourceCityClean?.trim();
-  const raw = item.sourceCity?.trim();
+export function getCityName(item: AzmapItem) {
+  if (!hasCoordinates(item)) return 'BAKI';
 
-  return city || clean || raw || 'Naməlum';
+  const rawName = (
+    item.city?.trim() ||
+    item.sourceCityClean?.trim() ||
+    item.sourceCity?.trim() ||
+    ''
+  );
+  if (!rawName) return 'BAKI';
+
+  const upper = rawName.toUpperCase();
+  if (UNKNOWN_CITY_NAMES.has(upper)) return 'BAKI';
+
+  return rawName;
 }
 
 function getPointMetric(
@@ -132,19 +159,24 @@ function formatMetricValue(value: number, metric: Metric, unit: AmountUnit) {
   return `${formatAmount(value / unitInfo.divisor)} ${unitInfo.suffix}`;
 }
 
-function buildCityPoints(items: AzmapItem[]) {
+export function buildCityPoints(items: AzmapItem[]) {
   const pointMap = new Map<string, CityPoint & { banks: Set<string> }>();
 
-  items.filter(hasCoordinates).forEach((item) => {
+  items.forEach((item) => {
     const city = getCityName(item);
-    const longitude = Number(item.longitude);
-    const latitude = Number(item.latitude);
+    const isBaki = city === 'BAKI';
+    const validCoords = hasCoordinates(item);
+    const longitude =
+      !isBaki && validCoords ? Number(item.longitude) : BAKI_DEFAULT_LONGITUDE;
+    const latitude =
+      !isBaki && validCoords ? Number(item.latitude) : BAKI_DEFAULT_LATITUDE;
     const key = `${city}|${longitude}|${latitude}`;
     const existing = pointMap.get(key);
 
     if (existing) {
       existing.totalAmount += item.totalAmount;
       existing.totalCount += item.totalCount;
+      if (isBaki) existing.category = 'BAKI';
       if (item.bankName) existing.banks.add(item.bankName);
       existing.bankCount = existing.banks.size;
       return;
@@ -156,7 +188,7 @@ function buildCityPoints(items: AzmapItem[]) {
     pointMap.set(key, {
       id: key,
       city,
-      category: item.sourceCityCategory?.trim() || 'Naməlum',
+      category: isBaki ? 'BAKI' : item.sourceCityCategory?.trim() || 'REGION',
       position: [longitude, latitude],
       totalAmount: item.totalAmount,
       totalCount: item.totalCount,

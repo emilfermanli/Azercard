@@ -19,7 +19,7 @@
 		"lint": "eslint . --ext ts,tsx --max-warnings 0",
 		"prettier": "prettier './src/**/*.{js,ts,tsx,jsx,json}' --write",
 		"tsc": "npx tsc",
-		"test": "esbuild \"src/pages/(app)/card-dashboard/_format.test.ts\" --bundle --platform=node --format=esm --outfile=node_modules/.cache/card-dashboard-format.test.mjs && node --test node_modules/.cache/card-dashboard-format.test.mjs",
+		"test": "esbuild \"src/pages/(app)/card-dashboard/_format.test.ts\" --bundle --platform=node --format=esm --outfile=node_modules/.cache/card-dashboard-format.test.mjs && esbuild \"src/pages/(app)/azmap/_azmap.test.ts\" --bundle --platform=node --format=esm --define:import.meta.env={} --outfile=node_modules/.cache/azmap.test.mjs && node --test node_modules/.cache/card-dashboard-format.test.mjs node_modules/.cache/azmap.test.mjs",
 		"prepare": "husky"
 	},
 	"dependencies": {

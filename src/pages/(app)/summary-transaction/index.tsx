@@ -1,28 +1,31 @@
-import { useState } from 'react';
 import { Layers } from 'lucide-react';
 
+import { usePersistedAmountUnit } from '@/hooks/use-persisted-amount-unit';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 import { useGetSummaryTransactionQuery } from '@/services/summary-transaction.service';
-import type { AmountScale } from '@/types/summary-transaction.type';
 import { DataPageHeader, PageError, PageLoading } from '../_data-page-ui';
 import { FiltersDrawer } from './_components/filters-drawer';
 import { GroupCard } from './_components/group-card';
 import { Toolbar } from './_components/toolbar';
-import { GROUPS, SCALE_UNIT } from './_constants';
+import { GROUPS } from './_constants';
 import { useSummaryFilters } from './_hooks/use-summary-filters';
-import { formatAmount, formatInt, mutedText } from './_utils';
+import {
+  formatAmount,
+  formatCount,
+  formatCountByUnit,
+  formatExactAmount,
+  mutedText,
+} from './_utils';
 
 const SummaryTransactionPage: React.FC = () => {
   const isDark = useShellTheme();
-  const [scale, setScale] = useState<AmountScale>(1_000_000);
+  const { unit, setUnit } = usePersistedAmountUnit('summary-transaction:amount-unit', 'mln');
 
   const filters = useSummaryFilters();
   const { data, isLoading, isError, isFetching } = useGetSummaryTransactionQuery({
     ...filters.apiArgs,
     Scale: 1,
   });
-
-  const unit = SCALE_UNIT[scale];
 
   return (
     <div className="space-y-5 pt-2 pb-2 pl-2 pr-4 sm:pt-3 sm:pb-3 sm:pl-3 sm:pr-6">
@@ -36,7 +39,7 @@ const SummaryTransactionPage: React.FC = () => {
         tone="violet"
       />
 
-      <Toolbar scale={scale} onScaleChange={setScale} />
+      <Toolbar unit={unit} onUnitChange={setUnit} />
 
       {isLoading ? (
         <PageLoading />
@@ -92,9 +95,11 @@ const SummaryTransactionPage: React.FC = () => {
                   >
                     Məbləğ
                   </p>
-                  <p className="mt-0.5 text-3xl font-bold tabular-nums">
-                    {formatAmount(data?.total.amount ?? 0, scale)}{' '}
-                    <span className="text-sm font-medium opacity-70">{unit}</span>
+                  <p
+                    title={formatExactAmount(data?.total.amount ?? 0)}
+                    className="mt-0.5 text-3xl font-bold tabular-nums"
+                  >
+                    {formatAmount(data?.total.amount ?? 0, unit)}
                   </p>
                 </div>
                 <div>
@@ -106,8 +111,11 @@ const SummaryTransactionPage: React.FC = () => {
                   >
                     Say
                   </p>
-                  <p className="mt-0.5 text-3xl font-bold tabular-nums">
-                    {formatInt(data?.total.count ?? 0)}
+                  <p
+                    title={formatCount(data?.total.count ?? 0)}
+                    className="mt-0.5 text-3xl font-bold tabular-nums"
+                  >
+                    {formatCountByUnit(data?.total.count ?? 0, unit)}
                   </p>
                 </div>
               </div>
@@ -124,7 +132,7 @@ const SummaryTransactionPage: React.FC = () => {
                 subtitle={g.subtitle}
                 accent={g.accent}
                 group={data?.[g.key]}
-                scale={scale}
+                unit={unit}
               />
             ))}
           </div>

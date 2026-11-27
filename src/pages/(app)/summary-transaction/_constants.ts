@@ -1,22 +1,5 @@
-import type {
-  AmountScale,
-  SummaryTransactionArgs,
-} from '@/types/summary-transaction.type';
+import type { SummaryTransactionArgs } from '@/types/summary-transaction.type';
 import type { GroupKey } from './_types';
-
-// Məbləğ miqyası (AmountScale) — toolbar seqmenti.
-export const SCALE_OPTIONS: Array<{ value: AmountScale; label: string; hint: string }> = [
-  { value: 1, label: 'Min', hint: 'Manat — tam dəyər' },
-  { value: 1_000_000, label: 'Mln', hint: 'Milyon manatla' },
-  { value: 1_000_000_000, label: 'Mlrd', hint: 'Milyard manatla' },
-];
-
-// Miqyasa uyğun məbləğ vahidi (cell altında).
-export const SCALE_UNIT: Record<AmountScale, string> = {
-  1: '₼',
-  1_000_000: 'mln ₼',
-  1_000_000_000: 'mlrd ₼',
-};
 
 // ACQUIRING_DEVICE_TYPE — API kodu → ekran etiketi, sabit sıra (slide 1 ardıcıllığı).
 export const DEVICE_ORDER: Array<{ code: string; label: string }> = [

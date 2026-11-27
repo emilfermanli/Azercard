@@ -1,17 +1,11 @@
-import type { AmountScale } from '@/types/summary-transaction.type';
-
-/** Məbləğ formatı (az-AZ, 2 onluq — miqyasa bölünmüş). */
-export function formatAmount(value: number, scale: AmountScale = 1): string {
-  const divisor = scale > 0 ? scale : 1;
-  return (Number(value ?? 0) / divisor).toLocaleString('az-AZ', {
-    maximumFractionDigits: 2,
-  });
-}
-
-/** Tam say formatı. */
-export function formatInt(value: number): string {
-  return Math.round(value ?? 0).toLocaleString('az-AZ');
-}
+export {
+  AMOUNT_UNIT_OPTIONS,
+  formatAmount,
+  formatCount,
+  formatCountByUnit,
+  formatExactAmount,
+  type AmountUnit,
+} from '@/utils/amount-unit';
 
 // --- Tema class tokenləri (light/dark) ---
 

@@ -1,13 +1,16 @@
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
-import type { AmountScale, SummaryGroup } from '@/types/summary-transaction.type';
-import { DEVICE_ORDER, SCALE_UNIT } from '../_constants';
+import type { SummaryGroup } from '@/types/summary-transaction.type';
+import { DEVICE_ORDER } from '../_constants';
 import {
   accentBadge,
   accentHeader,
   formatAmount,
-  formatInt,
+  formatCount,
+  formatCountByUnit,
+  formatExactAmount,
   mutedText,
   panelClass,
+  type AmountUnit,
 } from '../_utils';
 
 type GroupCardProps = {
@@ -16,7 +19,7 @@ type GroupCardProps = {
   subtitle: string;
   accent: 'blue' | 'violet' | 'emerald';
   group: SummaryGroup | undefined;
-  scale: AmountScale;
+  unit: AmountUnit;
 };
 
 export function GroupCard({
@@ -25,11 +28,10 @@ export function GroupCard({
   subtitle,
   accent,
   group,
-  scale,
+  unit,
 }: GroupCardProps) {
   const isDark = useShellTheme();
   const muted = mutedText(isDark);
-  const unit = SCALE_UNIT[scale];
 
   // API qurğularını sabit sıraya (POS, ATM, Ecom, C2C, UFX) düzür.
   const deviceMap = new Map((group?.devices ?? []).map((d) => [d.deviceType, d]));
@@ -70,15 +72,20 @@ export function GroupCard({
           <p className={['text-[11px] font-semibold uppercase', muted].join(' ')}>
             Məbləğ
           </p>
-          <p className="mt-0.5 text-lg font-bold tabular-nums">
-            {formatAmount(group?.amount ?? 0, scale)}{' '}
-            <span className="text-xs font-medium opacity-70">{unit}</span>
+          <p
+            title={formatExactAmount(group?.amount ?? 0)}
+            className="mt-0.5 text-lg font-bold tabular-nums"
+          >
+            {formatAmount(group?.amount ?? 0, unit)}
           </p>
         </div>
         <div>
           <p className={['text-[11px] font-semibold uppercase', muted].join(' ')}>Say</p>
-          <p className="mt-0.5 text-lg font-bold tabular-nums">
-            {formatInt(group?.count ?? 0)}
+          <p
+            title={formatCount(group?.count ?? 0)}
+            className="mt-0.5 text-lg font-bold tabular-nums"
+          >
+            {formatCountByUnit(group?.count ?? 0, unit)}
           </p>
         </div>
       </div>
@@ -87,6 +94,8 @@ export function GroupCard({
       <ul className="flex-1 divide-y divide-slate-200/60 dark:divide-slate-800/60">
         {DEVICE_ORDER.map(({ code, label }) => {
           const row = deviceMap.get(code);
+          const rowAmount = row?.amount ?? 0;
+          const rowCount = row?.count ?? 0;
           return (
             <li
               key={code}
@@ -101,14 +110,17 @@ export function GroupCard({
                 {label}
               </span>
               <div className="flex items-baseline gap-4 text-right tabular-nums">
-                <span className="text-sm font-semibold">
-                  {formatAmount(row?.amount ?? 0, scale)}{' '}
-                  <span className={['text-[10px] font-medium', muted].join(' ')}>
-                    {unit}
-                  </span>
+                <span
+                  title={formatExactAmount(rowAmount)}
+                  className="text-sm font-semibold"
+                >
+                  {formatAmount(rowAmount, unit)}
                 </span>
-                <span className={['min-w-16 text-xs', muted].join(' ')}>
-                  {formatInt(row?.count ?? 0)}
+                <span
+                  title={formatCount(rowCount)}
+                  className={['min-w-20 text-xs', muted].join(' ')}
+                >
+                  {formatCountByUnit(rowCount, unit)}
                 </span>
               </div>
             </li>

@@ -7,6 +7,7 @@ import type { ColumnKey } from './_types';
 import {
   exactMeasureValue,
   formatAmount,
+  formatCountByUnit,
   formatInt,
   formatPct,
   measureValue,
@@ -42,15 +43,29 @@ describe('CardTransactionDetailed unit formatting & column data swap', () => {
     assert.equal(exactMeasureValue(row, 'amount'), '22.123.277.083,97 ₼');
   });
 
-  it('keeps counts unscaled without unit or currency suffix in SAY mode across all 4 units', () => {
+  it('scales counts by selected unit without ₼ symbol in SAY mode across all 4 units, 0, tiny, huge', () => {
     const row = { amount: 22123277083.97, count: 408324482 };
 
+    assert.equal(measureValue(row, 'count', 'tam'), '408.324.482');
+    assert.equal(measureValue(row, 'count', 'min'), '408.324,48 min');
+    assert.equal(measureValue(row, 'count', 'mln'), '408,32 mln');
+    assert.equal(measureValue(row, 'count', 'mlrd'), '0,41 mlrd');
+    assert.equal(measureValue(row, 'count'), '408,32 mln');
+
     for (const unit of ALL_UNITS) {
-      assert.equal(measureValue(row, 'count', unit), '408.324.482');
-      assert.doesNotMatch(measureValue(row, 'count', unit), /min|mln|mlrd|₼/);
+      assert.doesNotMatch(measureValue(row, 'count', unit), /₼/);
     }
     assert.equal(exactMeasureValue(row, 'count'), '408.324.482');
     assert.equal(formatInt(408324482), '408.324.482');
+
+    const tiny = { amount: 172.36, count: 59 };
+    assert.equal(formatCountByUnit(tiny.count, 'mln'), '< 0,01 mln');
+    assert.equal(measureValue(tiny, 'count', 'mlrd'), '< 0,01 mlrd');
+    assert.equal(exactMeasureValue(tiny, 'count'), '59');
+
+    assert.equal(formatCountByUnit(0, 'mln'), '0 mln');
+    assert.equal(formatCountByUnit(2543550000, 'mlrd'), '2,54 mlrd');
+    assert.equal(formatCountByUnit(null, 'mln'), '—');
   });
 
   it('prevents false zeros for tiny non-zero values (< 0,01) and handles 0, -0, null, undefined', () => {

@@ -8,6 +8,7 @@ import type { ColumnKey, Measure, SelectionChip } from '../_types';
 import {
   AMOUNT_UNIT_OPTIONS,
   formatAmount,
+  formatCountByUnit,
   formatExactAmount,
   formatInt,
   mutedText,
@@ -119,7 +120,8 @@ export function Toolbar({
   const { unit, setUnit } = useTdAmountUnit();
   const amount = kpi ? formatAmount(kpi.totalAmount, unit) : '—';
   const exactAmount = kpi ? formatExactAmount(kpi.totalAmount) : undefined;
-  const count = kpi ? formatInt(kpi.totalCount) : '—';
+  const count = kpi ? formatCountByUnit(kpi.totalCount, unit) : '—';
+  const exactCount = kpi ? formatInt(kpi.totalCount) : undefined;
   const change = kpi?.changePercent ?? 0;
 
   return (
@@ -142,7 +144,7 @@ export function Toolbar({
             icon={<ArrowRightLeft className="h-[1.1rem] w-[1.1rem]" />}
             label="Əməliyyat sayı"
             value={count}
-            title={kpi ? count : undefined}
+            title={exactCount}
             active={measure === 'count'}
           />
         </div>

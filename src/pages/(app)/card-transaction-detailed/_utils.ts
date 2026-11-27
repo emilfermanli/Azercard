@@ -3,17 +3,19 @@ import {
   AMOUNT_UNIT_OPTIONS,
   formatAmount as formatUnitAmount,
   formatCount,
+  formatCountByUnit,
   formatExactAmount,
   formatPct as formatUnitPct,
   isAmountUnit,
   type AmountUnit,
-} from '../card-dashboard/_format';
+} from '@/utils/amount-unit';
 import type { Measure } from './_types';
 
 export {
   AMOUNT_UNIT_CONFIG,
   AMOUNT_UNIT_OPTIONS,
   formatCount,
+  formatCountByUnit,
   formatExactAmount,
   formatUnitAmount as formatAmount,
   isAmountUnit,
@@ -43,14 +45,14 @@ export function rowValue(
   return measure === 'count' ? row.count : row.amount;
 }
 
-/** Göstərici və seçilmiş məbləğ vahidi üzrə dəyər — say (tam) / məbləğ (Tam/Min/Mln/Mlrd). */
+/** Göstərici və seçilmiş məbləğ vahidi üzrə dəyər — say / məbləğ (Tam/Min/Mln/Mlrd). */
 export function measureValue(
   row: { amount: number | null | undefined; count: number | null | undefined },
   measure: Measure,
   unit: AmountUnit = 'mln'
 ): string {
   return measure === 'count'
-    ? formatCount(row.count)
+    ? formatCountByUnit(row.count, unit)
     : formatUnitAmount(row.amount, unit);
 }
 

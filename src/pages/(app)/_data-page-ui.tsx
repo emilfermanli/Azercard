@@ -89,10 +89,19 @@ export function DataPageHeader({
   );
 }
 
-export function StatCard({ label, value }: { label: string; value: string | number }) {
+export function StatCard({
+  label,
+  value,
+  title,
+}: {
+  label: string;
+  value: string | number;
+  title?: string;
+}) {
   const isDark = useShellTheme();
   return (
     <div
+      title={title}
       className={[
         'rounded-xl border p-4',
         isDark

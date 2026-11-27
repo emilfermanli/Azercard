@@ -32,40 +32,38 @@ import {
   useGetWorldmapFilterQuery,
   useGetWorldmapHeatmapQuery,
 } from '@/services/worldmap.service';
+import { usePersistedAmountUnit } from '@/hooks/use-persisted-amount-unit';
 import type {
   WorldmapFilterOptionsResponse,
   WorldmapHeatmapResponse,
   WorldmapItem,
 } from '@/types/worldmap.type';
+import {
+  AMOUNT_UNIT_OPTIONS,
+  formatCount,
+  formatCountByUnit,
+  formatExactAmount,
+  type AmountUnit,
+} from '@/utils/amount-unit';
+import {
+  formatMapMetricExact,
+  formatMapMetricValue,
+  type MapMetric as Metric,
+} from '@/utils/map-metric';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 
 import {
   DataPageHeader,
-  formatAmount,
   formatNumber,
   PageError,
   PageLoading,
   StatCard,
 } from '../_data-page-ui';
 
-type Metric = 'turnover' | 'count' | 'average';
-type AmountUnit = 'Min' | 'Mln' | 'Mlrd';
-
 const METRIC_OPTIONS: Array<{ value: Metric; label: string }> = [
   { value: 'turnover', label: 'Dövriyyə' },
   { value: 'count', label: 'Əməliyyat sayı' },
   { value: 'average', label: 'Ortalama məbləğ' },
-];
-
-const AMOUNT_UNITS: Array<{
-  value: AmountUnit;
-  label: string;
-  divisor: number;
-  suffix: string;
-}> = [
-  { value: 'Min', label: 'Min (₼)', divisor: 1_000, suffix: 'min ₼' },
-  { value: 'Mln', label: 'Mln (₼)', divisor: 1_000_000, suffix: 'mln ₼' },
-  { value: 'Mlrd', label: 'Mlrd (₼)', divisor: 1_000_000_000, suffix: 'mlrd ₼' },
 ];
 
 function getItemMetric(
@@ -79,11 +77,12 @@ function getItemMetric(
   return item.totalAmount;
 }
 
-function formatMetricValue(value: number, metric: Metric, unit: AmountUnit) {
-  if (metric === 'count') return formatNumber(value);
-  if (metric === 'average') return `${formatAmount(value)} ₼`;
-  const unitInfo = AMOUNT_UNITS.find((u) => u.value === unit) ?? AMOUNT_UNITS[1];
-  return `${formatAmount(value / unitInfo.divisor)} ${unitInfo.suffix}`;
+export function formatMetricValue(
+  value: number | null | undefined,
+  metric: Metric,
+  unit: AmountUnit
+): string {
+  return formatMapMetricValue(value, metric, unit);
 }
 
 type Flow = {
@@ -374,7 +373,10 @@ const WorldmapPage: React.FC = () => {
   const [targetLongitudeFilter, setTargetLongitudeFilter] = useState('');
   const defaultRange = useMemo(() => getLast12CompletedMonthsRange(), []);
   const [metric, setMetric] = useState<Metric>('turnover');
-  const [amountUnit, setAmountUnit] = useState<AmountUnit>('Mln');
+  const { unit: amountUnit, setUnit: setAmountUnit } = usePersistedAmountUnit(
+    'worldmap:amount-unit',
+    'mln'
+  );
   const [startDate, setStartDate] = useState(defaultRange.dateFrom);
   const [endDate, setEndDate] = useState(defaultRange.dateTo);
   const [extraFilters, setExtraFilters] = useState<Partial<Record<WorldExtraKey, string>>>({});
@@ -1101,7 +1103,7 @@ const WorldmapPage: React.FC = () => {
       if ('sourceCountry' in item) {
         const avg = item.totalCount > 0 ? item.totalAmount / item.totalCount : 0;
         return {
-          html: `<strong>${item.sourceCountry} → ${item.targetCountry}</strong><br/>${item.paymentSystem}<br/>Məbləğ: ${formatMetricValue(item.totalAmount, 'turnover', amountUnit)}<br/>Say: ${formatNumber(item.totalCount)}<br/>Ortalama: ${formatMetricValue(avg, 'average', amountUnit)}`,
+          html: `<strong>${item.sourceCountry} → ${item.targetCountry}</strong><br/>${item.paymentSystem}<br/>Məbləğ: ${formatMetricValue(item.totalAmount, 'turnover', amountUnit)}<br/>Say: <span title="${formatCount(item.totalCount)}">${formatCountByUnit(item.totalCount, amountUnit)}</span><br/>Ortalama: ${formatMetricValue(avg, 'average', amountUnit)}`,
         };
       }
 
@@ -1115,7 +1117,7 @@ const WorldmapPage: React.FC = () => {
                 <span style="color: #94a3b8; font-size: 11px;">${point.country}</span><br/>
                 <div style="margin-top: 6px; border-top: 1px solid #334155; padding-top: 4px;">
                   <strong>Dəyər:</strong> ${formatMetricValue(point.weight, 'turnover', amountUnit)}<br/>
-                  <strong>Əməliyyat:</strong> ${formatNumber(point.totalCount)}
+                  <strong>Əməliyyat:</strong> <span title="${formatCount(point.totalCount)}">${formatCountByUnit(point.totalCount, amountUnit)}</span>
                 </div>
               </div>
             `,
@@ -1123,13 +1125,13 @@ const WorldmapPage: React.FC = () => {
         }
 
         return {
-          html: `<strong>${point.country}</strong><br/>İstilik xəritəsi dəyəri: ${formatMetricValue(point.weight, 'turnover', amountUnit)}<br/>Say: ${formatNumber(point.totalCount)}`,
+          html: `<strong>${point.country}</strong><br/>İstilik xəritəsi dəyəri: ${formatMetricValue(point.weight, 'turnover', amountUnit)}<br/>Say: <span title="${formatCount(point.totalCount)}">${formatCountByUnit(point.totalCount, amountUnit)}</span>`,
         };
       }
 
       const avg = item.totalCount > 0 ? item.totalAmount / item.totalCount : 0;
       return {
-        html: `<strong>${item.country}</strong><br/>${item.category}<br/>Məbləğ: ${formatMetricValue(item.totalAmount, 'turnover', amountUnit)}<br/>Say: ${formatNumber(item.totalCount)}<br/>Ortalama: ${formatMetricValue(avg, 'average', amountUnit)}`,
+        html: `<strong>${item.country}</strong><br/>${item.category}<br/>Məbləğ: ${formatMetricValue(item.totalAmount, 'turnover', amountUnit)}<br/>Say: <span title="${formatCount(item.totalCount)}">${formatCountByUnit(item.totalCount, amountUnit)}</span><br/>Ortalama: ${formatMetricValue(avg, 'average', amountUnit)}`,
       };
     },
     [amountUnit]
@@ -1780,10 +1782,11 @@ const WorldmapPage: React.FC = () => {
                   Məbləğ vahidi
                 </span>
                 <div className="inline-flex rounded-lg border border-slate-500/20 p-1">
-                  {AMOUNT_UNITS.map((unit) => (
+                  {AMOUNT_UNIT_OPTIONS.map((unit) => (
                     <button
                       key={unit.value}
                       type="button"
+                      aria-pressed={amountUnit === unit.value}
                       onClick={() => setAmountUnit(unit.value)}
                       className={[
                         'rounded-md px-3 py-1.5 text-xs font-semibold transition',
@@ -1814,8 +1817,19 @@ const WorldmapPage: React.FC = () => {
                     )
                   : formatMetricValue(totalAmount, 'turnover', amountUnit)
               }
+              title={
+                metric === 'average'
+                  ? formatExactAmount(
+                      totalOperations > 0 ? totalAmount / totalOperations : 0
+                    )
+                  : formatExactAmount(totalAmount)
+              }
             />
-            <StatCard label="Əməliyyat sayı" value={formatNumber(totalOperations)} />
+            <StatCard
+              label="Əməliyyat sayı"
+              value={formatCountByUnit(totalOperations, amountUnit)}
+              title={formatCount(totalOperations)}
+            />
             <StatCard label="Aktiv bank" value={formatNumber(uniqueBanks)} />
           </div>
 
@@ -2059,7 +2073,10 @@ const WorldmapPage: React.FC = () => {
                           <span className="min-w-0 truncate font-medium">
                             {flow.sourceCountry} {'→'} {flow.targetCountry}
                           </span>
-                          <span className="shrink-0 tabular-nums">
+                          <span
+                            title={formatMapMetricExact(val, metric)}
+                            className="shrink-0 tabular-nums"
+                          >
                             {formatMetricValue(val, metric, amountUnit)}
                           </span>
                         </div>
@@ -2100,7 +2117,13 @@ const WorldmapPage: React.FC = () => {
                       >
                         <div className="flex items-center justify-between gap-3">
                           <span className="text-sm font-semibold">{payment.name}</span>
-                          <span className="text-sm tabular-nums">
+                          <span
+                            title={formatMapMetricExact(
+                              getItemMetric(payment, metric),
+                              metric
+                            )}
+                            className="text-sm tabular-nums"
+                          >
                             {formatMetricValue(
                               getItemMetric(payment, metric),
                               metric,
@@ -2108,8 +2131,11 @@ const WorldmapPage: React.FC = () => {
                             )}
                           </span>
                         </div>
-                        <p className={['mt-1 text-xs', mutedText].join(' ')}>
-                          {formatNumber(payment.totalCount)} əməliyyat
+                        <p
+                          title={formatCount(payment.totalCount)}
+                          className={['mt-1 text-xs', mutedText].join(' ')}
+                        >
+                          {formatCountByUnit(payment.totalCount, amountUnit)} əməliyyat
                         </p>
                       </div>
                     ))}

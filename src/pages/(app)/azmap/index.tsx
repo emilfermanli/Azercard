@@ -32,12 +32,24 @@ import {
   useGetAzmapFilterQuery,
   useGetAzmapHeatmapQuery,
 } from '@/services/azmap.service';
+import { usePersistedAmountUnit } from '@/hooks/use-persisted-amount-unit';
 import type { AzmapFilterOptionsResponse, AzmapItem } from '@/types/azmap.type';
+import {
+  AMOUNT_UNIT_OPTIONS,
+  formatCount,
+  formatCountByUnit,
+  formatExactAmount,
+  type AmountUnit,
+} from '@/utils/amount-unit';
+import {
+  formatMapMetricExact,
+  formatMapMetricValue,
+  type MapMetric as Metric,
+} from '@/utils/map-metric';
 import { useShellTheme } from '@/widgets/app-shell/shell-theme-context';
 
 import {
   DataPageHeader,
-  formatAmount,
   formatNumber,
   PageError,
   PageLoading,
@@ -45,24 +57,11 @@ import {
 } from '../_data-page-ui';
 
 type MapMode = 'points' | 'heatmap';
-type Metric = 'turnover' | 'count' | 'average';
-type AmountUnit = 'Min' | 'Mln' | 'Mlrd';
 
 const METRIC_OPTIONS: Array<{ value: Metric; label: string }> = [
   { value: 'turnover', label: 'Dövriyyə' },
   { value: 'count', label: 'Əməliyyat sayı' },
   { value: 'average', label: 'Ortalama məbləğ' },
-];
-
-const AMOUNT_UNITS: Array<{
-  value: AmountUnit;
-  label: string;
-  divisor: number;
-  suffix: string;
-}> = [
-  { value: 'Min', label: 'Min (₼)', divisor: 1_000, suffix: 'min ₼' },
-  { value: 'Mln', label: 'Mln (₼)', divisor: 1_000_000, suffix: 'mln ₼' },
-  { value: 'Mlrd', label: 'Mlrd (₼)', divisor: 1_000_000_000, suffix: 'mlrd ₼' },
 ];
 
 type SelectOption = {
@@ -153,11 +152,12 @@ function getPointMetric(
   return point.totalAmount;
 }
 
-function formatMetricValue(value: number, metric: Metric, unit: AmountUnit) {
-  if (metric === 'count') return formatNumber(value);
-  if (metric === 'average') return `${formatAmount(value)} ₼`;
-  const unitInfo = AMOUNT_UNITS.find((u) => u.value === unit) ?? AMOUNT_UNITS[1];
-  return `${formatAmount(value / unitInfo.divisor)} ${unitInfo.suffix}`;
+export function formatMetricValue(
+  value: number | null | undefined,
+  metric: Metric,
+  unit: AmountUnit
+): string {
+  return formatMapMetricValue(value, metric, unit);
 }
 
 export function buildCityPoints(items: AzmapItem[]) {
@@ -236,7 +236,10 @@ const AzmapPage: React.FC = () => {
   );
   const defaultRange = useMemo(() => getLast12CompletedMonthsRange(), []);
   const [metric, setMetric] = useState<Metric>('turnover');
-  const [amountUnit, setAmountUnit] = useState<AmountUnit>('Mln');
+  const { unit: amountUnit, setUnit: setAmountUnit } = usePersistedAmountUnit(
+    'azmap:amount-unit',
+    'mln'
+  );
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [bankName, setBankName] = useState('');
   const [sourceCity, setSourceCity] = useState('');
@@ -700,7 +703,7 @@ const AzmapPage: React.FC = () => {
               <span style="color: #94a3b8; font-size: 11px;">${point.city}</span><br/>
               <div style="margin-top: 6px; border-top: 1px solid #334155; padding-top: 4px;">
                 <strong>Məbləğ:</strong> ${formatMetricValue(point.totalAmount, 'turnover', amountUnit)}<br/>
-                <strong>Əməliyyat:</strong> ${formatNumber(point.totalCount)}<br/>
+                <strong>Əməliyyat:</strong> <span title="${formatCount(point.totalCount)}">${formatCountByUnit(point.totalCount, amountUnit)}</span><br/>
                 <strong>Ortalama:</strong> ${formatMetricValue(avg, 'average', amountUnit)}
               </div>
             </div>
@@ -710,7 +713,7 @@ const AzmapPage: React.FC = () => {
 
       const avg = point.totalCount > 0 ? point.totalAmount / point.totalCount : 0;
       return {
-        html: `<strong>${point.city}</strong><br/>Məbləğ: ${formatMetricValue(point.totalAmount, 'turnover', amountUnit)}<br/>Say: ${formatNumber(point.totalCount)}<br/>Ortalama: ${formatMetricValue(avg, 'average', amountUnit)}`,
+        html: `<strong>${point.city}</strong><br/>Məbləğ: ${formatMetricValue(point.totalAmount, 'turnover', amountUnit)}<br/>Say: <span title="${formatCount(point.totalCount)}">${formatCountByUnit(point.totalCount, amountUnit)}</span><br/>Ortalama: ${formatMetricValue(avg, 'average', amountUnit)}`,
       };
     },
     [amountUnit]
@@ -1086,10 +1089,11 @@ const AzmapPage: React.FC = () => {
                   Məbləğ vahidi
                 </span>
                 <div className="inline-flex rounded-lg border border-slate-500/20 p-1">
-                  {AMOUNT_UNITS.map((unit) => (
+                  {AMOUNT_UNIT_OPTIONS.map((unit) => (
                     <button
                       key={unit.value}
                       type="button"
+                      aria-pressed={amountUnit === unit.value}
                       onClick={() => setAmountUnit(unit.value)}
                       className={[
                         'rounded-md px-3 py-1.5 text-xs font-semibold transition',
@@ -1120,8 +1124,19 @@ const AzmapPage: React.FC = () => {
                     )
                   : formatMetricValue(totalAmount, 'turnover', amountUnit)
               }
+              title={
+                metric === 'average'
+                  ? formatExactAmount(
+                      totalOperations > 0 ? totalAmount / totalOperations : 0
+                    )
+                  : formatExactAmount(totalAmount)
+              }
             />
-            <StatCard label="Əməliyyat sayı" value={formatNumber(totalOperations)} />
+            <StatCard
+              label="Əməliyyat sayı"
+              value={formatCountByUnit(totalOperations, amountUnit)}
+              title={formatCount(totalOperations)}
+            />
             <StatCard label="Aktiv bank" value={formatNumber(uniqueBanks)} />
           </div>
 
@@ -1352,7 +1367,10 @@ const AzmapPage: React.FC = () => {
                       <div key={point.id}>
                         <div className="flex items-center justify-between gap-3 text-sm">
                           <span className="min-w-0 truncate font-medium">{point.city}</span>
-                          <span className="shrink-0 tabular-nums">
+                          <span
+                            title={formatMapMetricExact(val, metric)}
+                            className="shrink-0 tabular-nums"
+                          >
                             {formatMetricValue(val, metric, amountUnit)}
                           </span>
                         </div>

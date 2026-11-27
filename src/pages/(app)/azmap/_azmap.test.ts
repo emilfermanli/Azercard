@@ -2,13 +2,17 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import type { AzmapItem } from '@/types/azmap.type';
+import { formatCountByUnit, type AmountUnit } from '@/utils/amount-unit';
 import {
   BAKI_DEFAULT_LATITUDE,
   BAKI_DEFAULT_LONGITUDE,
   buildCityPoints,
+  formatMetricValue,
   getCityName,
   hasCoordinates,
 } from './index';
+
+const ALL_UNITS: AmountUnit[] = ['tam', 'min', 'mln', 'mlrd'];
 
 function makeItem(overrides: Partial<AzmapItem>): AzmapItem {
   return {
@@ -125,5 +129,23 @@ describe('AzMap city fallback and point aggregation', () => {
     assert.ok(abseron);
     assert.equal(abseron.totalAmount, 400_000);
     assert.deepEqual(abseron.position, [49.7383, 40.4539]);
+  });
+
+  it('scales transaction counts across all 4 units while keeping average ticket in AZN', () => {
+    const count = 314428;
+    assert.equal(formatMetricValue(count, 'count', 'tam'), '314.428');
+    assert.equal(formatMetricValue(count, 'count', 'min'), '314,43 min');
+    assert.equal(formatMetricValue(count, 'count', 'mln'), '0,31 mln');
+    assert.equal(formatMetricValue(count, 'count', 'mlrd'), '< 0,01 mlrd');
+
+    for (const unit of ALL_UNITS) {
+      assert.doesNotMatch(formatMetricValue(count, 'count', unit), /₼/);
+      assert.equal(formatMetricValue(54.32, 'average', unit), '54,32 ₼');
+    }
+
+    assert.equal(formatCountByUnit(0, 'mln'), '0 mln');
+    assert.equal(formatCountByUnit(null, 'mln'), '—');
+    assert.equal(formatCountByUnit(500, 'mln'), '< 0,01 mln');
+    assert.equal(formatCountByUnit(2543550000, 'mlrd'), '2,54 mlrd');
   });
 });

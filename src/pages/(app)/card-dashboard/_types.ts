@@ -1,4 +1,4 @@
-export type Metric = 'amount' | 'count' | 'avg' | 'max';
+export type Metric = 'amount' | 'count' | 'avg';
 
 /** Bölgü qrafiklərinin göstərmə rejimi (% və ya mütləq rəqəm). */
 export type DisplayMode = 'pct' | 'number';

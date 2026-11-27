@@ -4,7 +4,7 @@ import type {
 } from '@/types/card-dashboard.type';
 import type { Metric } from './_types';
 
-// Yuxarı 4 KPI pəncərəsi — kliklə aktiv göstərici seçilir (trend + bölgüləri idarə edir).
+// Yuxarı 3 KPI pəncərəsi — kliklə aktiv göstərici seçilir (trend + bölgüləri idarə edir).
 export const KPI_METRICS: Array<{
   key: Metric;
   label: string;
@@ -14,7 +14,6 @@ export const KPI_METRICS: Array<{
   { key: 'amount', label: 'Ümumi dövriyyə', kpiField: 'totalAmount', monetary: true },
   { key: 'count', label: 'Əməliyyat sayı', kpiField: 'totalTxCount', monetary: false },
   { key: 'avg', label: 'Orta məbləğ', kpiField: 'avgAmount', monetary: true },
-  { key: 'max', label: 'Maksimum ödəniş', kpiField: 'maxAmount', monetary: true },
 ];
 
 // Trend zaman addımı (DateGrouping enum).

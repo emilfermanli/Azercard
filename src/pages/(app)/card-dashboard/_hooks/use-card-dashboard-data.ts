@@ -34,7 +34,6 @@ function rawKpiValue(kpi: CardKpi, metric: Metric): number {
   if (metric === 'avg') {
     return kpi.totalTxCount > 0 ? kpi.totalAmount / kpi.totalTxCount : kpi.avgAmount;
   }
-  if (metric === 'max') return kpi.maxAmount;
   return kpi.totalAmount;
 }
 
@@ -43,7 +42,6 @@ function breakdownValue(item: CardBreakdownItem, metric: Metric): number {
   if (metric === 'count') return item.totalTxCount;
   if (metric === 'avg')
     return item.totalTxCount ? item.totalAmount / item.totalTxCount : 0;
-  if (metric === 'max') return item.maxAmount ?? item.totalAmount;
   return item.totalAmount;
 }
 
@@ -55,7 +53,6 @@ function breakdownPct(item: CardBreakdownItem, metric: Metric): number {
 function trendActual(p: CardTrendPoint, metric: Metric): number {
   if (metric === 'count') return p.totalTxCount;
   if (metric === 'avg') return p.totalTxCount ? p.totalAmount / p.totalTxCount : 0;
-  if (metric === 'max') return p.maxAmount ?? p.totalAmount;
   return p.totalAmount;
 }
 
@@ -86,7 +83,7 @@ export function useCardDashboardData({
 
   const monetary = isMonetary(metric);
 
-  // 4 KPI pəncərəsi — xam dəyərlərlə; seçilmiş vahidə bölmə KpiCards-da aparılır.
+  // 3 KPI pəncərəsi — xam dəyərlərlə; seçilmiş vahidə bölmə KpiCards-da aparılır.
   const kpiCards = useMemo<KpiCard[]>(() => {
     const kpi = data?.kpi;
     return KPI_METRICS.map((m) => ({

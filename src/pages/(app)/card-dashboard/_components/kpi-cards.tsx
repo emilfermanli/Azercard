@@ -1,4 +1,4 @@
-import { ArrowRightLeft, Scale, TrendingUp, Wallet, type LucideIcon } from 'lucide-react';
+import { ArrowRightLeft, Scale, Wallet, type LucideIcon } from 'lucide-react';
 
 import { useAmountUnit } from '../_context/amount-unit-context';
 import type { KpiCard, Metric } from '../_types';
@@ -8,7 +8,6 @@ const ACCENTS: Record<Metric, string> = {
   amount: 'from-sky-500 to-blue-600',
   count: 'from-emerald-500 to-green-600',
   avg: 'from-violet-600 to-fuchsia-600',
-  max: 'from-amber-500 to-orange-600',
 };
 
 // Hər KPI üçün məzmununa uyğun ikon.
@@ -16,7 +15,6 @@ const ICONS: Record<Metric, LucideIcon> = {
   amount: Wallet, // ümumi dövriyyə
   count: ArrowRightLeft, // əməliyyat sayı
   avg: Scale, // orta məbləğ
-  max: TrendingUp, // maksimum ödəniş
 };
 
 /**
@@ -38,7 +36,7 @@ type KpiCardsProps = {
 };
 
 /**
- * Yuxarı 4 KPI pəncərəsi — kliklə aktiv göstərici seçilir (trend + bölgülər ona uyğunlaşır).
+ * Yuxarı 3 KPI pəncərəsi — kliklə aktiv göstərici seçilir (trend + bölgülər ona uyğunlaşır).
  */
 export function KpiCards({ cards, onSelect }: KpiCardsProps) {
   const { unit } = useAmountUnit();
@@ -62,7 +60,7 @@ export function KpiCards({ cards, onSelect }: KpiCardsProps) {
   const valueSize = sharedValueSizeClass(formattedCards.map((c) => c.value));
 
   return (
-    <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section className="grid grid-cols-1 gap-4 md:grid-cols-3">
       {formattedCards.map((card) => {
         const Icon = ICONS[card.key];
         return (

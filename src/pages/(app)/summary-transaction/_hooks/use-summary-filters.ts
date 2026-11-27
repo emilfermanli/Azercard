@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useGetCardDashboardFiltersQuery } from '@/services/card-dashboard.service';
 import type { SummaryTransactionArgs } from '@/types/summary-transaction.type';
+import { getLast12CompletedMonthsRange } from '@/utils/default-date-range';
 import { FILTER_FIELDS, type SummaryFilterKey } from '../_constants';
 import type { SelectOption } from '../_types';
 
@@ -30,14 +31,15 @@ function toOptions(values: string[] = []): SelectOption[] {
  */
 export function useSummaryFilters() {
   const { data: filterOptions } = useGetCardDashboardFiltersQuery();
+  const defaultRange = useMemo(() => getLast12CompletedMonthsRange(), []);
 
   const [isOpen, setOpen] = useState(false);
   const [applied, setApplied] = useState<FilterValues>(EMPTY_FILTERS);
   const [draft, setDraft] = useState<FilterValues>(EMPTY_FILTERS);
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [draftDateFrom, setDraftDateFrom] = useState('');
-  const [draftDateTo, setDraftDateTo] = useState('');
+  const [dateFrom, setDateFrom] = useState(defaultRange.dateFrom);
+  const [dateTo, setDateTo] = useState(defaultRange.dateTo);
+  const [draftDateFrom, setDraftDateFrom] = useState(defaultRange.dateFrom);
+  const [draftDateTo, setDraftDateTo] = useState(defaultRange.dateTo);
 
   const apiArgs = useMemo<SummaryTransactionArgs>(() => {
     const out: SummaryTransactionArgs = {};

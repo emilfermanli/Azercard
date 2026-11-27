@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useGetAcquiringFilterOptionsQuery } from '@/services/acquiring-device.service';
 import type { AcquiringApiFilters } from '@/types/acquiring-device.type';
+import { getLast12CompletedMonthsRange } from '@/utils/default-date-range';
 import { FILTER_FIELDS, type AcquiringFilterKey } from '../_constants';
 import type { SelectOption } from '../_types';
 import { toApiDate, toDateInput } from '../_utils';
@@ -33,6 +34,12 @@ export function useAcquiringFilters() {
   const { data: filterOptions } = useGetAcquiringFilterOptionsQuery();
   const minInput = toDateInput(filterOptions?.minDate);
   const maxInput = toDateInput(filterOptions?.maxDate);
+  const defaultRange = useMemo(
+    () => getLast12CompletedMonthsRange(filterOptions?.maxDate),
+    [filterOptions?.maxDate]
+  );
+  const defaultFromInput = defaultRange.dateFrom;
+  const defaultToInput = defaultRange.dateTo;
 
   const [isOpen, setOpen] = useState(false);
   const [applied, setApplied] = useState<FilterValues>(EMPTY_FILTERS);
@@ -43,8 +50,8 @@ export function useAcquiringFilters() {
   const [draftDateFromInput, setDraftDateFromInput] = useState('');
   const [draftDateToInput, setDraftDateToInput] = useState('');
 
-  const effectiveFrom = dateFromInput || minInput;
-  const effectiveTo = dateToInput || maxInput;
+  const effectiveFrom = dateFromInput || defaultFromInput;
+  const effectiveTo = dateToInput || defaultToInput;
   const fromDate = effectiveFrom ? toApiDate(effectiveFrom) : undefined;
   const toDate = effectiveTo ? toApiDate(effectiveTo) : undefined;
 
@@ -95,7 +102,9 @@ export function useAcquiringFilters() {
   };
 
   const isCustomRange = (from: string, to: string) =>
-    Boolean((from && from !== minInput) || (to && to !== maxInput));
+    Boolean(
+      (from && from !== defaultFromInput) || (to && to !== defaultToInput)
+    );
 
   const anyApplied = FILTER_FIELDS.some((field) => applied[field.key].length);
   const anyDraft = FILTER_FIELDS.some((field) => draft[field.key].length);
@@ -107,15 +116,15 @@ export function useAcquiringFilters() {
   useEffect(() => {
     if (isOpen) {
       setDraft(applied);
-      setDraftDateFromInput(dateFromInput || minInput);
-      setDraftDateToInput(dateToInput || maxInput);
+      setDraftDateFromInput(dateFromInput || defaultFromInput);
+      setDraftDateToInput(dateToInput || defaultToInput);
     }
-  }, [isOpen, applied, dateFromInput, dateToInput, minInput, maxInput]);
+  }, [isOpen, applied, dateFromInput, dateToInput, defaultFromInput, defaultToInput]);
 
   const apply = () => {
     setApplied(draft);
-    setDateFromInput(draftDateFromInput !== minInput ? draftDateFromInput : '');
-    setDateToInput(draftDateToInput !== maxInput ? draftDateToInput : '');
+    setDateFromInput(draftDateFromInput !== defaultFromInput ? draftDateFromInput : '');
+    setDateToInput(draftDateToInput !== defaultToInput ? draftDateToInput : '');
     setOpen(false);
   };
 
@@ -124,8 +133,8 @@ export function useAcquiringFilters() {
     setDraft(EMPTY_FILTERS);
     setDateFromInput('');
     setDateToInput('');
-    setDraftDateFromInput(minInput);
-    setDraftDateToInput(maxInput);
+    setDraftDateFromInput(defaultFromInput);
+    setDraftDateToInput(defaultToInput);
     setOpen(false);
   };
 

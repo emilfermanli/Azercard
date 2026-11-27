@@ -28,6 +28,7 @@ import {
 } from 'recharts';
 import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
+import { getLast12CompletedMonthsRange } from '@/utils/default-date-range';
 import { Button, DateInput } from '@/components';
 import { useGetGeneralBanksQuery } from '@/services/general.service';
 import { useGetMarketbenchmarkFilterQuery } from '@/services/marketbenchmark.service';
@@ -404,19 +405,20 @@ function ShareScatterChart({ data }: { data: BenchmarkScatterPoint[] }) {
 
 const MarketBenchmarkPage: React.FC = () => {
   const isDark = useShellTheme();
+  const defaultRange = useMemo(() => getLast12CompletedMonthsRange(), []);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [bankName, setBankName] = useState('');
   const [regionNameClean, setRegionNameClean] = useState('');
   const [cardBrandName, setCardBrandName] = useState('');
   const [productType, setProductType] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(defaultRange.dateFrom);
+  const [endDate, setEndDate] = useState(defaultRange.dateTo);
   const [draftBankName, setDraftBankName] = useState('');
   const [draftRegionNameClean, setDraftRegionNameClean] = useState('');
   const [draftCardBrandName, setDraftCardBrandName] = useState('');
   const [draftProductType, setDraftProductType] = useState('');
-  const [draftStartDate, setDraftStartDate] = useState('');
-  const [draftEndDate, setDraftEndDate] = useState('');
+  const [draftStartDate, setDraftStartDate] = useState(defaultRange.dateFrom);
+  const [draftEndDate, setDraftEndDate] = useState(defaultRange.dateTo);
 
   useEffect(() => {
     if (filterDrawerOpen) {
@@ -573,7 +575,12 @@ const MarketBenchmarkPage: React.FC = () => {
     productOptions.find((item) => item.value === draftProductType) ?? null;
 
   const hasActiveFilters = Boolean(
-    bankName || regionNameClean || cardBrandName || productType || startDate || endDate
+    bankName ||
+      regionNameClean ||
+      cardBrandName ||
+      productType ||
+      startDate !== defaultRange.dateFrom ||
+      endDate !== defaultRange.dateTo
   );
 
   const hasSelectedBank = Boolean(bankName);
@@ -690,14 +697,14 @@ const MarketBenchmarkPage: React.FC = () => {
     setRegionNameClean('');
     setCardBrandName('');
     setProductType('');
-    setStartDate('');
-    setEndDate('');
+    setStartDate(defaultRange.dateFrom);
+    setEndDate(defaultRange.dateTo);
     setDraftBankName('');
     setDraftRegionNameClean('');
     setDraftCardBrandName('');
     setDraftProductType('');
-    setDraftStartDate('');
-    setDraftEndDate('');
+    setDraftStartDate(defaultRange.dateFrom);
+    setDraftEndDate(defaultRange.dateTo);
     setFilterDrawerOpen(false);
   };
 
@@ -916,8 +923,8 @@ const MarketBenchmarkPage: React.FC = () => {
                     !draftRegionNameClean &&
                     !draftCardBrandName &&
                     !draftProductType &&
-                    !draftStartDate &&
-                    !draftEndDate
+                    draftStartDate === defaultRange.dateFrom &&
+                    draftEndDate === defaultRange.dateTo
                   }
                   onClick={resetFilters}
                 >

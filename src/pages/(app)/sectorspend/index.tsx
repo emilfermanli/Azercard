@@ -29,6 +29,7 @@ import {
 } from 'recharts';
 import Select, { type SingleValue, type StylesConfig } from 'react-select';
 
+import { getLast12CompletedMonthsRange } from '@/utils/default-date-range';
 import { Button, DateInput } from '@/components';
 import {
   useGetGeneralBanksQuery,
@@ -471,6 +472,7 @@ function LocalRatioScatter({ data }: { data: ScatterPoint[] }) {
 
 const SectorSpendPage: React.FC = () => {
   const isDark = useShellTheme();
+  const defaultRange = useMemo(() => getLast12CompletedMonthsRange(), []);
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [bankName, setBankName] = useState('');
   const [mccGroup, setMccGroup] = useState('');
@@ -480,8 +482,8 @@ const SectorSpendPage: React.FC = () => {
   const [sourceCountryCategory, setSourceCountryCategory] = useState('');
   const [isAcquiring, setIsAcquiring] = useState<number | null>(null);
   const [isIssuing, setIsIssuing] = useState<number | null>(null);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(defaultRange.dateFrom);
+  const [endDate, setEndDate] = useState(defaultRange.dateTo);
   const [draftBankName, setDraftBankName] = useState('');
   const [draftMccGroup, setDraftMccGroup] = useState('');
   const [draftSourceChannel, setDraftSourceChannel] = useState('');
@@ -490,8 +492,8 @@ const SectorSpendPage: React.FC = () => {
   const [draftSourceCountryCategory, setDraftSourceCountryCategory] = useState('');
   const [draftIsAcquiring, setDraftIsAcquiring] = useState<number | null>(null);
   const [draftIsIssuing, setDraftIsIssuing] = useState<number | null>(null);
-  const [draftStartDate, setDraftStartDate] = useState('');
-  const [draftEndDate, setDraftEndDate] = useState('');
+  const [draftStartDate, setDraftStartDate] = useState(defaultRange.dateFrom);
+  const [draftEndDate, setDraftEndDate] = useState(defaultRange.dateTo);
 
   useEffect(() => {
     if (filterDrawerOpen) {
@@ -753,8 +755,8 @@ const SectorSpendPage: React.FC = () => {
       sourceCountryCategory ||
       isAcquiring != null ||
       isIssuing != null ||
-      startDate ||
-      endDate
+      startDate !== defaultRange.dateFrom ||
+      endDate !== defaultRange.dateTo
   );
 
   const { totalAmount, totalLocalAmount, avgTicket } = useMemo(() => {
@@ -836,8 +838,8 @@ const SectorSpendPage: React.FC = () => {
     setSourceCountryCategory('');
     setIsAcquiring(null);
     setIsIssuing(null);
-    setStartDate('');
-    setEndDate('');
+    setStartDate(defaultRange.dateFrom);
+    setEndDate(defaultRange.dateTo);
 
     setDraftBankName('');
     setDraftMccGroup('');
@@ -847,8 +849,8 @@ const SectorSpendPage: React.FC = () => {
     setDraftSourceCountryCategory('');
     setDraftIsAcquiring(null);
     setDraftIsIssuing(null);
-    setDraftStartDate('');
-    setDraftEndDate('');
+    setDraftStartDate(defaultRange.dateFrom);
+    setDraftEndDate(defaultRange.dateTo);
 
     setFilterDrawerOpen(false);
   };
@@ -1145,8 +1147,8 @@ const SectorSpendPage: React.FC = () => {
                     !draftSourceCountryCategory &&
                     draftIsAcquiring == null &&
                     draftIsIssuing == null &&
-                    !draftStartDate &&
-                    !draftEndDate
+                    draftStartDate === defaultRange.dateFrom &&
+                    draftEndDate === defaultRange.dateTo
                   }
                   onClick={resetFilters}
                 >

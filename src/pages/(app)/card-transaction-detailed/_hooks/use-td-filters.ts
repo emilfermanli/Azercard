@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useGetCardDashboardFiltersQuery } from '@/services/card-dashboard.service';
 import type { TransactionDetailedArgs } from '@/types/card-transaction-detailed.type';
+import { getLast12CompletedMonthsRange } from '@/utils/default-date-range';
 import { COLUMNS, FILTER_FIELDS, type TdFilterKey } from '../_constants';
 import type { ColumnKey, SelectionChip, SelectOption } from '../_types';
 import { labelText } from '../_utils';
@@ -39,16 +40,17 @@ function toOptions(values: string[] = []): SelectOption[] {
  */
 export function useTdFilters() {
   const { data: filterOptions } = useGetCardDashboardFiltersQuery();
+  const defaultRange = useMemo(() => getLast12CompletedMonthsRange(), []);
 
   const [selections, setSelections] = useState<ColumnSelections>(EMPTY_SELECTIONS);
 
   const [isOpen, setOpen] = useState(false);
   const [applied, setApplied] = useState<FilterValues>(EMPTY_FILTERS);
   const [draft, setDraft] = useState<FilterValues>(EMPTY_FILTERS);
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [draftDateFrom, setDraftDateFrom] = useState('');
-  const [draftDateTo, setDraftDateTo] = useState('');
+  const [dateFrom, setDateFrom] = useState(defaultRange.dateFrom);
+  const [dateTo, setDateTo] = useState(defaultRange.dateTo);
+  const [draftDateFrom, setDraftDateFrom] = useState(defaultRange.dateFrom);
+  const [draftDateTo, setDraftDateTo] = useState(defaultRange.dateTo);
 
   // Sütun kliki — dəyəri toggle edir (təkrar klik = All).
   const toggleColumn = (key: ColumnKey, value: string) =>
@@ -105,12 +107,12 @@ export function useTdFilters() {
 
   const anyDrawerApplied =
     FILTER_FIELDS.some((field) => applied[field.key]) ||
-    Boolean(dateFrom) ||
-    Boolean(dateTo);
+    dateFrom !== defaultRange.dateFrom ||
+    dateTo !== defaultRange.dateTo;
   const anyDrawerDraft =
     FILTER_FIELDS.some((field) => draft[field.key]) ||
-    Boolean(draftDateFrom) ||
-    Boolean(draftDateTo);
+    draftDateFrom !== defaultRange.dateFrom ||
+    draftDateTo !== defaultRange.dateTo;
   const hasActiveFilters = anyDrawerApplied;
   const canReset = anyDrawerApplied || anyDrawerDraft;
 
@@ -132,10 +134,10 @@ export function useTdFilters() {
   const reset = () => {
     setApplied(EMPTY_FILTERS);
     setDraft(EMPTY_FILTERS);
-    setDateFrom('');
-    setDateTo('');
-    setDraftDateFrom('');
-    setDraftDateTo('');
+    setDateFrom(defaultRange.dateFrom);
+    setDateTo(defaultRange.dateTo);
+    setDraftDateFrom(defaultRange.dateFrom);
+    setDraftDateTo(defaultRange.dateTo);
     setOpen(false);
   };
 

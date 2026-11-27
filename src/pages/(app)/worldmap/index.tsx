@@ -6,6 +6,7 @@ import { TileLayer } from '@deck.gl/geo-layers';
 import { FlyToInterpolator } from '@deck.gl/core';
 import type { MapViewState, ViewStateChangeParameters } from '@deck.gl/core';
 import { BASE_MAP_TILE_URL, type BaseMapStyle } from '@/utils/basemap-tiles';
+import { getLast12CompletedMonthsRange } from '@/utils/default-date-range';
 import {
   ArrowRightLeft,
   BadgeDollarSign,
@@ -371,10 +372,11 @@ const WorldmapPage: React.FC = () => {
   const [sourceLongitudeFilter, setSourceLongitudeFilter] = useState('');
   const [targetLatitudeFilter, setTargetLatitudeFilter] = useState('');
   const [targetLongitudeFilter, setTargetLongitudeFilter] = useState('');
+  const defaultRange = useMemo(() => getLast12CompletedMonthsRange(), []);
   const [metric, setMetric] = useState<Metric>('turnover');
   const [amountUnit, setAmountUnit] = useState<AmountUnit>('Mln');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(defaultRange.dateFrom);
+  const [endDate, setEndDate] = useState(defaultRange.dateTo);
   const [extraFilters, setExtraFilters] = useState<Partial<Record<WorldExtraKey, string>>>({});
   const [draftBankId, setDraftBankId] = useState('');
   const [draftSourceCountry, setDraftSourceCountry] = useState('');
@@ -390,8 +392,8 @@ const WorldmapPage: React.FC = () => {
   const [draftSourceLongitudeFilter, setDraftSourceLongitudeFilter] = useState('');
   const [draftTargetLatitudeFilter, setDraftTargetLatitudeFilter] = useState('');
   const [draftTargetLongitudeFilter, setDraftTargetLongitudeFilter] = useState('');
-  const [draftStartDate, setDraftStartDate] = useState('');
-  const [draftEndDate, setDraftEndDate] = useState('');
+  const [draftStartDate, setDraftStartDate] = useState(defaultRange.dateFrom);
+  const [draftEndDate, setDraftEndDate] = useState(defaultRange.dateTo);
   const [draftExtraFilters, setDraftExtraFilters] = useState<Partial<Record<WorldExtraKey, string>>>({});
   const [isApplyingFilters, setIsApplyingFilters] = useState(false);
   const [hasStartedApplyFetch, setHasStartedApplyFetch] = useState(false);
@@ -1213,8 +1215,8 @@ const WorldmapPage: React.FC = () => {
       sourceLongitudeFilter ||
       targetLatitudeFilter ||
       targetLongitudeFilter ||
-      startDate ||
-      endDate ||
+      startDate !== defaultRange.dateFrom ||
+      endDate !== defaultRange.dateTo ||
       Object.values(extraFilters).some(Boolean)
   );
   const hasDraftFilters = Boolean(
@@ -1232,8 +1234,8 @@ const WorldmapPage: React.FC = () => {
       draftSourceLongitudeFilter ||
       draftTargetLatitudeFilter ||
       draftTargetLongitudeFilter ||
-      draftStartDate ||
-      draftEndDate ||
+      draftStartDate !== defaultRange.dateFrom ||
+      draftEndDate !== defaultRange.dateTo ||
       Object.values(draftExtraFilters).some(Boolean)
   );
   const mapButtonClass = [
@@ -1258,8 +1260,8 @@ const WorldmapPage: React.FC = () => {
     setSourceLongitudeFilter('');
     setTargetLatitudeFilter('');
     setTargetLongitudeFilter('');
-    setStartDate('');
-    setEndDate('');
+    setStartDate(defaultRange.dateFrom);
+    setEndDate(defaultRange.dateTo);
     setExtraFilters({});
     setDraftBankId('');
     setDraftSourceCountry('');
@@ -1275,8 +1277,8 @@ const WorldmapPage: React.FC = () => {
     setDraftSourceLongitudeFilter('');
     setDraftTargetLatitudeFilter('');
     setDraftTargetLongitudeFilter('');
-    setDraftStartDate('');
-    setDraftEndDate('');
+    setDraftStartDate(defaultRange.dateFrom);
+    setDraftEndDate(defaultRange.dateTo);
     setDraftExtraFilters({});
   };
 

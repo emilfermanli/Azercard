@@ -6,6 +6,7 @@ import { TileLayer } from '@deck.gl/geo-layers';
 import { FlyToInterpolator } from '@deck.gl/core';
 import type { MapViewState, ViewStateChangeParameters } from '@deck.gl/core';
 import { BASE_MAP_TILE_URL, type BaseMapStyle } from '@/utils/basemap-tiles';
+import { getLast12CompletedMonthsRange } from '@/utils/default-date-range';
 import {
   BarChart3,
   Filter,
@@ -233,20 +234,21 @@ const AzmapPage: React.FC = () => {
   const [baseMapStyle, setBaseMapStyle] = useState<BaseMapStyle>(
     isDark ? 'dark' : 'light'
   );
+  const defaultRange = useMemo(() => getLast12CompletedMonthsRange(), []);
   const [metric, setMetric] = useState<Metric>('turnover');
   const [amountUnit, setAmountUnit] = useState<AmountUnit>('Mln');
   const [filterDrawerOpen, setFilterDrawerOpen] = useState(false);
   const [bankName, setBankName] = useState('');
   const [sourceCity, setSourceCity] = useState('');
   const [sourceCityClean, setSourceCityClean] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(defaultRange.dateFrom);
+  const [endDate, setEndDate] = useState(defaultRange.dateTo);
   const [extraFilters, setExtraFilters] = useState<Partial<Record<AzExtraKey, string>>>({});
   const [draftBankName, setDraftBankName] = useState('');
   const [draftSourceCity, setDraftSourceCity] = useState('');
   const [draftSourceCityClean, setDraftSourceCityClean] = useState('');
-  const [draftStartDate, setDraftStartDate] = useState('');
-  const [draftEndDate, setDraftEndDate] = useState('');
+  const [draftStartDate, setDraftStartDate] = useState(defaultRange.dateFrom);
+  const [draftEndDate, setDraftEndDate] = useState(defaultRange.dateTo);
   const [draftExtraFilters, setDraftExtraFilters] = useState<Partial<Record<AzExtraKey, string>>>({});
 
   useEffect(() => {
@@ -502,8 +504,8 @@ const AzmapPage: React.FC = () => {
     bankName ||
       sourceCity ||
       sourceCityClean ||
-      startDate ||
-      endDate ||
+      startDate !== defaultRange.dateFrom ||
+      endDate !== defaultRange.dateTo ||
       Object.values(extraFilters).some(Boolean)
   );
 
@@ -786,14 +788,14 @@ const AzmapPage: React.FC = () => {
     setBankName('');
     setSourceCity('');
     setSourceCityClean('');
-    setStartDate('');
-    setEndDate('');
+    setStartDate(defaultRange.dateFrom);
+    setEndDate(defaultRange.dateTo);
     setExtraFilters({});
     setDraftBankName('');
     setDraftSourceCity('');
     setDraftSourceCityClean('');
-    setDraftStartDate('');
-    setDraftEndDate('');
+    setDraftStartDate(defaultRange.dateFrom);
+    setDraftEndDate(defaultRange.dateTo);
     setDraftExtraFilters({});
     setFilterDrawerOpen(false);
   };
@@ -1026,8 +1028,8 @@ const AzmapPage: React.FC = () => {
                     !draftBankName &&
                     !draftSourceCity &&
                     !draftSourceCityClean &&
-                    !draftStartDate &&
-                    !draftEndDate &&
+                    draftStartDate === defaultRange.dateFrom &&
+                    draftEndDate === defaultRange.dateTo &&
                     !Object.values(draftExtraFilters).some(Boolean)
                   }
                   onClick={resetFilters}

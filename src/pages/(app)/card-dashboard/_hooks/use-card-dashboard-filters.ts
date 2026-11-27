@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { useGetCardDashboardFiltersQuery } from '@/services/card-dashboard.service';
 import type { CardDashboardArgs } from '@/types/card-dashboard.type';
+import { getLast12CompletedMonthsRange } from '@/utils/default-date-range';
 import { FILTER_FIELDS, type CardDashFilterKey } from '../_constants';
 import type { SelectOption } from '../_types';
 
@@ -30,6 +31,7 @@ function toOptions(values: string[] = []): SelectOption[] {
  */
 export function useCardDashboardFilters() {
   const { data: filterOptions } = useGetCardDashboardFiltersQuery();
+  const defaultRange = useMemo(() => getLast12CompletedMonthsRange(), []);
 
   const [isOpen, setOpen] = useState(false);
   const [applied, setApplied] = useState<FilterValues>(EMPTY_FILTERS);
@@ -38,10 +40,10 @@ export function useCardDashboardFilters() {
   const [contactless, setContactless] = useState('');
   const [draftContactless, setDraftContactless] = useState('');
 
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
-  const [draftDateFrom, setDraftDateFrom] = useState('');
-  const [draftDateTo, setDraftDateTo] = useState('');
+  const [dateFrom, setDateFrom] = useState(defaultRange.dateFrom);
+  const [dateTo, setDateTo] = useState(defaultRange.dateTo);
+  const [draftDateFrom, setDraftDateFrom] = useState(defaultRange.dateFrom);
+  const [draftDateTo, setDraftDateTo] = useState(defaultRange.dateTo);
 
   const apiArgs = useMemo<CardDashboardArgs>(() => {
     const out: CardDashboardArgs = {};
@@ -79,13 +81,13 @@ export function useCardDashboardFilters() {
   const anyApplied =
     FILTER_FIELDS.some((field) => applied[field.key]) ||
     Boolean(contactless) ||
-    Boolean(dateFrom) ||
-    Boolean(dateTo);
+    dateFrom !== defaultRange.dateFrom ||
+    dateTo !== defaultRange.dateTo;
   const anyDraft =
     FILTER_FIELDS.some((field) => draft[field.key]) ||
     Boolean(draftContactless) ||
-    Boolean(draftDateFrom) ||
-    Boolean(draftDateTo);
+    draftDateFrom !== defaultRange.dateFrom ||
+    draftDateTo !== defaultRange.dateTo;
   const hasActiveFilters = anyApplied;
   const canReset = anyApplied || anyDraft;
 
@@ -112,10 +114,10 @@ export function useCardDashboardFilters() {
     setDraft(EMPTY_FILTERS);
     setContactless('');
     setDraftContactless('');
-    setDateFrom('');
-    setDateTo('');
-    setDraftDateFrom('');
-    setDraftDateTo('');
+    setDateFrom(defaultRange.dateFrom);
+    setDateTo(defaultRange.dateTo);
+    setDraftDateFrom(defaultRange.dateFrom);
+    setDraftDateTo(defaultRange.dateTo);
     setOpen(false);
   };
 

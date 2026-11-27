@@ -68,15 +68,15 @@ const AcquiringDeviceTransactionPage: React.FC = () => {
             className="lg:col-span-2"
           />
           <BarChartCard
-            title="Source bank"
-            subtitle="SOURCE_BANK_NAME üzrə bölgü"
+            title="Target bank"
+            subtitle="TARGET_BANK_NAME üzrə bölgü"
             data={dashboard.sourceBankData}
             metric={metric}
             amountUnit={amountUnit}
           />
           <BarChartCard
-            title="Target bank"
-            subtitle="TARGET_BANK_NAME üzrə bölgü"
+            title="Source bank"
+            subtitle="SOURCE_BANK_NAME üzrə bölgü"
             data={dashboard.targetBankData}
             metric={metric}
             amountUnit={amountUnit}
